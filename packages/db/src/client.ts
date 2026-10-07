@@ -5,4 +5,5 @@ export const sql = postgres(process.env.DATABASE_URL ?? "postgres://mtr:mtr@loca
   onnotice: () => {},
   transform: { undefined: null },
 });
-export type Sql = typeof sql;
+/** Either the pool or a transaction handle. */
+export type Sql = postgres.Sql | postgres.TransactionSql;
