@@ -3,18 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "check": "tsc -p .",
     "migrate": "tsx --env-file-if-exists=../../.env scripts/migrate.ts",
     "seed": "tsx --env-file-if-exists=../../.env scripts/seed.ts",
     "season-rollover": "tsx --env-file-if-exists=../../.env scripts/season-rollover.ts",
-    "make-moderator": "tsx --env-file-if-exists=../../.env scripts/make-moderator.ts"
+    "make-moderator": "tsx --env-file-if-exists=../../.env scripts/make-moderator.ts",
+    "build": "tsup",
+    "migrate:prod": "node dist/migrate.js"
   },
   "dependencies": {
     "@mtr/engine": "workspace:*",
     "@mtr/shared": "workspace:*",
     "postgres": "3.4.9"
   },
-  "devDependencies": { "tsx": "4.23.15", "@types/node": "22.20.5" }
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "@types/node": "22.20.5",
+    "tsup": "8.5.1"
+  }
 }

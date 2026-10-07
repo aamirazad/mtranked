@@ -1,10 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "agentGuidance": false,
   "ui": "stream",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", ".svelte-kit/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "build/**",
+        ".svelte-kit/**"
+      ]
     },
     "dev": {
       "cache": false,
@@ -13,7 +20,9 @@
     "start": {
       "cache": false,
       "persistent": true,
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     },
     "check": {},
     "test": {}

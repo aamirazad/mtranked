@@ -1,0 +1,78 @@
+# Production stack on a single VPS:  docker compose -f docker-compose.prod.yml up -d --build
+# Reads secrets from .env.production (copy .env.production.example).
+name: mt-ranked
+x-server: &server
+  build:
+    context: .
+    target: server
+    args:
+      PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
+  image: mt-ranked-server
+  env_file: .env.production
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: ${DATABASE_URL:-postgres://mtr:${POSTGRES_PASSWORD}@postgres:5432/mtr}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    TRUST_PROXY: uniquelocal
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mtr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: mtr
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtr"]
+      interval: 3s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    restart: unless-stopped
+
+  # one-off: applies migrations and seeds (idempotent), then exits
+  migrate:
+    <<: *server
+    command: ["sh", "-c", "node packages/db/dist/migrate.js && node packages/db/dist/seed.js"]
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *server
+    command: ["node", "api/dist/index.js"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_started }
+
+  realtime:
+    <<: *server
+    command: ["node", "realtime/dist/index.js"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_started }
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes: [caddy_data:/data, caddy_config:/config]
+    depends_on: [api, realtime]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:
