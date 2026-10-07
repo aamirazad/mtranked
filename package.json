@@ -17,6 +17,7 @@
     "make-moderator": "pnpm --filter @mtr/db make-moderator",
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "bot": "pnpm --filter @mtr/realtime bot",
     "check": "turbo run check",
     "test": "turbo run test",
     "start": "turbo run start"

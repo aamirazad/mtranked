@@ -1,0 +1,28 @@
+{
+  "name": "@mtr/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../.env src/index.ts",
+    "build": "tsup",
+    "start": "node --env-file-if-exists=../.env dist/index.js",
+    "check": "tsc -p .",
+    "bot": "tsx --env-file-if-exists=../.env scripts/bot.ts"
+  },
+  "dependencies": {
+    "@mtr/db": "workspace:*",
+    "@mtr/engine": "workspace:*",
+    "@mtr/race-protocol": "workspace:*",
+    "@mtr/shared": "workspace:*",
+    "ioredis": "5.11.1",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/ws": "8.18.2",
+    "tsup": "8.5.1",
+    "tsx": "4.23.15"
+  }
+}
