@@ -1,0 +1,23 @@
+# Local development services: Postgres, Redis and Mailpit (catches outgoing email).
+name: mt-ranked-dev
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mtr
+      POSTGRES_PASSWORD: mtr
+      POSTGRES_DB: mtr
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtr"]
+      interval: 2s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
+volumes:
+  pgdata:

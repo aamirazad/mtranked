@@ -1,0 +1,10 @@
+packages:
+  - frontend
+  - api
+  - realtime
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+  "@tailwindcss/oxide": true
+  "@node-rs/argon2": true
