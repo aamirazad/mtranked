@@ -33,9 +33,10 @@
 
   let inputs = $state<string[]>([]);
   let wi = $state(0);
-  const wordEls: HTMLElement[] = [];
   let inputEl: HTMLInputElement | undefined = $state();
   let wrapper: HTMLElement | undefined = $state();
+  // words are the first children of the wrapper (carets come after them)
+  const wordEl = (i: number) => wrapper?.children[i] as HTMLElement | undefined;
   let focused = $state(false);
   let typing = $state(false);
   let typingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -84,9 +85,9 @@
   });
 
   function measure() {
-    const el = wordEls[Math.min(wi, ts.words.length - 1)];
+    const el = wordEl(Math.min(wi, ts.words.length - 1));
     if (!el) return;
-    const first = wordEls[0];
+    const first = wordEl(0);
     if (first) {
       const cs = getComputedStyle(first);
       lineH = first.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
@@ -120,7 +121,7 @@
       if (offs[mid]! <= idx) lo = mid;
       else hi = mid - 1;
     }
-    const el = wordEls[lo];
+    const el = wordEl(lo);
     if (!el) return { x: 0, y: 0, h: 0 };
     const word = ts.words[lo]!;
     return letterPos(el, Math.min(idx - offs[lo]!, word.length));
@@ -153,6 +154,9 @@
     const v = el.value;
     el.value = "";
     if (!active || !onkey || !e.isTrusted) return;
+    // a dead key or IME commit yields a character or two; anything longer is
+    // a paste/autofill in disguise and is ignored
+    if ([...v].length > 2) return;
     for (const ch of v) onkey(ch);
   }
 
@@ -206,7 +210,7 @@
       {#each ts.words as word, i (i)}
         {@const input = inputs[i] ?? ""}
         {@const isTyped = i <= wi}
-        <div bind:this={wordEls[i]} class="word" class:error={i < wi && input !== word}>
+        <div class="word" class:error={i < wi && input !== word}>
           {#each { length: isTyped ? Math.max(word.length, input.length) : word.length } as _, j (j)}
             <span class={letterClass(word, input, j, isTyped)}>{j < word.length ? word[j] : input[j]}</span>
           {/each}

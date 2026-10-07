@@ -545,6 +545,8 @@ export class Room {
         mode: this.mode,
       });
       if (this.mode === "ghost") result.xp = Math.ceil(result.xp / 2);
+      // no progression from results that look impossible
+      if (result.wpm > SPEED_CEILING_WPM) result.xp = 0;
       if (this.mode === "ranked" || this.mode === "casual") row.flags = analyzeTiming(r.keys, r.recv);
     }
 

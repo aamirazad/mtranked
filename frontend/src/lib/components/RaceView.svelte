@@ -23,6 +23,8 @@
   const race = $derived(game.race!);
   const meId = $derived(game.you?.id);
   const isRacer = $derived(race.players.some((p) => p.id === meId));
+  /** forfeited (left, idle or disconnected too long) */
+  const iAmOut = $derived(!!meId && !!game.live[meId]?.out);
   const eq = $derived(resolveEquipped(session.me?.equipped));
 
   let ts = $state.raw<TypingState>(createState(" "));
@@ -75,7 +77,7 @@
   const elapsed = $derived(Math.max(0, now - startPerf));
 
   function onkey(k: string) {
-    if (!isRacer || !started || ts.finished || game.result) return;
+    if (!isRacer || iAmOut || !started || ts.finished || game.result) return;
     const t = Math.round(performance.now() - startPerf);
     applyKey(ts, k);
     pending.push({ k, t });
@@ -182,7 +184,7 @@
       {ts}
       {onkey}
       {carets}
-      active={isRacer && !ts.finished}
+      active={isRacer && !iAmOut && !ts.finished}
       blurred={!started}
       caretColor={eq.caretColor}
       caretShape={eq.caretShape}
@@ -204,13 +206,15 @@
 
   <div class="mt-8 flex min-h-10 items-center justify-between text-sm text-sub">
     <div>
-      {#if ts.finished && !game.result}
+      {#if iAmOut && !game.result}
+        <span class="text-error">you forfeited this race</span> (left or idle for too long) · waiting for it to end…
+      {:else if ts.finished && !game.result}
         <span class="text-main">finished!</span>
         {#if waitingFor.length}waiting for {waitingFor.join(", ")}…{/if}
       {/if}
       {#if race.source}<span class="ml-2">— {race.source}</span>{/if}
     </div>
-    {#if !game.result}
+    {#if !game.result && !iAmOut}
       <button class="btn btn-ghost text-sm" onclick={leave}>{confirmLeave ? "click again to forfeit" : "leave"}</button>
     {/if}
   </div>
