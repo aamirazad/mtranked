@@ -1,0 +1,239 @@
+<script lang="ts">
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
+  import { Check, Lock, LogOut, Monitor } from "@lucide/svelte";
+  import { COSMETICS, tierById, type Cosmetic, type CosmeticType } from "@mtr/shared";
+  import { api, errorMessage, fieldErrors } from "#lib/api.ts";
+  import { session } from "#lib/session.svelte.ts";
+  import { game } from "#lib/game.svelte.ts";
+  import { toasts } from "#lib/toast.svelte.ts";
+  import { COUNTRIES, flag } from "#lib/countries.ts";
+  import Caret from "#lib/components/Caret.svelte";
+
+  type Sess = { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string };
+
+  let displayName = $state("");
+  let country = $state("");
+  let unlocked = $state<Set<string>>(new Set());
+  let sessions = $state<Sess[]>([]);
+  let billing = $state<{ enabled: boolean; status: string; renewsAt: string | null; subscriber: boolean } | null>(null);
+  let nameError = $state<string | null>(null);
+
+  onMount(async () => {
+    if (!session.loaded) await session.refresh();
+    if (!session.me) return goto("/login?next=/settings");
+    displayName = session.me.displayName;
+    country = session.me.country ?? "";
+    await load();
+    if (page.url.searchParams.get("subscribed")) toasts.show("Thanks for supporting MT Ranked! Perks are active.", "success", 6000);
+  });
+
+  async function load() {
+    const [c, s, b] = await Promise.all([api.me.cosmetics(), api.auth.sessions(), api.billing.status()]);
+    if (c.status === 200) unlocked = new Set(c.body.unlocked);
+    if (s.status === 200) sessions = s.body.sessions;
+    if (b.status === 200) billing = b.body;
+  }
+
+  async function saveProfile(e: SubmitEvent) {
+    e.preventDefault();
+    nameError = null;
+    const r = await api.me.update({ body: { displayName, country: country || null } });
+    if (r.status === 200) {
+      session.set(r.body.user);
+      toasts.show("Profile saved", "success", 1500);
+      void game.reconnect();
+    } else nameError = fieldErrors(r).displayName ?? errorMessage(r);
+  }
+
+  async function equip(c: Cosmetic) {
+    if (!unlocked.has(c.id)) return;
+    const r = await api.me.update({ body: { equipped: { [c.type]: c.id } } });
+    if (r.status === 200) {
+      session.set(r.body.user);
+      void game.reconnect();
+    } else toasts.show(errorMessage(r), "error");
+  }
+
+  async function resend() {
+    const r = await api.auth.resendVerification({});
+    toasts.show(r.status === 200 ? "Verification email sent." : errorMessage(r), r.status === 200 ? "success" : "error");
+  }
+
+  async function revoke(id: string) {
+    await api.auth.revokeSession({ params: { id } });
+    if (sessions.find((s) => s.id === id)?.current) return logout();
+    sessions = sessions.filter((s) => s.id !== id);
+  }
+
+  async function logout() {
+    await api.auth.logout({});
+    session.set(null);
+    await session.refresh();
+    void game.reconnect();
+    goto("/");
+  }
+
+  async function checkout(interval: "month" | "year") {
+    const r = await api.billing.checkout({ body: { interval } });
+    if (r.status === 200) location.href = r.body.url;
+    else toasts.show(errorMessage(r), "error");
+  }
+  async function portal() {
+    const r = await api.billing.portal({});
+    if (r.status === 200) location.href = r.body.url;
+    else toasts.show(errorMessage(r), "error");
+  }
+  async function devToggle() {
+    await api.billing.devToggle({});
+    await session.refresh();
+    await load();
+    void game.reconnect();
+  }
+
+  const groups: { type: CosmeticType; label: string }[] = [
+    { type: "caret_color", label: "caret colour" },
+    { type: "caret_shape", label: "caret shape" },
+    { type: "finish", label: "win animation" },
+    { type: "banner", label: "profile banner" },
+  ];
+
+  function rule(c: Cosmetic) {
+    const u = c.unlock;
+    if (u.type === "level") return `level ${u.level}`;
+    if (u.type === "tier") return `reach ${tierById(u.tier)?.name}`;
+    if (u.type === "subscriber") return "supporters";
+    return "";
+  }
+  const equippedId = (type: CosmeticType) => session.me?.equipped[type];
+  const shortUa = (ua: string | null) =>
+    !ua ? "unknown device" : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
+</script>
+
+<svelte:head><title>settings · mt ranked</title></svelte:head>
+
+{#if session.me}
+  {@const me = session.me}
+  <div class="mx-auto max-w-[900px] space-y-12 animate-fade">
+    {#if !me.verified}
+      <div class="card flex flex-wrap items-center justify-between gap-4 border-2 border-main/40">
+        <div>
+          <div>verify your email to unlock ranked</div>
+          <div class="text-sm text-sub">we sent a link to {me.email}</div>
+        </div>
+        <button class="btn btn-main" onclick={resend}>resend link</button>
+      </div>
+    {/if}
+
+    <section>
+      <h2 class="label mb-4 text-sm">profile</h2>
+      <form class="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onsubmit={saveProfile}>
+        <label class="space-y-1">
+          <span class="label">display name</span>
+          <input class="input" bind:value={displayName} minlength="3" maxlength="20" />
+          {#if nameError}<span class="text-xs text-error">{nameError}</span>{/if}
+        </label>
+        <label class="space-y-1">
+          <span class="label">country (leaderboard filter)</span>
+          <select class="input" bind:value={country}>
+            <option value="">not set</option>
+            {#each COUNTRIES as c (c.code)}<option value={c.code}>{flag(c.code)} {c.name}</option>{/each}
+          </select>
+        </label>
+        <button class="btn btn-main self-end">save</button>
+      </form>
+    </section>
+
+    <section>
+      <h2 class="label mb-1 text-sm">cosmetics</h2>
+      <p class="mb-5 text-xs text-sub">earned from levels, tiers and supporting. purely cosmetic: nothing here affects a race.</p>
+      {#each groups as g (g.type)}
+        <div class="mb-6">
+          <div class="label mb-2">{g.label}</div>
+          <div class="flex flex-wrap gap-2">
+            {#each COSMETICS.filter((c) => c.type === g.type) as c (c.id)}
+              {@const open = unlocked.has(c.id)}
+              {@const on = equippedId(g.type) === c.id}
+              <button
+                class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
+                class:border-main={on}
+                class:border-transparent={!on}
+                class:opacity-40={!open}
+                disabled={!open}
+                onclick={() => equip(c)}
+                title={open ? c.name : `unlocks at ${rule(c)}`}
+              >
+                <span class="relative block h-8 w-full overflow-hidden rounded" style={g.type === "banner" ? `background: ${c.value}` : ""}>
+                  {#if g.type === "caret_color"}
+                    <Caret x={6} y={0} h={32} color={c.value} shape={equippedId("caret_shape") ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line") : "line"} smooth={false} />
+                  {:else if g.type === "caret_shape"}
+                    <Caret x={6} y={0} h={32} color={COSMETICS.find((x) => x.id === equippedId("caret_color"))?.value ?? "#e2b714"} shape={c.value} smooth={false} />
+                  {:else if g.type === "finish"}
+                    <span class="text-lg">{c.value === "none" ? "·" : c.value === "fireworks" ? "✺" : c.value === "stars" ? "★" : c.value === "gold" ? "✦" : "🎉"}</span>
+                  {/if}
+                </span>
+                <span class="flex w-full items-center justify-between gap-2">
+                  {c.name}
+                  {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
+                </span>
+                {#if !open}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/each}
+    </section>
+
+    <section>
+      <h2 class="label mb-4 text-sm">supporter</h2>
+      <div class="card">
+        {#if me.subscriber}
+          <div class="text-main">you're a supporter ♥ thank you</div>
+          <div class="mt-1 text-sm text-sub">
+            {billing?.status === "active" && billing.renewsAt ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}` : ""}
+          </div>
+        {:else}
+          <div>support mt ranked</div>
+          <ul class="mt-2 list-inside list-disc text-sm text-sub">
+            <li>private rooms for up to 16 players (4 for free accounts)</li>
+            <li>custom text in your rooms</li>
+            <li>supporter caret, win animation, banner and profile badge</li>
+            <li>full match history and replays (free keeps the last 50)</li>
+          </ul>
+          <div class="mt-1 text-xs text-sub">no competitive advantages, ever.</div>
+        {/if}
+        <div class="mt-5 flex flex-wrap gap-2">
+          {#if billing?.enabled}
+            {#if me.subscriber}
+              <button class="btn" onclick={portal}>manage subscription</button>
+            {:else}
+              <button class="btn btn-main" onclick={() => checkout("month")}>monthly</button>
+              <button class="btn" onclick={() => checkout("year")}>yearly (save ~20%)</button>
+            {/if}
+          {:else}
+            <span class="text-sm text-sub">payments aren't configured on this server.</span>
+            {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}>dev: toggle supporter</button>{/if}
+          {/if}
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="label mb-4 text-sm">sessions</h2>
+      <ul class="space-y-2">
+        {#each sessions as s (s.id)}
+          <li class="card flex items-center gap-4 py-3">
+            <Monitor size={18} class="text-sub" />
+            <div class="flex-1 text-sm">
+              <div>{shortUa(s.userAgent)} {#if s.current}<span class="text-xs text-main">this device</span>{/if}</div>
+              <div class="text-xs text-sub">{s.ip ?? ""} · last active {new Date(s.lastSeenAt).toLocaleString()}</div>
+            </div>
+            <button class="btn btn-ghost text-sm" onclick={() => revoke(s.id)}>{s.current ? "sign out" : "revoke"}</button>
+          </li>
+        {/each}
+      </ul>
+      <button class="btn mt-6" onclick={logout}><LogOut size={16} /> sign out</button>
+    </section>
+  </div>
+{/if}

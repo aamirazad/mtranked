@@ -1,0 +1,39 @@
+{
+  "name": "@mtr/frontend",
+  "private": true,
+  "version": "0.1.0",
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite preview --port 5173",
+    "prepare": "svelte-kit sync || echo ''",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@mtr/contracts": "workspace:*",
+    "@mtr/engine": "workspace:*",
+    "@mtr/race-protocol": "workspace:*",
+    "@mtr/shared": "workspace:*",
+    "@ts-rest/core": "3.52.1",
+    "canvas-confetti": "1.9.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@lucide/svelte": "1.52.0",
+    "@sveltejs/adapter-static": "4.0.0",
+    "@sveltejs/kit": "3.0.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/canvas-confetti": "1.9.0",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.3"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  }
+}

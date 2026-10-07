@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Roboto Mono";
+  src: url("/fonts/RobotoMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lexend Deca";
+  src: url("/fonts/LexendDeca-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* serika dark, monkeytype's default theme */
+@theme {
+  --color-bg: #323437;
+  --color-main: #e2b714;
+  --color-caret: #e2b714;
+  --color-sub: #646669;
+  --color-sub-alt: #2c2e31;
+  --color-text: #d1d0c5;
+  --color-error: #ca4754;
+  --color-error-extra: #7e2a33;
+  --color-win: #5ce0a0;
+  --font-mono: "Roboto Mono", ui-monospace, monospace;
+  --font-logo: "Lexend Deca", "Roboto Mono", sans-serif;
+  --animate-pop: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+  --animate-fade: fade 0.2s ease-out;
+  --animate-rise: rise 0.35s ease-out;
+}
+
+@keyframes pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  color-scheme: dark;
+}
+body { margin: 0; min-height: 100vh; }
+::selection { background: var(--color-main); color: var(--color-bg); }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font: inherit; color: inherit; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+input, select, textarea { font: inherit; }
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-sub-alt px-4 py-2 text-text transition-colors duration-100 select-none;
+  }
+  .btn:hover:not(:disabled) { @apply bg-text text-bg; }
+  .btn-main { @apply bg-main text-bg; }
+  .btn-main:hover:not(:disabled) { @apply bg-text text-bg; }
+  .btn-ghost { @apply bg-transparent text-sub; }
+  .btn-ghost:hover:not(:disabled) { @apply bg-transparent text-text; }
+  .input {
+    @apply w-full rounded-lg border-0 bg-sub-alt px-3 py-2 text-text outline-none placeholder:text-sub focus:ring-2 focus:ring-main/40;
+  }
+  .card { @apply rounded-xl bg-sub-alt p-5; }
+  .label { @apply text-xs tracking-wide text-sub; }
+  .link { @apply text-main hover:text-text transition-colors; }
+  .toggle { @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text; }
+  .toggle.on { @apply text-main; }
+}
+
+kbd {
+  @apply rounded bg-sub px-1.5 py-0.5 text-xs text-bg;
+}
