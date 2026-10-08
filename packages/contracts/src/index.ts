@@ -34,6 +34,8 @@ export type Me = {
   peak: number;
   equipped: Equipped;
   rankedBlock: string | null;
+  /** when the display name can next be changed; null if it can be changed now */
+  nameChangeAt: string | null;
 };
 
 export type Guest = { id: string; name: string };
@@ -70,6 +72,10 @@ export type Profile = {
   seasons: { seasonId: number; name: string; peak: number; races: number; current: boolean }[];
   stats: { avgWpm: number; bestWpm: number; avgAcc: number; total: number };
 };
+
+export type RatingPoint = { at: string; rating: number; races: number };
+
+export type PlayerHit = { name: string; country: string | null; rating: number; races: number; subscriber: boolean };
 
 export type LeaderboardRow = {
   rank: number;
@@ -225,6 +231,17 @@ export const contract = c.router(
         path: "/users/:name/matches",
         query: z.object({ offset: z.coerce.number().int().min(0).default(0) }),
         responses: { 200: c.type<{ matches: MatchSummary[]; more: boolean; limited: boolean }>(), 404: err },
+      },
+      ratingHistory: {
+        method: "GET",
+        path: "/users/:name/rating-history",
+        responses: { 200: c.type<{ season: { id: number; name: string }; points: RatingPoint[] }>(), 404: err },
+      },
+      search: {
+        method: "GET",
+        path: "/search/players",
+        query: z.object({ q: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
+        responses: { 200: c.type<{ players: PlayerHit[] }>(), 429: err },
       },
     },
     leaderboard: {

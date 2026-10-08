@@ -11,6 +11,7 @@ import {
   createState,
   finalStats,
   generateText,
+  raceTimeline,
   randomSeed,
   RANKED_SETTINGS,
   type Keystroke,
@@ -127,6 +128,7 @@ export class Room {
   settings: TextSettings;
   cap = 2;
   hostSubscriber = false;
+  name: string | null = null;
   locked = false;
   scoreboard: Record<string, number> = {};
   racesRun = 0;
@@ -172,7 +174,7 @@ export class Room {
     room.hostId = host.idn.id;
     room.hostSubscriber = host.info.subscriber;
     room.cap = host.info.subscriber ? ROOM_CAP_SUBSCRIBER : ROOM_CAP_FREE;
-    if (settings.mode === "custom" && !room.hostSubscriber) room.settings = { ...settings, mode: "words" };
+    if (settings.mode === "custom" && !settings.custom?.trim()) room.settings = { ...settings, mode: "words" };
     room.addMember(host);
     room.broadcastRoom();
     return room;
@@ -204,6 +206,7 @@ export class Room {
       locked: this.locked,
       cap: this.cap,
       hostSubscriber: this.hostSubscriber,
+      name: this.name,
       settings: this.settings,
       players: [...this.members.values()].map((m) => m.info),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
@@ -492,6 +495,7 @@ export class Room {
           finished,
           forfeit: r.forfeit,
           progress: Math.round((st.prefix / r.state.textLength) * 1000) / 10,
+          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration)),
         },
       };
     });
@@ -605,8 +609,8 @@ export class Room {
 
   onSettings(playerId: string, settings: TextSettings) {
     if (playerId !== this.hostId || this.status === "countdown" || this.status === "racing") return;
-    if (settings.mode === "custom" && (!this.hostSubscriber || !settings.custom?.trim())) {
-      sendTo(playerId, { type: "error", code: "subscriber_only", message: "Custom text is a supporter perk." });
+    if (settings.mode === "custom" && !settings.custom?.trim()) {
+      sendTo(playerId, { type: "error", code: "custom_empty", message: "Custom text can't be empty." });
       return;
     }
     this.settings = settings;
@@ -655,12 +659,23 @@ export class Room {
   onTransfer(playerId: string, target: string) {
     if (playerId !== this.hostId || !this.members.has(target)) return;
     this.hostId = target;
+    this.hostSubscriber = this.members.get(target)!.info.subscriber;
     this.broadcastRoom();
   }
 
   onLock(playerId: string, locked: boolean) {
     if (playerId !== this.hostId) return;
     this.locked = locked;
+    this.broadcastRoom();
+  }
+
+  onRename(playerId: string, name: string) {
+    if (playerId !== this.hostId) return;
+    if (!this.hostSubscriber) {
+      sendTo(playerId, { type: "error", code: "subscriber_only", message: "Naming rooms is a supporter perk." });
+      return;
+    }
+    this.name = name.replace(/\p{C}/gu, "").replace(/\s+/g, " ").trim() || null;
     this.broadcastRoom();
   }
 

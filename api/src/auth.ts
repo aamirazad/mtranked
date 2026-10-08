@@ -76,6 +76,15 @@ export function rankedBlock(u: UserRow): string | null {
   return null;
 }
 
+export const NAME_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** when the user may next change their display name, or null if they can now */
+export function nextNameChange(u: UserRow): Date | null {
+  if (!u.name_changed_at) return null;
+  const at = new Date(u.name_changed_at.getTime() + NAME_CHANGE_COOLDOWN_MS);
+  return at.getTime() > Date.now() ? at : null;
+}
+
 export async function buildMe(u: UserRow): Promise<Me> {
   const season = await currentSeason();
   const r = await getRating(u.id, season.id);
@@ -97,6 +106,7 @@ export async function buildMe(u: UserRow): Promise<Me> {
     peak: Math.round(r.peak),
     equipped: { ...DEFAULT_EQUIPPED, ...(u.equipped as Partial<Equipped>) },
     rankedBlock: rankedBlock(u),
+    nameChangeAt: nextNameChange(u)?.toISOString() ?? null,
   };
 }
 

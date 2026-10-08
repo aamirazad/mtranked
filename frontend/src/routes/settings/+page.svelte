@@ -102,8 +102,7 @@
   function rule(c: Cosmetic) {
     const u = c.unlock;
     if (u.type === "level") return `level ${u.level}`;
-    if (u.type === "tier") return `reach ${tierById(u.tier)?.name}`;
-    if (u.type === "subscriber") return "supporters";
+    if (u.type === "tier") return `reach ${tierById(u.tier)?.name} in ranked`;
     return "";
   }
   const equippedId = (type: CosmeticType) => session.me?.equipped[type];
@@ -131,8 +130,16 @@
       <form class="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onsubmit={saveProfile}>
         <label class="space-y-1">
           <span class="label">display name</span>
-          <input class="input" bind:value={displayName} minlength="3" maxlength="20" />
-          {#if nameError}<span class="text-xs text-error">{nameError}</span>{/if}
+          <input class="input" bind:value={displayName} minlength="3" maxlength="20" disabled={!!me.nameChangeAt} />
+          {#if nameError}
+            <span class="block text-xs text-error">{nameError}</span>
+          {:else if me.nameChangeAt}
+            <span class="block text-xs text-error">
+              you can change your name again on {new Date(me.nameChangeAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+            </span>
+          {:else}
+            <span class="block text-xs text-error">names can only be changed once every 30 days</span>
+          {/if}
         </label>
         <label class="space-y-1">
           <span class="label">country (leaderboard filter)</span>
@@ -145,40 +152,47 @@
       </form>
     </section>
 
+    {#snippet tile(c: Cosmetic)}
+      {@const open = unlocked.has(c.id)}
+      {@const on = equippedId(c.type) === c.id}
+      <button
+        class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
+        class:border-main={on}
+        class:border-transparent={!on}
+        class:opacity-40={!open}
+        disabled={!open}
+        onclick={() => equip(c)}
+        title={open ? c.name : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
+      >
+        <span class="relative block h-8 w-full overflow-hidden rounded" style={c.type === "banner" ? `background: ${c.value}` : ""}>
+          {#if c.type === "caret_color"}
+            <Caret x={6} y={0} h={32} color={c.value} shape={equippedId("caret_shape") ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line") : "line"} smooth={false} />
+          {:else if c.type === "caret_shape"}
+            <Caret x={6} y={0} h={32} color={COSMETICS.find((x) => x.id === equippedId("caret_color"))?.value ?? "#e2b714"} shape={c.value} smooth={false} />
+          {:else if c.type === "finish"}
+            <span class="text-lg">{c.value === "none" ? "·" : c.value === "fireworks" ? "✺" : c.value === "stars" ? "★" : c.value === "gold" ? "✦" : "🎉"}</span>
+          {/if}
+        </span>
+        <span class="flex w-full items-center justify-between gap-2">
+          {c.name}
+          {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
+        </span>
+        {#if !open && rule(c)}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
+      </button>
+    {/snippet}
+
     <section>
       <h2 class="label mb-1 text-sm">cosmetics</h2>
-      <p class="mb-5 text-xs text-sub">earned from levels, tiers and supporting. purely cosmetic: nothing here affects a race.</p>
+      <p class="mb-5 text-xs text-sub">
+        unlocked by typing. every race earns xp toward your next level, and reaching a tier in ranked unlocks its reward for good.
+        you're level {me.level}. purely cosmetic: nothing here affects a race.
+      </p>
       {#each groups as g (g.type)}
         <div class="mb-6">
           <div class="label mb-2">{g.label}</div>
           <div class="flex flex-wrap gap-2">
-            {#each COSMETICS.filter((c) => c.type === g.type) as c (c.id)}
-              {@const open = unlocked.has(c.id)}
-              {@const on = equippedId(g.type) === c.id}
-              <button
-                class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
-                class:border-main={on}
-                class:border-transparent={!on}
-                class:opacity-40={!open}
-                disabled={!open}
-                onclick={() => equip(c)}
-                title={open ? c.name : `unlocks at ${rule(c)}`}
-              >
-                <span class="relative block h-8 w-full overflow-hidden rounded" style={g.type === "banner" ? `background: ${c.value}` : ""}>
-                  {#if g.type === "caret_color"}
-                    <Caret x={6} y={0} h={32} color={c.value} shape={equippedId("caret_shape") ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line") : "line"} smooth={false} />
-                  {:else if g.type === "caret_shape"}
-                    <Caret x={6} y={0} h={32} color={COSMETICS.find((x) => x.id === equippedId("caret_color"))?.value ?? "#e2b714"} shape={c.value} smooth={false} />
-                  {:else if g.type === "finish"}
-                    <span class="text-lg">{c.value === "none" ? "·" : c.value === "fireworks" ? "✺" : c.value === "stars" ? "★" : c.value === "gold" ? "✦" : "🎉"}</span>
-                  {/if}
-                </span>
-                <span class="flex w-full items-center justify-between gap-2">
-                  {c.name}
-                  {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
-                </span>
-                {#if !open}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
-              </button>
+            {#each COSMETICS.filter((c) => c.type === g.type && c.unlock.type !== "subscriber") as c (c.id)}
+              {@render tile(c)}
             {/each}
           </div>
         </div>
@@ -197,12 +211,18 @@
           <div>support mt ranked</div>
           <ul class="mt-2 list-inside list-disc text-sm text-sub">
             <li>private rooms for up to 16 players (4 for free accounts)</li>
-            <li>custom text in your rooms</li>
+            <li>name your private rooms</li>
             <li>supporter caret, win animation, banner and profile badge</li>
             <li>full match history and replays (free keeps the last 50)</li>
           </ul>
           <div class="mt-1 text-xs text-sub">no competitive advantages, ever.</div>
         {/if}
+        <div class="label mb-2 mt-5">supporter cosmetics</div>
+        <div class="flex flex-wrap gap-2">
+          {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
+            {@render tile(c)}
+          {/each}
+        </div>
         <div class="mt-5 flex flex-wrap gap-2">
           {#if billing?.enabled}
             {#if me.subscriber}

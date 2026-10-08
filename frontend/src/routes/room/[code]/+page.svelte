@@ -4,7 +4,7 @@
   import { page } from "$app/state";
   import { Copy, Crown, Lock, LockOpen, LogOut, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
   import { LANGUAGES } from "@mtr/engine";
-  import type { TextSettings } from "@mtr/race-protocol";
+  import { ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
@@ -93,6 +93,15 @@
     editingCustom = false;
   }
 
+  let nameDraft = $state("");
+  $effect(() => {
+    nameDraft = game.room?.name ?? "";
+  });
+  function saveName() {
+    if (!room || nameDraft.trim() === (room.name ?? "")) return;
+    game.send({ type: "room.rename", name: nameDraft });
+  }
+
   // kicked, or the room closed underneath us
   let hadRoom = $state(false);
   $effect(() => {
@@ -109,7 +118,7 @@
           : "custom text";
 </script>
 
-<svelte:head><title>room {code} · mt ranked</title></svelte:head>
+<svelte:head><title>{room?.name ?? `room ${code}`} · mt ranked</title></svelte:head>
 
 {#if needsName}
   <form class="card mx-auto mt-10 max-w-sm space-y-4 animate-rise" onsubmit={join}>
@@ -158,6 +167,18 @@
 
     <div class="flex flex-wrap items-start justify-between gap-6">
       <div>
+        {#if isHost && room.hostSubscriber}
+          <input
+            class="mb-4 w-full max-w-sm border-b-2 border-transparent bg-transparent text-2xl outline-none placeholder:text-sub/60 hover:border-sub-alt focus:border-main"
+            placeholder="name this room"
+            maxlength={ROOM_NAME_MAX}
+            bind:value={nameDraft}
+            onblur={saveName}
+            onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          />
+        {:else if room.name}
+          <div class="mb-4 text-2xl">{room.name}</div>
+        {/if}
         <div class="label">room code</div>
         <button class="group flex items-center gap-3 text-5xl tracking-[0.25em] text-main" onclick={() => copy(code, "code")} title="copy code">
           {code}<Copy size={20} class="text-sub opacity-0 transition-opacity group-hover:opacity-100" />
@@ -214,8 +235,7 @@
                 class="toggle"
                 class:on={editingCustom ? m === "custom" : room.settings.mode === m}
                 onclick={() => (m === "custom" ? ((customDraft = room.settings.custom ?? ""), (editingCustom = true)) : ((editingCustom = false), update("mode", m)))}
-                disabled={m === "custom" && !room.hostSubscriber}
-                title={m === "custom" && !room.hostSubscriber ? "supporter perk" : ""}>{m}</button
+                >{m}</button
               >
             {/each}
           </div>

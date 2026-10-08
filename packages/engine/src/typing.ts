@@ -163,3 +163,31 @@ export function finalStats(s: TypingState, durationMs: number): FinalStats {
     prefix: correctPrefix(s),
   };
 }
+
+/** One second of a race: net wpm so far, raw wpm within the second, mistakes within the second. */
+export type TimelinePoint = { wpm: number; raw: number; err: number };
+
+/** Per-second speed/mistake samples for the results graph (the last bucket may be partial). */
+export function raceTimeline(text: string, keys: Keystroke[], durationMs: number): TimelinePoint[] {
+  const s = createState(text);
+  const out: TimelinePoint[] = [];
+  const buckets = Math.max(1, Math.ceil(durationMs / 1000));
+  let i = 0;
+  for (let b = 1; b <= buckets; b++) {
+    const end = Math.min(b * 1000, durationMs);
+    const errBefore = s.incorrectKeys;
+    let typed = 0;
+    while (i < keys.length && (keys[i]!.t <= end || b === buckets)) {
+      const k = keys[i++]!.k;
+      if (k !== BACKSPACE && k !== WORD_DELETE) typed++;
+      applyKey(s, k);
+    }
+    const span = Math.max(1, end - (b - 1) * 1000);
+    out.push({
+      wpm: Math.round(calculateWpm(correctChars(s, true), Math.max(1, end))),
+      raw: Math.round(calculateWpm(typed, span)),
+      err: s.incorrectKeys - errBefore,
+    });
+  }
+  return out;
+}

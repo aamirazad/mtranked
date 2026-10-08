@@ -68,12 +68,13 @@ export type UserRow = {
   flagged_at: Date | null;
   xp: number;
   equipped: Partial<Equipped>;
+  name_changed_at: Date | null;
 };
 
 export async function getUser(id: string): Promise<UserRow | undefined> {
   const [u] = await sql<UserRow[]>`
     select id, email, display_name, email_verified_at, created_at, country, is_subscriber,
-      is_moderator, is_bot, banned_at, flagged_at, xp, equipped
+      is_moderator, is_bot, banned_at, flagged_at, xp, equipped, name_changed_at
     from users where id = ${id}`;
   return u;
 }

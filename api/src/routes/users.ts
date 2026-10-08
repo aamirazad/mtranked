@@ -1,12 +1,13 @@
 import { initServer } from "@ts-rest/express";
 import { contract, type MatchSummary } from "@mtr/contracts";
 import { sql, currentSeason, getRating, getUser, unlockedCosmetics } from "@mtr/db";
-import { COSMETICS, DEFAULT_EQUIPPED, FREE_HISTORY_LIMIT, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
-import { buildMe, getAuth } from "../auth";
+import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
+import { buildMe, getAuth, nextNameChange } from "../auth";
 import { rateLimit } from "../redis";
 
 const s = initServer();
 const PAGE = 20;
+const HISTORY_POINTS = 1000;
 const unauth = { status: 401 as const, body: { message: "Sign in first." } };
 
 export const meRouter = s.router(contract.me, {
@@ -14,8 +15,17 @@ export const meRouter = s.router(contract.me, {
     const auth = await getAuth(req, res);
     if (!auth) return unauth;
     const u = auth.user;
-    if (body.displayName && body.displayName.toLowerCase() !== u.display_name.toLowerCase()) {
-      const [taken] = await sql`select 1 from users where display_name = ${body.displayName}`;
+    const name = body.displayName;
+    const renaming = !!name && name !== u.display_name;
+    if (renaming) {
+      const next = nextNameChange(u);
+      if (next) {
+        const msg = `You can change your name again on ${next.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`;
+        return { status: 400, body: { message: msg, fields: { displayName: msg } } };
+      }
+    }
+    if (name && renaming && name.toLowerCase() !== u.display_name.toLowerCase()) {
+      const [taken] = await sql`select 1 from users where display_name = ${name}`;
       if (taken) return { status: 409, body: { message: "That name is taken.", fields: { displayName: "Taken" } } };
     }
     let equipped = { ...DEFAULT_EQUIPPED, ...(u.equipped as Partial<Equipped>) };
@@ -32,7 +42,8 @@ export const meRouter = s.router(contract.me, {
     await sql`update users set
       display_name = ${body.displayName ?? u.display_name},
       country = ${body.country === undefined ? u.country : body.country},
-      equipped = ${sql.json(equipped)}
+      equipped = ${sql.json(equipped)},
+      name_changed_at = ${renaming ? sql`now()` : sql`name_changed_at`}
       where id = ${u.id}`;
     return { status: 200, body: { user: await buildMe((await getUser(u.id))!) } };
   },
@@ -134,6 +145,48 @@ export const usersRouter = s.router(contract.users, {
     }));
     const more = rows.length > limit && query.offset + limit < cap;
     return { status: 200, body: { matches, more, limited: !u.is_subscriber && query.offset + limit >= cap } };
+  },
+
+  ratingHistory: async ({ params }) => {
+    const u = await userByName(params.name);
+    if (!u) return { status: 404, body: { message: "No such player." } };
+    const season = await currentSeason();
+    const rows = await sql`select * from (
+        select rating, races, created_at, id from rating_history
+        where user_id = ${u.id} and season_id = ${season.id}
+        order by created_at desc, id desc limit ${HISTORY_POINTS}) t
+      order by created_at, id`;
+    const points = rows.map((r) => ({ at: r.created_at.toISOString(), rating: Math.round(r.rating), races: r.races }));
+    // players new this season have no carried-over baseline; they started at the default
+    if (points.length && points[0]!.races === 1 && rows.length < HISTORY_POINTS) {
+      points.unshift({ at: season.starts_at.toISOString(), rating: DEFAULT_RATING, races: 0 });
+    }
+    return { status: 200, body: { season: { id: season.id, name: season.name }, points } };
+  },
+
+  search: async ({ query, req }) => {
+    if (!(await rateLimit(`search:${req.ip}`, 120, 60))) {
+      return { status: 429, body: { message: "Slow down a little." } };
+    }
+    const season = await currentSeason();
+    const prefix = query.q.replace(/[\\%_]/g, "\\$&") + "%";
+    const rows = await sql`
+      select u.display_name, u.country, u.is_subscriber, coalesce(r.rating, ${DEFAULT_RATING}) rating, coalesce(r.races, 0) races
+      from users u left join ratings r on r.user_id = u.id and r.season_id = ${season.id}
+      where u.display_name like ${prefix} and u.banned_at is null
+      order by u.display_name = ${query.q} desc, length(u.display_name), u.display_name limit 8`;
+    return {
+      status: 200,
+      body: {
+        players: rows.map((r) => ({
+          name: r.display_name,
+          country: r.country,
+          rating: Math.round(r.rating),
+          races: r.races,
+          subscriber: r.is_subscriber,
+        })),
+      },
+    };
   },
 });
 

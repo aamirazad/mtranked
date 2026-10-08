@@ -1,6 +1,6 @@
 // Every WebSocket message exchanged between the frontend and the realtime server.
 import { z } from "zod";
-import { LANGUAGES } from "@mtr/engine";
+import { LANGUAGES, type TimelinePoint } from "@mtr/engine";
 
 export const Mode = z.enum(["ranked", "casual", "private", "ghost"]);
 export type Mode = z.infer<typeof Mode>;
@@ -18,6 +18,8 @@ export const TextSettings = z.object({
   custom: z.string().max(5000).optional(),
 });
 export type TextSettings = z.infer<typeof TextSettings>;
+
+export const ROOM_NAME_MAX = 32;
 
 export const DEFAULT_ROOM_SETTINGS: TextSettings = {
   mode: "words",
@@ -61,6 +63,7 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room.kick"), playerId: z.string() }),
   z.object({ type: z.literal("room.transfer"), playerId: z.string() }),
   z.object({ type: z.literal("room.lock"), locked: z.boolean() }),
+  z.object({ type: z.literal("room.rename"), name: z.string().max(ROOM_NAME_MAX) }),
   z.object({
     type: z.literal("input.batch"),
     raceId: z.string(),
@@ -100,6 +103,8 @@ export type RaceResultRow = {
   delta?: number;
   races?: number;
   xp?: number;
+  /** per-second samples for the results graph */
+  timeline?: TimelinePoint[];
 };
 
 export type RoomPublic = {
@@ -108,6 +113,8 @@ export type RoomPublic = {
   locked: boolean;
   cap: number;
   hostSubscriber: boolean;
+  /** set by supporter hosts */
+  name: string | null;
   settings: TextSettings;
   players: PlayerPublic[];
   status: "waiting" | "countdown" | "racing" | "finished";

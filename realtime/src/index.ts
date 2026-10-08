@@ -34,6 +34,7 @@ type RoomMsg = Extract<
       | "room.kick"
       | "room.transfer"
       | "room.lock"
+      | "room.rename"
       | "input.batch"
       | "race.leave";
   }
@@ -63,6 +64,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onTransfer(id, msg.playerId);
     case "room.lock":
       return room.onLock(id, msg.locked);
+    case "room.rename":
+      return room.onRename(id, msg.name);
   }
 }
 

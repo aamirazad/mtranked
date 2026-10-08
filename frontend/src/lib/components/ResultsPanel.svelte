@@ -8,6 +8,7 @@
   import { session } from "#lib/session.svelte.ts";
   import { celebrate } from "#lib/celebrate.ts";
   import TierBadge from "./TierBadge.svelte";
+  import SpeedChart from "./SpeedChart.svelte";
 
   let { result, actions }: { result: RaceResult; actions?: Snippet } = $props();
 
@@ -48,6 +49,9 @@
       ? tierFor(me.ratingAfter).id !== tierFor(me.ratingBefore).id || (me.races ?? 0) === PLACEMENT_RACES
       : false,
   );
+  // one wpm scale for every graph so the small ones compare against yours
+  const chartMax = $derived(Math.max(1, ...result.results.flatMap((r) => r.timeline ?? []).map((p) => Math.max(p.wpm, p.raw))));
+  const showMinis = $derived(result.results.some((r) => r.id !== meId && r.timeline?.length));
   const fmtTime = (ms: number | null) => (ms === null ? "—" : `${(ms / 1000).toFixed(2)}s`);
 </script>
 
@@ -85,6 +89,17 @@
       <div><div class="label text-xl">time</div><div class="text-6xl text-main tabular-nums">{me.timeMs !== null ? (me.timeMs / 1000).toFixed(1) + "s" : "—"}</div></div>
       {#if me.xp}<div><div class="label text-xl">xp</div><div class="text-6xl text-main tabular-nums">+{me.xp}</div></div>{/if}
     </div>
+    {#if me.timeline?.length}
+      <div class="card mb-10">
+        <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-sub">
+          <span class="label">speed over time</span>
+          <span class="ml-auto inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-main"></span>wpm</span>
+          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-sub"></span>raw</span>
+          <span class="inline-flex items-center gap-1.5"><span class="text-error">×</span>errors</span>
+        </div>
+        <SpeedChart points={me.timeline} max={chartMax} label="your speed over time" />
+      </div>
+    {/if}
   {/if}
 
   <table class="w-full text-left text-sm">
@@ -92,6 +107,7 @@
       <tr>
         <th class="py-2 font-normal">#</th>
         <th class="font-normal">player</th>
+        {#if showMinis}<th class="w-[200px] font-normal"><span class="sr-only">graph</span></th>{/if}
         <th class="text-right font-normal">wpm</th>
         <th class="text-right font-normal">raw</th>
         <th class="text-right font-normal">acc</th>
@@ -111,6 +127,13 @@
               {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
             </span>
           </td>
+          {#if showMinis}
+            <td class="py-1.5 pr-4">
+              {#if r.id !== meId && r.timeline?.length}
+                <SpeedChart points={r.timeline} max={chartMax} compact label="{r.name}'s speed over time" />
+              {/if}
+            </td>
+          {/if}
           <td class="text-right tabular-nums">{Math.round(r.wpm)}</td>
           <td class="text-right tabular-nums text-sub">{Math.round(r.raw)}</td>
           <td class="text-right tabular-nums">{Math.round(r.acc)}%</td>
