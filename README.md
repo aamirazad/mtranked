@@ -129,6 +129,8 @@ Run the same command from cron every ~3 months to start each new season (`3` = l
 
 ### 4. Stripe (subscriptions)
 
+For now every new account is an **early supporter**: supporter perks for life, and they're never shown the price. To start selling supporter to new signups, set `EARLY_SUPPORTER_SIGNUPS = false` in `packages/shared/src/constants.ts`. Accounts that are already early supporters keep their perks.
+
 1. In the Stripe dashboard, create a product "MT Ranked Supporter" with a monthly and a yearly recurring price. Put the price IDs in `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY`.
 2. Add a webhook endpoint `https://your-domain/api/billing/webhook` with the events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
 3. Set `STRIPE_SECRET_KEY`. Enable the Customer Portal (Settings → Billing → Customer portal) so users can cancel or switch plans.

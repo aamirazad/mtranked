@@ -96,6 +96,7 @@ export async function buildMe(u: UserRow): Promise<Me> {
     createdAt: u.created_at.toISOString(),
     country: u.country,
     subscriber: u.is_subscriber,
+    earlySupporter: u.early_supporter,
     moderator: u.is_moderator,
     xp: u.xp,
     level: levelFromXp(u.xp).level,

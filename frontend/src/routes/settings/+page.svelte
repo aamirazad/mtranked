@@ -129,6 +129,15 @@
   </div>
 {/snippet}
 
+{#snippet perks()}
+  <ul class="mt-2 list-inside list-disc text-sm text-sub">
+    <li>private rooms for up to 16 players (4 for free accounts)</li>
+    <li>name your private rooms and give them a theme</li>
+    <li>supporter caret, win animation, banner and profile badge</li>
+    <li>full match history and replays (free keeps the last 50)</li>
+  </ul>
+{/snippet}
+
 <div class="mx-auto max-w-[900px] space-y-12 animate-fade">
   <section>
     <h2 class="label mb-1 text-sm">preferences</h2>
@@ -258,19 +267,18 @@
     <section>
       <h2 class="label mb-4 text-sm">supporter</h2>
       <div class="card">
-        {#if me.subscriber}
+        {#if me.earlySupporter}
+          <div class="text-main">thank you for being one of our first users ♥</div>
+          <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
+          {@render perks()}
+        {:else if me.subscriber}
           <div class="text-main">you're a supporter ♥ thank you</div>
           <div class="mt-1 text-sm text-sub">
             {billing?.status === "active" && billing.renewsAt ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}` : ""}
           </div>
         {:else}
           <div>support mt ranked</div>
-          <ul class="mt-2 list-inside list-disc text-sm text-sub">
-            <li>private rooms for up to 16 players (4 for free accounts)</li>
-            <li>name your private rooms and give them a theme</li>
-            <li>supporter caret, win animation, banner and profile badge</li>
-            <li>full match history and replays (free keeps the last 50)</li>
-          </ul>
+          {@render perks()}
         {/if}
         <div class="label mb-2 mt-5">supporter cosmetics</div>
         <div class="flex flex-wrap gap-2">
@@ -279,7 +287,9 @@
           {/each}
         </div>
         <div class="mt-5 flex flex-wrap gap-2">
-          {#if billing?.enabled}
+          {#if me.earlySupporter}
+            {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}>manage subscription</button>{/if}
+          {:else if billing?.enabled}
             {#if me.subscriber}
               <button class="btn" onclick={portal}>manage subscription</button>
             {:else}

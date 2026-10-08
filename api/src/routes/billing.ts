@@ -83,7 +83,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
   const [row] = await sql`update subscriptions set stripe_subscription_id = ${sub.id}, status = ${sub.status},
       renews_at = ${periodEnd ? new Date(periodEnd * 1000) : null}, updated_at = now()
     where stripe_customer_id = ${customerId} returning user_id`;
-  if (row) await sql`update users set is_subscriber = ${active} where id = ${row.user_id}`;
+  if (row) await sql`update users set is_subscriber = ${active} or early_supporter where id = ${row.user_id}`;
 }
 
 /** Stripe webhook: needs the raw body for signature verification. */

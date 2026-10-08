@@ -62,6 +62,7 @@ export type UserRow = {
   created_at: Date;
   country: string | null;
   is_subscriber: boolean;
+  early_supporter: boolean;
   is_moderator: boolean;
   is_bot: boolean;
   banned_at: Date | null;
@@ -74,7 +75,7 @@ export type UserRow = {
 export async function getUser(id: string): Promise<UserRow | undefined> {
   const [u] = await sql<UserRow[]>`
     select id, email, display_name, email_verified_at, created_at, country, is_subscriber,
-      is_moderator, is_bot, banned_at, flagged_at, xp, equipped, name_changed_at
+      early_supporter, is_moderator, is_bot, banned_at, flagged_at, xp, equipped, name_changed_at
     from users where id = ${id}`;
   return u;
 }

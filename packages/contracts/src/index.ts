@@ -38,6 +38,8 @@ export type Me = {
   createdAt: string;
   country: string | null;
   subscriber: boolean;
+  /** got supporter for free as one of the first users; never asked to pay */
+  earlySupporter: boolean;
   moderator: boolean;
   xp: number;
   level: number;

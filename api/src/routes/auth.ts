@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { contract } from "@mtr/contracts";
 import { sql, getUser } from "@mtr/db";
+import { EARLY_SUPPORTER_SIGNUPS } from "@mtr/shared";
 import {
   buildMe,
   clearSession,
@@ -46,8 +47,9 @@ export const authRouter = s.router(contract.auth, {
       return { status: 409, body: { message: "An account with this email already exists.", fields: { email: "Already registered" } } };
     }
     if (taken.length) return { status: 409, body: { message: "That name is taken.", fields: { displayName: "Taken" } } };
-    const [u] = await sql<{ id: string }[]>`insert into users (email, password_hash, display_name, signup_ip)
-      values (${body.email}, ${await hashPassword(body.password)}, ${body.displayName}, ${req.ip ?? null})
+    const [u] = await sql<{ id: string }[]>`insert into users (email, password_hash, display_name, signup_ip, early_supporter, is_subscriber)
+      values (${body.email}, ${await hashPassword(body.password)}, ${body.displayName}, ${req.ip ?? null},
+        ${EARLY_SUPPORTER_SIGNUPS}, ${EARLY_SUPPORTER_SIGNUPS})
       returning id`;
     await sendVerification(u!.id, body.email);
     await createSession(req, res, u!.id);
