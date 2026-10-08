@@ -56,6 +56,13 @@
   const inRace = $derived(!!game.race && !game.result);
   // `now` ticks so the timer re-renders
   const waited = $derived((void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0));
+  const rematch = $derived(game.rematch && game.rematch.matchId === game.result?.matchId ? game.rematch : null);
+  const rematchLeft = $derived((void now, rematch ? Math.max(0, Math.ceil((rematch.expiresAt - game.serverNow()) / 1000)) : 0));
+  const opponent = $derived(game.result?.results.find((r) => r.id !== game.you?.id));
+  const iAsked = $derived(!!rematch && !!game.you && rematch.requested.includes(game.you.id));
+  const theyAsked = $derived(!!rematch && !!opponent && rematch.requested.includes(opponent.id));
+  // an incoming request takes over as the primary action
+  const rematchInvite = $derived(theyAsked && !iAsked && !rematch?.closed && rematchLeft > 0);
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   function again() {
@@ -96,7 +103,23 @@
         <button class="btn btn-main" onclick={() => game.clearRace()}>back to queue</button>
         <span class="text-sm text-sub">still searching for a real opponent · {fmt(waited)}</span>
       {:else}
-        <button class="btn btn-main" onclick={again}>queue again <kbd class="bg-bg/30 text-bg">enter</kbd></button>
+        <button class="btn" class:btn-main={!rematchInvite} onclick={again}>
+          queue again <kbd class={rematchInvite ? "" : "bg-bg/30 text-bg"}>enter</kbd>
+        </button>
+        {#if rematch?.closed}
+          <span class="text-sm text-sub">{rematch.closed}</span>
+        {:else if rematch && rematchLeft}
+          {#if iAsked}
+            <button class="btn" disabled>rematch requested</button>
+            <span class="text-sm text-sub">waiting for {opponent?.name} · {rematchLeft}s</span>
+          {:else if theyAsked}
+            <button class="btn btn-main animate-pop" onclick={() => game.requestRematch()}>accept rematch</button>
+            <span class="text-sm text-sub">{opponent?.name} wants a rematch · {rematchLeft}s</span>
+          {:else}
+            <button class="btn" onclick={() => game.requestRematch()}>rematch</button>
+            <span class="text-sm text-sub">{rematchLeft}s</span>
+          {/if}
+        {/if}
       {/if}
       <a class="btn" href="/replay/{game.result!.matchId}">view replay</a>
       {#if session.me && game.result!.mode !== "ghost"}

@@ -7,6 +7,7 @@ x-server: &server
     target: server
     args:
       PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
+      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
   image: mt-ranked-server
   env_file: .env.production
   environment:
@@ -64,6 +65,7 @@ services:
       target: web
       args:
         PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
+        PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
     ports: ["80:80", "443:443", "443:443/udp"]

@@ -52,6 +52,7 @@
   // one wpm scale for every graph so the small ones compare against yours
   const chartMax = $derived(Math.max(1, ...result.results.flatMap((r) => r.timeline ?? []).map((p) => Math.max(p.wpm, p.raw))));
   const showMinis = $derived(result.results.some((r) => r.id !== meId && r.timeline?.length));
+  const opponent = $derived(result.results.find((r) => r.id !== meId));
   const fmtTime = (ms: number | null) => (ms === null ? "—" : `${(ms / 1000).toFixed(2)}s`);
 </script>
 
@@ -61,7 +62,16 @@
       <div class="label mb-1">{result.mode === "ghost" ? "ghost race · unrated" : result.mode}</div>
       <div class="font-logo text-6xl {won ? 'text-main' : me?.forfeit ? 'text-error' : 'text-text'}">{title}</div>
     </div>
-    {#if me && me.delta !== undefined && me.ratingAfter !== undefined}
+    {#if result.series && me && opponent}
+      <div class="text-right animate-pop">
+        <div class="label mb-1">series</div>
+        <div class="font-logo text-4xl tabular-nums">
+          <span class="text-main">you {result.series[me.id] ?? 0}</span>
+          <span class="text-sub">–</span>
+          <span>{result.series[opponent.id] ?? 0} {opponent.name}</span>
+        </div>
+      </div>
+    {:else if me && me.delta !== undefined && me.ratingAfter !== undefined}
       <div class="text-right">
         {#if result.held}
           <div class="text-sm text-sub">result held for review — rating unchanged for now</div>

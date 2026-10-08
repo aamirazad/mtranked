@@ -15,6 +15,7 @@
   import { resolveEquipped } from "@mtr/shared";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { prefs } from "#lib/prefs.svelte.ts";
   import TypingArea from "./TypingArea.svelte";
   import TierBadge from "./TierBadge.svelte";
 
@@ -173,7 +174,7 @@
   <div class="mb-2 flex h-10 items-end gap-6">
     {#if started}
       <span class="text-3xl text-main tabular-nums">{clock}</span>
-      {#if isRacer}<span class="text-xl text-sub tabular-nums">{myWpm} wpm · {myAcc}%</span>{/if}
+      {#if isRacer && prefs.liveWpm}<span class="text-xl text-sub tabular-nums">{myWpm} wpm · {myAcc}%</span>{/if}
     {/if}
     {#if !isRacer}<span class="text-sub">spectating — you'll join the next race</span>{/if}
   </div>

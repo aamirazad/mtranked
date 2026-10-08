@@ -7,6 +7,8 @@
   import { game } from "#lib/game.svelte.ts";
   import Toasts from "#lib/components/Toasts.svelte";
   import Logo from "#lib/components/Logo.svelte";
+  import CommandLine from "#lib/components/CommandLine.svelte";
+  import { applyTheme, prefs } from "#lib/prefs.svelte.ts";
 
   let { children } = $props();
 
@@ -14,6 +16,23 @@
     await session.refresh();
     game.connect().catch(() => {});
   });
+
+  // A supporter host's room theme only shows while we're actually in their
+  // room: leaving, being kicked, the room closing or our connection dropping
+  // all fall back to our own theme. It's never written to storage, so a
+  // closed tab can't leave it behind either.
+  const roomTheme = $derived(
+    prefs.roomThemes && game.roomLive && page.url.pathname.startsWith("/room/") ? (game.room?.theme ?? null) : null,
+  );
+  $effect(() => applyTheme(prefs.preview ?? roomTheme ?? prefs.theme));
+
+  // sync preferences on sign-in, when the network comes back and when the tab
+  // is revisited (picks up changes made on other devices)
+  $effect(() => {
+    if (session.me?.id) void prefs.sync();
+  });
+  const syncPrefs = () => void prefs.sync();
+  const onvisible = () => document.visibilityState === "visible" && syncPrefs();
 
   // during a race keep the chrome quiet, like monkeytype's focus mode
   const racing = $derived(!!game.race && !game.result && page.url.pathname !== "/");
@@ -52,12 +71,12 @@
           <span class="hidden text-sm sm:inline">{session.me.displayName}</span>
           <span class="rounded bg-sub-alt px-1.5 text-xs text-main">{session.me.level}</span>
         </a>
-        <a href="/settings" title="settings" class="rounded-md p-2 transition-colors hover:text-text"><Settings size={20} /></a>
       {:else if session.loaded}
         <a href="/login" class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:text-text">
           <LogIn size={18} /> sign in
         </a>
       {/if}
+      <a href="/settings" title="settings" class="rounded-md p-2 transition-colors hover:text-text"><Settings size={20} /></a>
     </div>
   </header>
 
@@ -67,7 +86,8 @@
 
   <footer class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 py-6 text-xs text-sub transition-opacity duration-300" class:opacity-0={racing}>
     <a href="/about" class="hover:text-text">about</a>
-    <a href="/leaderboard" class="hover:text-text">leaderboard</a>
+    <a href="/terms" class="hover:text-text">terms</a>
+    <a href="/privacy" class="hover:text-text">privacy</a>
     <a href={__SOURCE_URL__ || "/about#source"} class="hover:text-text">source code (GPL-3.0)</a>
     <a href="https://github.com/monkeytypegame/monkeytype" class="hover:text-text" rel="noopener">built on monkeytype ♥</a>
     {#if game.status !== "online"}
@@ -76,4 +96,8 @@
   </footer>
 </div>
 
+<svelte:window ononline={syncPrefs} />
+<svelte:document onvisibilitychange={onvisible} />
+
 <Toasts />
+<CommandLine />

@@ -32,7 +32,7 @@ export function verificationEmail(to: string, token: string) {
     to,
     "Verify your MT Ranked email",
     `Verify your email to unlock ranked: ${link}`,
-    wrap("Verify your email", "One click and you're ready for ranked.", link, "Verify email"),
+    wrap("Verify your email", "Verifying your email makes you eligible to play ranked.", link, "Verify email"),
   );
 }
 

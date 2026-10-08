@@ -8,6 +8,13 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/fonts/RobotoMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <title>mt ranked</title>
+    <script>
+      // apply the saved theme before first paint (see lib/prefs.svelte.ts)
+      try {
+        const v = JSON.parse(localStorage.getItem("theme-vars") || "null");
+        if (v) for (const k in v) document.documentElement.style.setProperty(k, v[k]);
+      } catch {}
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

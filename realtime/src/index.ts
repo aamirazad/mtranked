@@ -16,6 +16,7 @@ import {
   queueMeta,
   startGhostRace,
 } from "./matchmaker";
+import { declineRematch, requestRematch } from "./rematch";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
 
@@ -35,6 +36,7 @@ type RoomMsg = Extract<
       | "room.transfer"
       | "room.lock"
       | "room.rename"
+      | "room.theme"
       | "input.batch"
       | "race.leave";
   }
@@ -66,6 +68,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onLock(id, msg.locked);
     case "room.rename":
       return room.onRename(id, msg.name);
+    case "room.theme":
+      return room.onTheme(id, msg.theme);
   }
 }
 
@@ -133,6 +137,12 @@ async function handle(conn: Conn, msg: ClientMsg) {
       if (problem) err(id, "ghost", problem);
       return;
     }
+
+    case "rematch.request":
+      return requestRematch(conn, msg.matchId);
+
+    case "rematch.decline":
+      return declineRematch(id, msg.matchId);
 
     case "room.create": {
       const current = roomOf(id);

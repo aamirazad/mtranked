@@ -14,6 +14,20 @@ export const DisplayName = z
 export const Password = z.string().min(8, "At least 8 characters").max(200);
 export const Email = z.string().trim().email().max(200);
 
+/** One synced preference: its value and when (ms since epoch) it was changed. */
+const pref = <T extends z.ZodTypeAny>(v: T) => z.object({ v, t: z.number().int().nonnegative() });
+export const SyncedPrefs = z
+  .object({
+    theme: pref(z.string().max(32)),
+    quickRestart: pref(z.enum(["off", "esc", "tab", "enter"])),
+    roomThemes: pref(z.boolean()),
+    fontSize: pref(z.number().min(0.5).max(4)),
+    smoothCaret: pref(z.boolean()),
+    liveWpm: pref(z.boolean()),
+  })
+  .partial();
+export type SyncedPrefs = z.infer<typeof SyncedPrefs>;
+
 export type ErrorBody = { message: string; fields?: Partial<Record<string, string>> };
 
 export type Me = {
@@ -213,6 +227,13 @@ export const contract = c.router(
             .optional(),
         }),
         responses: { 200: c.type<{ user: Me }>(), 400: err, 401: err, 409: err },
+      },
+      /** merge this device's preferences into the account's; returns the merged set */
+      prefs: {
+        method: "PUT",
+        path: "/me/prefs",
+        body: SyncedPrefs,
+        responses: { 200: c.type<{ prefs: SyncedPrefs }>(), 401: err },
       },
       cosmetics: {
         method: "GET",

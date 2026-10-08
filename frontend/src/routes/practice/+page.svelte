@@ -17,6 +17,8 @@
   import TypingArea from "#lib/components/TypingArea.svelte";
   import { session } from "#lib/session.svelte.ts";
   import { resolveEquipped } from "@mtr/shared";
+  import { prefs, type QuickRestart } from "#lib/prefs.svelte.ts";
+  import { commandLine } from "#lib/components/CommandLine.svelte";
 
   const saved = typeof localStorage !== "undefined" ? localStorage.getItem("practice") : null;
   let settings = $state<TextSettings>(
@@ -91,11 +93,14 @@
     void restart();
   }
 
+  const RESTART_KEYS: Record<QuickRestart, string | null> = { off: null, esc: "Escape", tab: "Tab", enter: "Enter" };
+
   function onwindowkey(e: KeyboardEvent) {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      void restart();
-    }
+    if (commandLine.open || e.key !== RESTART_KEYS[prefs.quickRestart]) return;
+    // let enter still press a focused button
+    if (e.key === "Enter" && (e.target as HTMLElement | null)?.closest("button, a, select")) return;
+    e.preventDefault();
+    void restart();
   }
 </script>
 
@@ -135,12 +140,12 @@
       <div class="mb-2 flex h-9 items-end gap-6 text-3xl text-main">
         {#if startedAt !== null}
           <span>{counter}</span>
-          <span class="text-xl text-sub">{liveWpm} wpm</span>
+          {#if prefs.liveWpm}<span class="text-xl text-sub">{liveWpm} wpm</span>{/if}
         {/if}
       </div>
       <TypingArea bind:this={area} {ts} {onkey} caretColor={eq.caretColor} caretShape={eq.caretShape} />
       <div class="mt-8 flex justify-center">
-        <button class="btn btn-ghost" onclick={restart} title="restart (tab)"><RotateCcw size={18} /></button>
+        <button class="btn btn-ghost" onclick={restart} title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}><RotateCcw size={18} /></button>
       </div>
     </div>
   {:else}
@@ -163,7 +168,7 @@
       {#if source}<div class="mt-6 text-sm text-sub">— {source}</div>{/if}
       <div class="mt-10 flex items-center gap-4">
         <button class="btn" onclick={restart}><RotateCcw size={16} /> next test</button>
-        <span class="text-sm text-sub"><kbd>tab</kbd> to restart</span>
+        {#if prefs.quickRestart !== "off"}<span class="text-sm text-sub"><kbd>{prefs.quickRestart}</kbd> to restart</span>{/if}
         <a href="/" class="ml-auto link text-sm">ready to race someone? →</a>
       </div>
     </div>

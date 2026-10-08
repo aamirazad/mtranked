@@ -64,6 +64,8 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room.transfer"), playerId: z.string() }),
   z.object({ type: z.literal("room.lock"), locked: z.boolean() }),
   z.object({ type: z.literal("room.rename"), name: z.string().max(ROOM_NAME_MAX) }),
+  /** supporter hosts can dress the room in a theme (null clears it) */
+  z.object({ type: z.literal("room.theme"), theme: z.string().max(32).nullable() }),
   z.object({
     type: z.literal("input.batch"),
     raceId: z.string(),
@@ -71,6 +73,8 @@ export const ClientMsg = z.discriminatedUnion("type", [
     keys: z.array(Keystroke).max(200),
   }),
   z.object({ type: z.literal("race.leave") }),
+  z.object({ type: z.literal("rematch.request"), matchId: z.string() }),
+  z.object({ type: z.literal("rematch.decline"), matchId: z.string() }),
 ]);
 export type ClientMsg = z.infer<typeof ClientMsg>;
 
@@ -115,6 +119,8 @@ export type RoomPublic = {
   hostSubscriber: boolean;
   /** set by supporter hosts */
   name: string | null;
+  /** theme id set by supporter hosts; players see it while they're in the room */
+  theme: string | null;
   settings: TextSettings;
   players: PlayerPublic[];
   status: "waiting" | "countdown" | "racing" | "finished";
@@ -164,7 +170,12 @@ export type ServerMsg =
       results: RaceResultRow[];
       held: boolean;
       saved: boolean;
-    };
+      /** casual 1v1 series score by player id (only once a rematch has been played) */
+      series?: Record<string, number>;
+      /** a rematch can be requested until this server time */
+      rematch?: { expiresAt: number };
+    }
+  | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string };
 
 export function parseClientMsg(raw: string): ClientMsg | null {
   try {
@@ -182,3 +193,4 @@ export const READY_CHECK_MS = 10_000;
 export const RECONNECT_GRACE_MS = 15_000;
 export const RACE_CAP_MS = 120_000;
 export const MAX_PING_ALLOWANCE_MS = 150;
+export const REMATCH_MS = 30_000;

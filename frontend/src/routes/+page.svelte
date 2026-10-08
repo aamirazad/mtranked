@@ -90,7 +90,7 @@
         <span class="text-xs text-sub">2–16 players</span>
       </div>
       <div class="mt-8 font-logo text-3xl">private room</div>
-      <div class="mt-2 text-sm text-sub">invite friends, everyone types the same text.</div>
+      <div class="mt-2 text-sm text-sub">race your friends.</div>
       <button class="btn btn-main mt-5 w-full" onclick={createRoom} disabled={creating}>{creating ? "creating…" : "create room"}</button>
       <form class="mt-2 flex gap-2" onsubmit={join}>
         <input

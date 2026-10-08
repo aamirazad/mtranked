@@ -1,5 +1,5 @@
 import { initServer } from "@ts-rest/express";
-import { contract, type MatchSummary } from "@mtr/contracts";
+import { contract, type MatchSummary, type SyncedPrefs } from "@mtr/contracts";
 import { sql, currentSeason, getRating, getUser, unlockedCosmetics } from "@mtr/db";
 import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
 import { buildMe, getAuth, nextNameChange } from "../auth";
@@ -46,6 +46,25 @@ export const meRouter = s.router(contract.me, {
       name_changed_at = ${renaming ? sql`now()` : sql`name_changed_at`}
       where id = ${u.id}`;
     return { status: 200, body: { user: await buildMe((await getUser(u.id))!) } };
+  },
+
+  prefs: async ({ body, req, res }) => {
+    const auth = await getAuth(req, res);
+    if (!auth) return unauth;
+    // a client clock running ahead mustn't make its changes win forever
+    const now = Date.now();
+    const prefs = await sql.begin(async (tx) => {
+      const [row] = await tx`select prefs from users where id = ${auth.user.id} for update`;
+      const merged = { ...(row!.prefs as Record<string, { v: string | number | boolean; t: number }>) };
+      for (const [k, e] of Object.entries(body)) {
+        if (!e) continue;
+        const t = Math.min(e.t, now);
+        if (!merged[k] || merged[k].t < t) merged[k] = { v: e.v, t };
+      }
+      await tx`update users set prefs = ${tx.json(merged)} where id = ${auth.user.id}`;
+      return merged as SyncedPrefs;
+    });
+    return { status: 200, body: { prefs } };
   },
 
   cosmetics: async ({ req, res }) => {

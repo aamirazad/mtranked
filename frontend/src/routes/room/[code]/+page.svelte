@@ -2,12 +2,14 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Copy, Crown, Lock, LockOpen, LogOut, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
+  import { Copy, Crown, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
+  import { THEMES, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
+  import { prefs } from "#lib/prefs.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
 
@@ -186,6 +188,24 @@
         <button class="mt-2 flex items-center gap-2 text-sm text-sub hover:text-text" onclick={() => copy(link, "invite link")}>
           <LinkIcon size={14} /> copy invite link
         </button>
+        {#if isHost && room.hostSubscriber}
+          <label class="mt-2 flex items-center gap-2 text-sm text-sub">
+            <Paintbrush size={14} /> room theme
+            <select
+              class="cursor-pointer bg-transparent outline-none hover:text-text"
+              value={room.theme ?? ""}
+              onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null })}
+            >
+              <option value="">none (everyone keeps theirs)</option>
+              {#each THEMES as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+            </select>
+          </label>
+        {:else if room.theme}
+          <div class="mt-2 flex items-center gap-2 text-sm text-sub">
+            <Paintbrush size={14} /> room theme · {themeById(room.theme)?.name ?? room.theme}
+            {#if !prefs.roomThemes}<span class="text-xs">(off in your settings)</span>{/if}
+          </div>
+        {/if}
       </div>
       <div class="flex items-center gap-2">
         {#if isHost}

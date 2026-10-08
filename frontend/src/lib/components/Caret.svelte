@@ -8,6 +8,9 @@
     blink = false,
     smooth = true,
   }: { x: number; y: number; h: number; color?: string; shape?: string; blink?: boolean; smooth?: boolean } = $props();
+
+  // the default "classic" caret follows the site theme
+  const c = $derived(color === "prism" || color === "#e2b714" ? "var(--color-caret)" : color);
 </script>
 
 <div
@@ -15,7 +18,7 @@
   class:blink
   class:smooth
   class:prism={color === "prism"}
-  style="transform: translate({x}px, {y}px); height: {h}px; --c: {color === 'prism' ? '#e2b714' : color}"
+  style="transform: translate({x}px, {y}px); height: {h}px; --c: {c}"
   aria-hidden="true"
 ></div>
 
@@ -47,7 +50,7 @@
     top: 14%;
     height: 72%;
     width: 0.62em;
-    font-size: 1.65rem;
+    font-size: var(--typing-size, 1.65rem);
     opacity: 0.45;
   }
   .caret.underline::before {
@@ -55,14 +58,14 @@
     bottom: 12%;
     height: 2.5px;
     width: 0.62em;
-    font-size: 1.65rem;
+    font-size: var(--typing-size, 1.65rem);
   }
   .caret.outline::before {
     left: 0;
     top: 14%;
     height: 72%;
     width: 0.62em;
-    font-size: 1.65rem;
+    font-size: var(--typing-size, 1.65rem);
     background: transparent;
     border: 2px solid var(--c);
     box-sizing: border-box;
@@ -74,7 +77,7 @@
   }
   .caret.prism.outline::before {
     background: transparent;
-    border-color: #e2b714;
+    border-color: var(--color-caret);
   }
   .caret.blink::before {
     animation: blink 1s step-end infinite;

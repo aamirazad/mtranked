@@ -23,6 +23,7 @@ import {
   RACE_CAP_MS,
   READY_CHECK_MS,
   RECONNECT_GRACE_MS,
+  REMATCH_MS,
   type LivePlayer,
   type Mode,
   type PlayerPublic,
@@ -32,7 +33,7 @@ import {
   type ServerMsg,
   type TextSettings,
 } from "@mtr/race-protocol";
-import { rate, ROOM_CAP_FREE, ROOM_CAP_SUBSCRIBER, ROOM_CODE_ALPHABET, SPEED_CEILING_WPM, xpForRace } from "@mtr/shared";
+import { rate, ROOM_CAP_FREE, ROOM_CAP_SUBSCRIBER, ROOM_CODE_ALPHABET, SPEED_CEILING_WPM, themeById, xpForRace } from "@mtr/shared";
 import { currentSeason, type RatingRow } from "@mtr/db";
 import { deliver, rttOf, sendTo } from "./hub";
 import type { Identity } from "./players";
@@ -40,6 +41,7 @@ import { NODE_ID, redis } from "./redis";
 import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
 import { recordDecline, requeue } from "./matchmaker";
+import { offerRematch } from "./rematch";
 
 const IDLE_FORFEIT_MS = 25_000;
 const ROOM_IDLE_CLOSE_MS = 30 * 60_000;
@@ -129,8 +131,11 @@ export class Room {
   cap = 2;
   hostSubscriber = false;
   name: string | null = null;
+  theme: string | null = null;
   locked = false;
   scoreboard: Record<string, number> = {};
+  /** casual rematch series score, carried from room to room */
+  series?: Record<string, number>;
   racesRun = 0;
   lastActivity = Date.now();
   readyBy = 0;
@@ -163,6 +168,15 @@ export class Room {
       readyBy: room.readyBy,
     });
     room.snapshot(true);
+    return room;
+  }
+
+  /** Both players asked for a rematch: skip the ready check and start the race. */
+  static async createRematch(members: Member[], series: Record<string, number>) {
+    const room = new Room("casual", CASUAL_FORMATS[randomInt(CASUAL_FORMATS.length)]!);
+    room.series = series;
+    for (const m of members) room.addMember(m);
+    await room.startRace();
     return room;
   }
 
@@ -207,6 +221,7 @@ export class Room {
       cap: this.cap,
       hostSubscriber: this.hostSubscriber,
       name: this.name,
+      theme: this.theme,
       settings: this.settings,
       players: [...this.members.values()].map((m) => m.info),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
@@ -580,6 +595,24 @@ export class Room {
       console.error("[race] failed to save", race.matchId, e);
     }
 
+    // casual 1v1: update the running series and offer a rematch
+    let series: Record<string, number> | undefined;
+    let rematch: { expiresAt: number } | undefined;
+    if (this.mode === "casual" && rows.length === 2) {
+      series = this.series ? { ...this.series } : Object.fromEntries(rows.map((x) => [x.r.id, 0]));
+      const winner = rows[0]!;
+      if (!winner.result.forfeit) series[winner.r.id] = (series[winner.r.id] ?? 0) + 1;
+      const members = rows.map((x) => this.members.get(x.r.id));
+      if (!rows.some((x) => x.result.forfeit) && members.every((m) => m)) {
+        try {
+          await offerRematch(race.matchId, members as Member[], series);
+          rematch = { expiresAt: Date.now() + REMATCH_MS };
+        } catch (e) {
+          console.error("[race] failed to offer rematch", race.matchId, e);
+        }
+      }
+    }
+
     if (this.mode === "private") {
       const winner = rows[0];
       if (winner && !winner.result.forfeit) this.scoreboard[winner.r.id] = (this.scoreboard[winner.r.id] ?? 0) + 1;
@@ -595,6 +628,8 @@ export class Room {
       results: rows.map((x) => x.result),
       held,
       saved,
+      series: this.series ? series : undefined,
+      rematch,
     });
     if (this.mode === "private") this.broadcastRoom();
     else this.close();
@@ -676,6 +711,17 @@ export class Room {
       return;
     }
     this.name = name.replace(/\p{C}/gu, "").replace(/\s+/g, " ").trim() || null;
+    this.broadcastRoom();
+  }
+
+  onTheme(playerId: string, theme: string | null) {
+    if (playerId !== this.hostId) return;
+    if (!this.hostSubscriber) {
+      sendTo(playerId, { type: "error", code: "subscriber_only", message: "Room themes are a supporter perk." });
+      return;
+    }
+    if (theme !== null && !themeById(theme)) return;
+    this.theme = theme;
     this.broadcastRoom();
   }
 

@@ -8,6 +8,7 @@
   import { tick, untrack } from "svelte";
   import { BACKSPACE, WORD_DELETE, type TypingState } from "@mtr/engine";
   import Caret from "./Caret.svelte";
+  import { prefs } from "#lib/prefs.svelte.ts";
 
   let {
     ts,
@@ -82,6 +83,12 @@
 
   $effect(() => {
     if (active) void tick().then(focus);
+  });
+
+  // the font size preference changes every position
+  $effect(() => {
+    void prefs.fontSize;
+    void tick().then(measure);
   });
 
   function measure() {
@@ -185,7 +192,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
   class="relative select-none"
-  style="height: {lineH * lines}px"
+  style="height: {lineH * lines}px; --typing-size: {prefs.fontSize}rem"
   onclick={focus}
   role="textbox"
   tabindex="-1"
@@ -228,7 +235,7 @@
       {/each}
 
       {#if showOwnCaret && !ts.finished}
-        <Caret x={caretPos.x} y={caretPos.y} h={caretPos.h} color={caretColor} shape={caretShape} blink={!typing} />
+        <Caret x={caretPos.x} y={caretPos.y} h={caretPos.h} color={caretColor} shape={caretShape} blink={!typing} smooth={prefs.smoothCaret} />
       {/if}
     </div>
   </div>
@@ -241,7 +248,7 @@
 
 <style>
   .words {
-    font-size: 1.65rem;
+    font-size: var(--typing-size);
     line-height: 1.6;
     transition: transform 0.12s ease-out;
   }

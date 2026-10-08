@@ -8,7 +8,7 @@
     <path d="M17 40V24l7.5 9 7.5-9v16M39 24h11M44.5 24v16" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" class="text-main" />
   </svg>
   <div class="leading-none">
-    <div class="font-logo text-[0.6rem] tracking-wider text-sub transition-colors group-hover:text-text">typing, but competitive</div>
+    <div class="font-logo text-[0.6rem] tracking-wider text-sub transition-colors group-hover:text-text">competitive typing</div>
     <div class="font-logo {size === 'lg' ? 'text-4xl' : 'text-[1.7rem]'} text-text">mt ranked</div>
   </div>
 </div>

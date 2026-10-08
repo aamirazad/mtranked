@@ -16,7 +16,8 @@ import { toasts } from "./toast.svelte";
 
 type QueueStatus = Extract<ServerMsg, { type: "queue.status" }>;
 export type MatchFound = { matchId: string; mode: Mode; players: PlayerPublic[]; readyBy: number; ready: string[] };
-export type RaceResult = { raceId: string; matchId: string; mode: Mode; results: RaceResultRow[]; held: boolean; saved: boolean };
+export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type">;
+export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
 
 class Game {
@@ -31,6 +32,10 @@ class Game {
   live = $state<Record<string, LivePlayer>>({});
   result = $state<RaceResult | null>(null);
   room = $state<RoomPublic | null>(null);
+  /** the server confirmed our room on the current connection (cleared when it drops) */
+  roomLive = $state(false);
+  /** open casual rematch offer for the last result */
+  rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
   rtt = $state(0);
 
@@ -64,6 +69,7 @@ class Game {
     this.ws = null;
     ws?.close(1000);
     this.status = "offline";
+    this.roomLive = false;
     if (this.wanted) await this.connect();
   }
 
@@ -91,6 +97,7 @@ class Game {
       ws.onclose = (e) => {
         if (this.ws !== ws) return;
         this.status = "offline";
+        this.roomLive = false;
         this.ws = null;
         clearInterval(this.pingTimer);
         if (e.code === 4000) {
@@ -178,9 +185,11 @@ class Game {
         break;
       case "room.state":
         this.room = msg.room;
+        this.roomLive = true;
         break;
       case "room.closed":
         this.room = null;
+        this.roomLive = false;
         if (this.race && this.race.mode === "private") this.race = null;
         toasts.show(msg.reason, "info", 6000);
         break;
@@ -188,6 +197,7 @@ class Game {
       case "race.resume":
         this.match = null;
         this.result = null;
+        this.rematch = null;
         this.live = {};
         this.race = { ...msg, resumeKeys: msg.type === "race.resume" ? msg.keys : null };
         break;
@@ -200,13 +210,21 @@ class Game {
         break;
       case "race.result":
         this.result = msg;
+        this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;
         if (msg.mode !== "ghost" && msg.mode !== "private") this.queueMode = null;
+        break;
+      case "rematch.status":
+        if (this.rematch?.matchId === msg.matchId) {
+          this.rematch.requested = msg.requested;
+          if (msg.closed) this.rematch.closed = msg.closed;
+        }
         break;
     }
   }
 
   // ------------------------------------------------------------ actions
   joinQueue(mode: QueueMode) {
+    this.dropRematch();
     this.result = null;
     this.race = null;
     this.queueMode = mode;
@@ -221,7 +239,17 @@ class Game {
     this.send({ type: "race.leave" });
     this.race = null;
   }
+  requestRematch() {
+    if (this.rematch && !this.rematch.closed) this.send({ type: "rematch.request", matchId: this.rematch.matchId });
+  }
+  /** Let the opponent know we're not waiting around for a rematch. */
+  private dropRematch() {
+    const r = this.rematch;
+    this.rematch = null;
+    if (r && !r.closed && this.serverNow() < r.expiresAt) this.send({ type: "rematch.decline", matchId: r.matchId });
+  }
   clearRace() {
+    this.dropRematch();
     this.race = null;
     this.result = null;
     this.live = {};

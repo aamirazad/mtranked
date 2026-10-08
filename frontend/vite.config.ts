@@ -11,6 +11,7 @@ const rootEnv = loadEnv("", "..", "PUBLIC_");
 export default defineConfig({
   define: {
     __SOURCE_URL__: JSON.stringify(process.env.PUBLIC_SOURCE_URL ?? rootEnv.PUBLIC_SOURCE_URL ?? ""),
+    __CONTACT_EMAIL__: JSON.stringify(process.env.PUBLIC_CONTACT_EMAIL ?? rootEnv.PUBLIC_CONTACT_EMAIL ?? ""),
   },
   plugins: [
     tailwindcss(),

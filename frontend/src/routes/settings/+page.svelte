@@ -1,15 +1,16 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { Check, Lock, LogOut, Monitor } from "@lucide/svelte";
-  import { COSMETICS, tierById, type Cosmetic, type CosmeticType } from "@mtr/shared";
+  import { COSMETICS, THEMES, tierById, type Cosmetic, type CosmeticType } from "@mtr/shared";
   import { api, errorMessage, fieldErrors } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
   import { COUNTRIES, flag } from "#lib/countries.ts";
   import Caret from "#lib/components/Caret.svelte";
+  import { FONT_SIZES, QUICK_RESTARTS, fontSizeName, prefs, type QuickRestart } from "#lib/prefs.svelte.ts";
 
   type Sess = { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string };
 
@@ -22,12 +23,14 @@
 
   onMount(async () => {
     if (!session.loaded) await session.refresh();
-    if (!session.me) return goto("/login?next=/settings");
+    if (!session.me) return;
     displayName = session.me.displayName;
     country = session.me.country ?? "";
     await load();
     if (page.url.searchParams.get("subscribed")) toasts.show("Thanks for supporting MT Ranked! Perks are active.", "success", 6000);
   });
+
+  onDestroy(() => (prefs.preview = null));
 
   async function load() {
     const [c, s, b] = await Promise.all([api.me.cosmetics(), api.auth.sessions(), api.billing.status()]);
@@ -112,9 +115,62 @@
 
 <svelte:head><title>settings · mt ranked</title></svelte:head>
 
+{#snippet choice<T>(label: string, hint: string, options: readonly T[], value: T, set: (v: T) => void, name: (v: T) => string = String)}
+  <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
+    <div class="max-w-md">
+      <div>{label}</div>
+      <div class="text-xs text-sub">{hint}</div>
+    </div>
+    <div class="flex flex-wrap gap-1 rounded-lg bg-sub-alt p-1 text-sm">
+      {#each options as o (o)}
+        <button class="rounded-md px-3 py-1 transition-colors" class:bg-main={o === value} class:text-bg={o === value} class:text-sub={o !== value} class:hover:text-text={o !== value} onclick={() => set(o)}>{name(o)}</button>
+      {/each}
+    </div>
+  </div>
+{/snippet}
+
+<div class="mx-auto max-w-[900px] space-y-12 animate-fade">
+  <section>
+    <h2 class="label mb-1 text-sm">preferences</h2>
+    <p class="mb-5 text-xs text-sub">{session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere to change these without the mouse.</p>
+    <div class="label mb-2">theme</div>
+    <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+      {#each THEMES as t (t.id)}
+        {@const on = prefs.theme === t.id}
+        <button
+          class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm"
+          style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
+          onmouseenter={() => (prefs.preview = t.id)}
+          onmouseleave={() => (prefs.preview = null)}
+          onfocus={() => (prefs.preview = t.id)}
+          onblur={() => (prefs.preview = null)}
+          onclick={() => prefs.set("theme", t.id)}
+        >
+          <span class="truncate">{t.name}</span>
+          <span class="flex shrink-0 gap-1">
+            {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"></span>{/each}
+          </span>
+        </button>
+      {/each}
+    </div>
+    <div class="space-y-6">
+      {@render choice<QuickRestart>("quick restart", "restart a practice test with a single key.", QUICK_RESTARTS, prefs.quickRestart, (v) => prefs.set("quickRestart", v))}
+      {@render choice("room themes", "show a supporter host's room theme while you're in their room. your own theme comes back when you leave.", [true, false], prefs.roomThemes, (v) => prefs.set("roomThemes", v), (v) => (v ? "on" : "off"))}
+      {@render choice("font size", "size of the words you type.", FONT_SIZES, prefs.fontSize, (v) => prefs.set("fontSize", v), fontSizeName)}
+      {@render choice("smooth caret", "glide the caret between letters instead of jumping.", [true, false], prefs.smoothCaret, (v) => prefs.set("smoothCaret", v), (v) => (v ? "on" : "off"))}
+      {@render choice("live wpm", "show your speed while typing.", [true, false], prefs.liveWpm, (v) => prefs.set("liveWpm", v), (v) => (v ? "on" : "off"))}
+    </div>
+  </section>
+
+  {#if session.loaded && !session.me}
+    <div class="card flex flex-wrap items-center justify-between gap-4">
+      <div class="text-sm text-sub">sign in to edit your profile, cosmetics and sessions</div>
+      <a class="btn btn-main" href="/login?next=/settings">sign in</a>
+    </div>
+  {/if}
+
 {#if session.me}
   {@const me = session.me}
-  <div class="mx-auto max-w-[900px] space-y-12 animate-fade">
     {#if !me.verified}
       <div class="card flex flex-wrap items-center justify-between gap-4 border-2 border-main/40">
         <div>
@@ -185,7 +241,7 @@
       <h2 class="label mb-1 text-sm">cosmetics</h2>
       <p class="mb-5 text-xs text-sub">
         unlocked by typing. every race earns xp toward your next level, and reaching a tier in ranked unlocks its reward for good.
-        you're level {me.level}. purely cosmetic: nothing here affects a race.
+        you're level {me.level}.
       </p>
       {#each groups as g (g.type)}
         <div class="mb-6">
@@ -211,11 +267,10 @@
           <div>support mt ranked</div>
           <ul class="mt-2 list-inside list-disc text-sm text-sub">
             <li>private rooms for up to 16 players (4 for free accounts)</li>
-            <li>name your private rooms</li>
+            <li>name your private rooms and give them a theme</li>
             <li>supporter caret, win animation, banner and profile badge</li>
             <li>full match history and replays (free keeps the last 50)</li>
           </ul>
-          <div class="mt-1 text-xs text-sub">no competitive advantages, ever.</div>
         {/if}
         <div class="label mb-2 mt-5">supporter cosmetics</div>
         <div class="flex flex-wrap gap-2">
@@ -255,5 +310,5 @@
       </ul>
       <button class="btn mt-6" onclick={logout}><LogOut size={16} /> sign out</button>
     </section>
-  </div>
 {/if}
+</div>

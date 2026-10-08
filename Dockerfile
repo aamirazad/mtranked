@@ -12,6 +12,8 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 ARG PUBLIC_SOURCE_URL=""
 ENV PUBLIC_SOURCE_URL=$PUBLIC_SOURCE_URL
+ARG PUBLIC_CONTACT_EMAIL=""
+ENV PUBLIC_CONTACT_EMAIL=$PUBLIC_CONTACT_EMAIL
 RUN pnpm build
 
 # production dependencies only (workspace packages are bundled into the dists)
