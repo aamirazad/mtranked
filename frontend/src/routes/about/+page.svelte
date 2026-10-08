@@ -3,7 +3,7 @@
   import TierBadge from "#lib/components/TierBadge.svelte";
 </script>
 
-<svelte:head><title>about · mt ranked</title></svelte:head>
+<svelte:head><title>About · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[760px] space-y-10 leading-relaxed animate-fade">
   <section>

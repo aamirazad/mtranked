@@ -73,7 +73,7 @@ You can also open a second browser profile (or a private window) and play agains
 
 - **Ranked format**: 50 words from the 200 most common English words, no punctuation.
 - **Queue**: Redis sorted set by rating. Every second the matcher pairs the closest players whose ranges overlap. Ranked range: ±50, +25 every 5 s, max ±400. Casual searches wider. Back-to-back rematches are avoided unless the queue is nearly empty.
-- **Ready check**: 10 s. Two declines or misses in 10 minutes means a 5-minute queue timeout. The player who accepted is put back in the queue.
+- **Ready check**: 20 s. Two declines or misses in 10 minutes means a 5-minute queue timeout. Whoever declined or missed it is taken out of the queue and sent home, and is warned about the timeout; the player who accepted is put back in the queue.
 - **Ghost races**: after 60 s in the ranked queue you can race a recorded replay from a player near your rating while staying in the queue.
 - **Race**: 3 s countdown against a server timestamp (client clocks are synced by ping). Keystrokes stream in 100 ms batches. Positions stream out 10×/s, and opponent carets glide between updates.
 - **Finish time** is server receipt time minus your measured one-way latency, capped at 150 ms. The final key is sent immediately.

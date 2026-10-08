@@ -1,4 +1,4 @@
-<svelte:head><title>privacy policy · mt ranked</title></svelte:head>
+<svelte:head><title>Privacy Policy · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[760px] space-y-10 leading-relaxed animate-fade">
   <section>

@@ -120,7 +120,7 @@
           : "custom text";
 </script>
 
-<svelte:head><title>{room?.name ?? `room ${code}`} · mt ranked</title></svelte:head>
+<svelte:head><title>{room?.name ?? `Room ${code}`} · MT Ranked</title></svelte:head>
 
 {#if needsName}
   <form class="card mx-auto mt-10 max-w-sm space-y-4 animate-rise" onsubmit={join}>

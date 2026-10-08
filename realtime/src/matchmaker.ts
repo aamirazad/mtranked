@@ -83,14 +83,16 @@ export async function requeue(m: Member, mode: QueueMode) {
   await enqueue(m.idn, m.info, mode, m.rating ?? null, flagged, m.queueSince ?? Date.now());
 }
 
-/** Two declines (or missed ready checks) in 10 minutes = 5 minute queue timeout. */
-export async function recordDecline(id: string) {
+/** Two declines (or missed ready checks) in 10 minutes = 5 minute queue timeout. Returns true if this one started it. */
+export async function recordDecline(id: string): Promise<boolean> {
   const n = await redis.incr(`declines:${id}`);
   if (n === 1) await redis.expire(`declines:${id}`, 600);
   if (n >= 2) {
     await redis.set(`qban:${id}`, "1", "EX", 300);
     await redis.del(`declines:${id}`);
+    return true;
   }
+  return false;
 }
 
 export async function queueBanLeft(id: string): Promise<number> {

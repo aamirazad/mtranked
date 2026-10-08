@@ -23,12 +23,16 @@ export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | 
 
 class Game {
   status = $state<"offline" | "connecting" | "online">("offline");
+  /** the connection actually failed or dropped (not just a deliberate reconnect) */
+  down = $state(false);
   you = $state<PlayerPublic | null>(null);
   rankedOk = $state(false);
   queue = $state<QueueStatus | null>(null);
   /** queue we're in (kept through ready checks so we can show "re-queued") */
   queueMode = $state<QueueMode | null>(null);
   match = $state<MatchFound | null>(null);
+  /** last ready check that fell through; `requeued` false means we were dropped from the queue */
+  cancelled = $state<{ requeued: boolean; at: number } | null>(null);
   race = $state<ActiveRace | null>(null);
   live = $state<Record<string, LivePlayer>>({});
   result = $state<RaceResult | null>(null);
@@ -79,6 +83,7 @@ class Game {
     const r = await api.auth.ticket({ body: { guestName: this.guestName } }).catch(() => null);
     if (r?.status !== 200) {
       this.status = "offline";
+      this.down = true;
       this.scheduleReconnect();
       throw new Error("Couldn't reach the server.");
     }
@@ -88,6 +93,7 @@ class Game {
     await new Promise<void>((resolve, reject) => {
       ws.onopen = () => {
         this.status = "online";
+        this.down = false;
         this.retry = 0;
         this.bestRtt = Infinity;
         for (const m of this.pending.splice(0)) ws.send(JSON.stringify(m));
@@ -98,6 +104,7 @@ class Game {
       ws.onclose = (e) => {
         if (this.ws !== ws) return;
         this.status = "offline";
+        this.down = true;
         this.roomLive = false;
         this.ws = null;
         clearInterval(this.pingTimer);
@@ -158,7 +165,8 @@ class Game {
       }
       case "error":
         this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
-        toasts.show(msg.message, "error", 6000);
+        // queue refusals are shown in place by the play page
+        if (msg.code !== "queue_timeout" && msg.code !== "ranked_blocked") toasts.show(msg.message, "error", 6000);
         break;
       case "queue.status":
         this.queue = msg;
@@ -183,7 +191,9 @@ class Game {
       case "match.cancelled":
         this.match = null;
         notifier.clear();
-        toasts.show(msg.requeued ? `${msg.reason} Back in the queue.` : msg.reason, msg.requeued ? "info" : "error");
+        this.cancelled = { requeued: msg.requeued, at: Date.now() };
+        if (msg.requeued) toasts.show(`${msg.reason} Back in the queue.`);
+        else toasts.show(msg.reason, "error", 10_000);
         if (!msg.requeued) this.queueMode = null;
         break;
       case "room.state":

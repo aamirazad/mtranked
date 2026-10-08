@@ -37,7 +37,7 @@
   );
 </script>
 
-<svelte:head><title>{name} · mt ranked</title></svelte:head>
+<svelte:head><title>{name} · MT Ranked</title></svelte:head>
 
 {#if missing}
   <div class="pt-16 text-center text-sub">no player called “{name}”.</div>

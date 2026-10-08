@@ -293,12 +293,17 @@ export class Room {
     const bad = culprits ?? new Set([...this.members.values()].filter((m) => !m.ready).map((m) => m.idn.id));
     for (const m of this.members.values()) {
       const isBad = bad.has(m.idn.id);
-      if (isBad) await recordDecline(m.idn.id);
+      const banned = isBad && (await recordDecline(m.idn.id));
       const requeued = !isBad && (this.mode === "ranked" || this.mode === "casual");
+      const what = reason === "declined" ? "You declined the match" : "You didn't ready up in time";
       sendTo(m.idn.id, {
         type: "match.cancelled",
         matchId: this.matchId,
-        reason: isBad ? (reason === "declined" ? "You declined the match." : "You didn't ready up in time.") : "Your opponent didn't accept.",
+        reason: !isBad
+          ? "Your opponent didn't accept."
+          : banned
+            ? `${what} twice in 10 minutes, so the queue is locked for 5 minutes.`
+            : `${what} and left the queue. Do it again within 10 minutes and you'll be locked out of the queue for 5 minutes.`,
         requeued,
       });
       if (requeued) await requeue(m, this.mode as "ranked" | "casual");

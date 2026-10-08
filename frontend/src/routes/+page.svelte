@@ -43,7 +43,7 @@
   }
 </script>
 
-<svelte:head><title>mt ranked · competitive typing</title></svelte:head>
+<svelte:head><title>MT Ranked - Competitive Typing</title></svelte:head>
 
 <div class="mx-auto max-w-[1000px] pt-6">
   <div class="mb-12 text-center">

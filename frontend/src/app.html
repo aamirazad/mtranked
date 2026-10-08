@@ -4,10 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#323437" />
-    <meta name="description" content="Competitive typing races. Ranked 1v1, casual quick match and private rooms with friends." />
+    <meta name="description" content="MT Ranked is a free competitive typing game. Race real opponents in ranked 1v1 typing matches, climb the leaderboard with Glicko-2 ratings and seasonal tiers, play casual quick matches or race friends in private rooms." />
+    <meta name="keywords" content="competitive typing, typing race, typing game, ranked typing, 1v1 typing, typing test, wpm test, multiplayer typing, typing leaderboard, monkeytype ranked" />
+    <meta name="application-name" content="MT Ranked" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MT Ranked" />
+    <meta property="og:title" content="MT Ranked - Competitive Typing" />
+    <meta property="og:description" content="Race real opponents in ranked 1v1 typing matches, climb the leaderboard and race friends in private rooms. Free, in your browser." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="MT Ranked - Competitive Typing" />
+    <meta name="twitter:description" content="Race real opponents in ranked 1v1 typing matches, climb the leaderboard and race friends in private rooms. Free, in your browser." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "MT Ranked",
+        "alternateName": "MT Ranked - Competitive Typing",
+        "description": "A free competitive typing game with ranked 1v1 races, Glicko-2 ratings, seasonal tiers, casual quick matches and private rooms.",
+        "applicationCategory": "GameApplication",
+        "genre": "Typing game",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
     <link rel="preload" href="/fonts/RobotoMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <title>mt ranked</title>
+    <title>MT Ranked - Competitive Typing</title>
     <script>
       // apply the saved theme before first paint (see lib/prefs.svelte.ts)
       try {
@@ -19,5 +43,9 @@
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>
+    <noscript>
+      <h1>MT Ranked - Competitive Typing</h1>
+      <p>MT Ranked is a free competitive typing game. Race real opponents in ranked 1v1 typing matches, climb the leaderboard with seasonal tiers, play casual quick matches or race friends in private rooms. Please enable JavaScript to play.</p>
+    </noscript>
   </body>
 </html>

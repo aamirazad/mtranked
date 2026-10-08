@@ -108,12 +108,18 @@
     if (u.type === "tier") return `reach ${tierById(u.tier)?.name} in ranked`;
     return "";
   }
+  // points the supporter tile's rainbow border at the cursor
+  function aim(e: PointerEvent & { currentTarget: HTMLElement }) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const deg = (Math.atan2(e.clientX - r.left - r.width / 2, r.top + r.height / 2 - e.clientY) * 180) / Math.PI;
+    e.currentTarget.style.setProperty("--angle", `${deg}deg`);
+  }
   const equippedId = (type: CosmeticType) => session.me?.equipped[type];
   const shortUa = (ua: string | null) =>
     !ua ? "unknown device" : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
 </script>
 
-<svelte:head><title>settings · mt ranked</title></svelte:head>
+<svelte:head><title>Settings · MT Ranked</title></svelte:head>
 
 {#snippet choice<T>(label: string, hint: string, options: readonly T[], value: T, set: (v: T) => void, name: (v: T) => string = String)}
   <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
@@ -220,13 +226,17 @@
     {#snippet tile(c: Cosmetic)}
       {@const open = unlocked.has(c.id)}
       {@const on = equippedId(c.type) === c.id}
+      {@const perk = me.subscriber && c.unlock.type === "subscriber"}
       <button
         class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
-        class:border-main={on}
-        class:border-transparent={!on}
+        class:supporter-tile={perk}
+        class:border-main={on && !perk}
+        class:border-transparent={!on && !perk}
         class:opacity-40={!open}
         disabled={!open}
         onclick={() => equip(c)}
+        onpointermove={perk ? aim : undefined}
+        onpointerleave={perk ? (e) => e.currentTarget.style.removeProperty("--angle") : undefined}
         title={open ? c.name : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
       >
         <span class="relative block h-8 w-full overflow-hidden rounded" style={c.type === "banner" ? `background: ${c.value}` : ""}>
@@ -243,6 +253,7 @@
           {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
         </span>
         {#if !open && rule(c)}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
+        {#if perk}<span class="text-[0.65rem] text-main">{me.earlySupporter ? "early supporter perk ♥" : "supporter perk ♥"}</span>{/if}
       </button>
     {/snippet}
 
@@ -256,7 +267,7 @@
         <div class="mb-6">
           <div class="label mb-2">{g.label}</div>
           <div class="flex flex-wrap gap-2">
-            {#each COSMETICS.filter((c) => c.type === g.type && c.unlock.type !== "subscriber") as c (c.id)}
+            {#each COSMETICS.filter((c) => c.type === g.type && (me.subscriber || c.unlock.type !== "subscriber")) as c (c.id)}
               {@render tile(c)}
             {/each}
           </div>
@@ -280,12 +291,14 @@
           <div>support mt ranked</div>
           {@render perks()}
         {/if}
-        <div class="label mb-2 mt-5">supporter cosmetics</div>
-        <div class="flex flex-wrap gap-2">
-          {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
-            {@render tile(c)}
-          {/each}
-        </div>
+        {#if !me.subscriber}
+          <div class="label mb-2 mt-5">supporter cosmetics</div>
+          <div class="flex flex-wrap gap-2">
+            {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
+              {@render tile(c)}
+            {/each}
+          </div>
+        {/if}
         <div class="mt-5 flex flex-wrap gap-2">
           {#if me.earlySupporter}
             {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}>manage subscription</button>{/if}

@@ -37,7 +37,7 @@
   }
 </script>
 
-<svelte:head><title>moderation · mt ranked</title></svelte:head>
+<svelte:head><title>Moderation · MT Ranked</title></svelte:head>
 
 {#if denied || (session.loaded && !session.me?.moderator)}
   <div class="pt-16 text-center text-sub">moderators only.</div>

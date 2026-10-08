@@ -85,7 +85,7 @@
   const daysLeft = $derived(season ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / 86400_000)) : 0);
 </script>
 
-<svelte:head><title>leaderboard · mt ranked</title></svelte:head>
+<svelte:head><title>Leaderboard · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[900px] animate-fade">
   <div class="mb-8 flex flex-wrap items-end justify-between gap-4">

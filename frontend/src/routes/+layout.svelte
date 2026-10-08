@@ -53,15 +53,15 @@
       {#each nav as n (n.href)}
         <a
           href={n.href}
-          title={n.label}
-          class="rounded-md p-2 transition-colors hover:text-text"
+          aria-label={n.label}
+          class="tip rounded-md p-2 transition-colors hover:text-text"
           class:text-text={n.href === "/" ? page.url.pathname === "/" : page.url.pathname.startsWith(n.href)}
         >
           <n.icon size={20} />
         </a>
       {/each}
       {#if session.me?.moderator}
-        <a href="/mod" title="moderation" class="rounded-md p-2 transition-colors hover:text-text"><Shield size={20} /></a>
+        <a href="/mod" aria-label="moderation" class="tip rounded-md p-2 transition-colors hover:text-text"><Shield size={20} /></a>
       {/if}
     </nav>
     <div class="ml-auto flex items-center gap-2 text-sub">
@@ -76,7 +76,7 @@
           <LogIn size={18} /> sign in
         </a>
       {/if}
-      <a href="/settings" title="settings" class="rounded-md p-2 transition-colors hover:text-text"><Settings size={20} /></a>
+      <a href="/settings" aria-label="settings" class="tip rounded-md p-2 transition-colors hover:text-text"><Settings size={20} /></a>
     </div>
   </header>
 
@@ -90,8 +90,8 @@
     <a href="/privacy" class="hover:text-text">privacy</a>
     <a href={__SOURCE_URL__ || "/about#source"} class="hover:text-text">source code (GPL-3.0)</a>
     <a href="https://github.com/monkeytypegame/monkeytype" class="hover:text-text" rel="noopener">built on monkeytype ♥</a>
-    {#if game.status !== "online"}
-      <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-error"></span>{game.status === "connecting" ? "connecting" : "offline"}</span>
+    {#if game.down}
+      <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-error"></span>offline</span>
     {/if}
   </footer>
 </div>

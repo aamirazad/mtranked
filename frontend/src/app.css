@@ -75,10 +75,74 @@
   .link { @apply text-main hover:text-text transition-colors; }
   .toggle { @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text; }
   .toggle.on { @apply text-main; }
+  /* dim rainbow border for supporter cosmetics among the regular ones.
+     --angle is pointed at the cursor while hovering (see settings page) */
+  .supporter-tile {
+    --angle: 135deg;
+    --dim: 45%;
+    border-color: transparent;
+    background:
+      linear-gradient(var(--color-sub-alt), var(--color-sub-alt)) padding-box,
+      linear-gradient(
+        var(--angle),
+        color-mix(in srgb, #ea4335 var(--dim), var(--color-sub-alt)),
+        color-mix(in srgb, #fbbc04 var(--dim), var(--color-sub-alt)),
+        color-mix(in srgb, #34a853 var(--dim), var(--color-sub-alt)),
+        color-mix(in srgb, #4285f4 var(--dim), var(--color-sub-alt)),
+        color-mix(in srgb, #f06292 var(--dim), var(--color-sub-alt))
+      ) border-box;
+  }
 }
 
 @layer base {
   kbd {
     @apply rounded bg-sub px-1.5 py-0.5 text-xs text-bg;
+  }
+}
+
+/* hover/focus tooltip, monkeytype-style: <a class="tip" aria-label="play">.
+   reads the label straight from aria-label so screen readers and the
+   popover never drift apart */
+@layer components {
+  .tip { position: relative; }
+  .tip::before,
+  .tip::after {
+    position: absolute;
+    left: 50%;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -4px);
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    transition-delay: 0s;
+  }
+  /* arrow */
+  .tip::before {
+    content: "";
+    top: calc(100% + 2px);
+    border: 5px solid transparent;
+    border-bottom-color: var(--color-text);
+  }
+  /* bubble */
+  .tip::after {
+    content: attr(aria-label);
+    top: calc(100% + 12px);
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.375rem;
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+  }
+  .tip:hover::before,
+  .tip:hover::after,
+  .tip:focus-visible::before,
+  .tip:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    transition-delay: 0.15s;
   }
 }

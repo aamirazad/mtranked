@@ -2,6 +2,7 @@
   import { onDestroy } from "svelte";
   import type { MatchFound } from "#lib/game.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
+  import { READY_CHECK_MS } from "@mtr/race-protocol";
   import TierBadge from "./TierBadge.svelte";
 
   let { match }: { match: MatchFound } = $props();
@@ -15,7 +16,7 @@
   const imReady = $derived(!!meId && match.ready.includes(meId));
   // re-evaluated every 100ms via `now`
   const left = $derived((void now, Math.max(0, match.readyBy - game.serverNow())));
-  const total = 10_000;
+  const total = READY_CHECK_MS;
 
   function ready() {
     if (!imReady) game.send({ type: "ready", matchId: match.matchId });
@@ -35,7 +36,10 @@
 
 <div class="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 backdrop-blur-sm animate-fade">
   <div class="w-[min(640px,92vw)] animate-pop rounded-2xl bg-sub-alt p-8 shadow-2xl">
-    <div class="mb-6 text-center text-sm tracking-[0.3em] text-main uppercase">{match.mode} match found</div>
+    <div class="mb-8 flex flex-col items-center gap-1 text-center">
+      <div class="text-xs text-sub">{match.mode}</div>
+      <div class="font-logo text-3xl text-main">match found</div>
+    </div>
     <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
       {#each [me, null, opp] as p, i (i)}
         {#if i === 1}
@@ -64,5 +68,10 @@
         <button class="btn btn-ghost" onclick={decline}>decline</button>
       {/if}
     </div>
+    {#if !imReady}
+      <div class="mt-4 text-center text-xs text-sub">
+        declining or missing the ready check takes you out of the queue · twice in 10 minutes locks the queue for 5 minutes
+      </div>
+    {/if}
   </div>
 </div>

@@ -100,7 +100,7 @@
   const focusColor = $derived(tracks.find((x) => x.slot === focusSlot)?.color ?? "#e2b714");
 </script>
 
-<svelte:head><title>replay · mt ranked</title></svelte:head>
+<svelte:head><title>Replay · MT Ranked</title></svelte:head>
 
 {#if error}
   <div class="pt-16 text-center text-sub">{error}</div>

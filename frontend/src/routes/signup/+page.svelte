@@ -31,7 +31,7 @@
   }
 </script>
 
-<svelte:head><title>create account · mt ranked</title></svelte:head>
+<svelte:head><title>Create Account · MT Ranked</title></svelte:head>
 
 <form class="mx-auto mt-8 max-w-sm space-y-4 animate-rise" onsubmit={submit}>
   <h1 class="font-logo text-3xl">create account</h1>

@@ -47,6 +47,12 @@
     }
   });
 
+  // we declined or missed the ready check, so the server dropped us from the queue
+  $effect(() => {
+    const c = game.cancelled;
+    if (c && !c.requeued && Date.now() - c.at < 2000) goto("/");
+  });
+
   beforeNavigate((nav) => {
     if (game.race && !game.result && game.race.mode !== "ghost" && nav.type !== "leave") {
       if (!confirm("Leaving now forfeits the race. Leave anyway?")) nav.cancel();
@@ -84,7 +90,7 @@
 </script>
 
 <svelte:window onkeydown={onkey} />
-<svelte:head><title>{mode} · mt ranked</title></svelte:head>
+<svelte:head><title>{mode.charAt(0).toUpperCase() + mode.slice(1)} · MT Ranked</title></svelte:head>
 
 {#if blocked}
   <div class="mx-auto max-w-md pt-16 text-center animate-rise">

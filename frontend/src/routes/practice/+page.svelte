@@ -105,7 +105,7 @@
 </script>
 
 <svelte:window onkeydown={onwindowkey} />
-<svelte:head><title>practice · mt ranked</title></svelte:head>
+<svelte:head><title>Practice · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[1000px]">
   <div class="mb-10 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>

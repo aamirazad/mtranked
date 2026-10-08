@@ -189,7 +189,7 @@ export function parseClientMsg(raw: string): ClientMsg | null {
 export const INPUT_BATCH_MS = 100;
 export const STATE_TICK_MS = 100;
 export const COUNTDOWN_MS = 3000;
-export const READY_CHECK_MS = 10_000;
+export const READY_CHECK_MS = 20_000;
 export const RECONNECT_GRACE_MS = 15_000;
 export const RACE_CAP_MS = 120_000;
 export const MAX_PING_ALLOWANCE_MS = 150;
