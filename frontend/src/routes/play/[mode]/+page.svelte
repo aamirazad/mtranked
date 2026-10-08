@@ -2,10 +2,11 @@
   import { onDestroy, onMount } from "svelte";
   import { goto, beforeNavigate } from "$app/navigation";
   import { page } from "$app/state";
-  import { Ghost, X } from "@lucide/svelte";
+  import { Bell, Ghost, X } from "@lucide/svelte";
   import type { QueueMode } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { notifier } from "#lib/notify.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
   import MatchFound from "#lib/components/MatchFound.svelte";
@@ -162,6 +163,29 @@
         <Ghost size={18} /> race a ghost while you wait
       </button>
       <div class="mt-2 text-xs text-sub">an unrated replay of a player near your rating · you stay in the queue</div>
+    {/if}
+    {#if notifier.offer}
+      <div class="mt-8 flex max-w-md flex-col items-center gap-3 rounded-xl bg-sub-alt px-6 py-4 text-center text-sm animate-rise">
+        {#if notifier.refused}
+          <div>
+            {#if notifier.permission === "denied"}
+              Notifications are blocked for this site. Allow them from the icon beside the address bar, then try again.
+            {:else}
+              Your browser should have asked for permission. Approve the request so we can let you know.
+            {/if}
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-main" onclick={() => notifier.enable()}><Bell size={16} /> try again</button>
+            <button class="btn btn-ghost" onclick={() => notifier.dismiss()}>never mind</button>
+          </div>
+        {:else}
+          <div>Going to switch tabs while you wait? We can send a notification when your match is found.</div>
+          <div class="flex gap-2">
+            <button class="btn btn-main" onclick={() => notifier.enable()}><Bell size={16} /> yes, notify me</button>
+            <button class="btn btn-ghost" onclick={() => notifier.dismiss()}>no thanks</button>
+          </div>
+        {/if}
+      </div>
     {/if}
     <button class="btn btn-ghost mt-10" onclick={cancel}><X size={16} /> cancel <kbd>esc</kbd></button>
   </div>

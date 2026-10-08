@@ -12,6 +12,7 @@ import type {
   ServerMsg,
 } from "@mtr/race-protocol";
 import { api } from "./api";
+import { notifier } from "./notify.svelte";
 import { toasts } from "./toast.svelte";
 
 type QueueStatus = Extract<ServerMsg, { type: "queue.status" }>;
@@ -174,12 +175,14 @@ class Game {
         // a ghost race in progress is dropped for the real match
         if (this.race?.mode === "ghost") this.race = null;
         if (this.result?.mode === "ghost") this.result = null;
+        notifier.matchFound(msg.mode);
         break;
       case "match.ready":
         if (this.match?.matchId === msg.matchId) this.match.ready = msg.ready;
         break;
       case "match.cancelled":
         this.match = null;
+        notifier.clear();
         toasts.show(msg.requeued ? `${msg.reason} Back in the queue.` : msg.reason, msg.requeued ? "info" : "error");
         if (!msg.requeued) this.queueMode = null;
         break;
@@ -196,6 +199,7 @@ class Game {
       case "race.countdown":
       case "race.resume":
         this.match = null;
+        notifier.clear();
         this.result = null;
         this.rematch = null;
         this.live = {};
