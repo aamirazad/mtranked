@@ -159,6 +159,11 @@ export class Room {
     return this.status === "closed";
   }
 
+  /** a ready check, race or result save is under way (a restart waits for these) */
+  get active() {
+    return this.starting || this.status === "ready_check" || this.status === "countdown" || this.status === "racing";
+  }
+
   constructor(
     public mode: Mode,
     settings: TextSettings,

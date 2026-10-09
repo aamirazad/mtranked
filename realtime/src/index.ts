@@ -1,10 +1,11 @@
+import * as Sentry from "@sentry/node";
 import { reportError } from "./sentry";
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
 import { getUser } from "@mtr/db";
 import { DEFAULT_ROOM_SETTINGS, parseClientMsg, type ClientMsg, type PlayerPublic } from "@mtr/race-protocol";
 import { env } from "./env";
-import { NODE_ID, nodeAlive, redis } from "./redis";
+import { NODE_ID, nodeAlive, redis, sub } from "./redis";
 import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded, type RoomGone } from "./hub";
 import { checkSharedIp, currentRating, publicInfo, rankedBlock, redeemTicket, type Identity } from "./players";
 import { Room, roomByCode, roomOf, rooms, type Member } from "./room";
@@ -17,10 +18,19 @@ import {
   queueMeta,
   resumeQueue,
   startGhostRace,
+  stopMatcher,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
+
+/** Set on SIGTERM/SIGINT: races in progress finish, nothing new starts. */
+let draining = false;
+/** Set once we start closing every socket on the way out. */
+let exiting = false;
+const RESTARTING = "The server is restarting for an update. Try again in a moment.";
+/** Message types that would start something new; refused while draining. */
+const STARTS = new Set<ClientMsg["type"]>(["queue.join", "ghost.accept", "rematch.request", "room.create", "room.join", "room.start"]);
 
 const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
 
@@ -68,6 +78,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
     case "room.settings":
       return room.onSettings(id, msg.settings);
     case "room.start":
+      // forwarded from another node, which doesn't know we're draining
+      if (draining) return err(id, "restarting", RESTARTING);
       return void room.onStart(id, msg.sameText);
     case "room.kick":
       return room.onKick(id, msg.playerId);
@@ -101,6 +113,7 @@ setForwardHandler((f: Forwarded) => {
   const room = roomOf(f.from);
   const msg = f.msg as { type: string; [k: string]: unknown };
   if (msg.type === "_join") {
+    if (draining) return err(f.from, "restarting", RESTARTING);
     const roomId = roomByCode.get(msg.code as string);
     const target = roomId ? rooms.get(roomId) : undefined;
     const problem = target ? target.join(member(msg.idn as Identity, msg.info as PlayerPublic)) : "Room not found.";
@@ -115,6 +128,7 @@ setForwardHandler((f: Forwarded) => {
 
 async function handle(conn: Conn, msg: ClientMsg) {
   const id = conn.id;
+  if (draining && STARTS.has(msg.type)) return err(id, "restarting", RESTARTING);
   switch (msg.type) {
     case "ping":
       return conn.send({ type: "pong", t: msg.t, serverTime: Date.now() });
@@ -218,7 +232,26 @@ const server = createServer((req, res) => {
   res.writeHead(404).end();
 });
 
-const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 32 * 1024 });
+const wss = new WebSocketServer({
+  server,
+  path: "/ws",
+  maxPayload: 32 * 1024,
+  // while draining only players with a room here (resuming a race) get in; the
+  // rest get a 503 and the client retries until the new process is up
+  verifyClient: (info, done) => {
+    if (!draining) return done(true);
+    const ticket = new URL(info.req.url ?? "", "http://x").searchParams.get("ticket") ?? "";
+    if (!/^[\w-]{20,64}$/.test(ticket)) return done(false, 503, "restarting");
+    redis.get(`ticket:${ticket}`).then(
+      (raw) => {
+        const t = raw ? (JSON.parse(raw) as { kind: string; id?: string; userId?: string }) : null;
+        const pid = t?.kind === "guest" ? t.id : t?.userId;
+        done(!!pid && !!roomOf(pid), 503, "restarting");
+      },
+      () => done(false, 503, "restarting"),
+    );
+  },
+});
 wss.on("error", (e) => reportError("[ws] server error", e));
 
 // fire-and-forget redis writes and async handlers must never take the node down
@@ -269,7 +302,8 @@ wss.on("connection", async (ws, req) => {
   conns.set(idn.id, conn);
   // attach before any await, or a socket that closes meanwhile stays in conns forever
   ws.on("close", async () => {
-    if (conns.get(idn.id) !== conn) return;
+    // on the way out: redis is closing and the player reconnects to the next process
+    if (exiting || conns.get(idn.id) !== conn) return;
     conns.delete(idn.id);
     const room = roomOf(idn.id);
     if (room) room.disconnect(idn.id);
@@ -365,3 +399,58 @@ setInterval(() => {
 }, 2000).unref();
 
 server.listen(env.port, () => console.log(`realtime node ${NODE_ID} listening on :${env.port}`));
+
+// ------------------------------------------------------------------ graceful shutdown
+// Deploys restart this process. Rooms live in memory, so let ready checks and
+// races in progress finish (up to DRAIN_MAX_MS) before going away.
+const DRAIN_MAX_MS = 150_000;
+const RESTARTED = "The server restarted for an update. Create a new room to keep playing.";
+/** standard "service restart" close code; the client reconnects (only 4000 stops it) */
+const SERVICE_RESTART = 1012;
+
+async function drain(signal: string) {
+  if (draining) {
+    console.log(`[shutdown] ${signal} again, exiting now`);
+    process.exit(1);
+  }
+  draining = true;
+  const started = Date.now();
+  console.log(`[shutdown] ${signal}: draining (up to ${DRAIN_MAX_MS / 1000}s)`);
+  try {
+    await stopMatcher();
+  } catch (e) {
+    reportError("[shutdown] failed to stop the matcher", e);
+  }
+  let lastLog = 0;
+  for (;;) {
+    const active = [...rooms.values()].filter((r) => r.active).length;
+    if (!active) break;
+    const now = Date.now();
+    if (now - started >= DRAIN_MAX_MS) {
+      console.warn(`[shutdown] gave up waiting on ${active} active room(s)`);
+      break;
+    }
+    if (now - lastLog >= 10_000) {
+      lastLog = now;
+      console.log(`[shutdown] waiting on ${active} active room(s), ${Math.round((now - started) / 1000)}s in`);
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  console.log(`[shutdown] drained in ${Math.round((Date.now() - started) / 1000)}s, closing ${conns.size} socket(s)`);
+  // private rooms can't survive the restart; matchmade ones left over (cut off
+  // by the cap) are reported as voided when their players reconnect
+  for (const room of [...rooms.values()]) if (room.mode === "private") room.close(RESTARTED);
+  exiting = true;
+  server.close();
+  for (const ws of wss.clients) ws.close(SERVICE_RESTART, "restarting");
+  try {
+    // quit waits for queued commands (room cleanup above) to go out first
+    await Promise.all([redis.quit(), sub.quit()]);
+  } catch (e) {
+    console.error("[shutdown] redis quit failed", e);
+  }
+  await Sentry.flush(2000);
+  process.exit(0);
+}
+
+for (const signal of ["SIGTERM", "SIGINT"] as const) process.on(signal, () => void drain(signal));

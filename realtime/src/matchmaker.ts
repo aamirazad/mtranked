@@ -234,8 +234,9 @@ function createMatch(a: Meta, b: Meta) {
 }
 
 let running = false;
+let stopped = false;
 setInterval(async () => {
-  if (running) return;
+  if (running || stopped) return;
   running = true;
   try {
     if (await holdLock()) {
@@ -249,6 +250,16 @@ setInterval(async () => {
     running = false;
   }
 }, 1000).unref();
+
+/**
+ * Shutting down: stop matching and hand the lock over, so the next process
+ * matches whoever is still queued (the queue itself lives in Redis).
+ */
+export async function stopMatcher() {
+  stopped = true;
+  while (running) await new Promise((r) => setTimeout(r, 50));
+  if ((await redis.get("lock:matcher")) === NODE_ID) await redis.del("lock:matcher");
+}
 
 // ------------------------------------------------------------------ ghost races
 export async function startGhostRace(idn: Identity, info: PlayerPublic): Promise<string | null> {

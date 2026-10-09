@@ -57,6 +57,8 @@ services:
   realtime:
     <<: *server
     command: ["node", "realtime/dist/index.js"]
+    # SIGTERM drains races in progress for up to 150s before exiting (see realtime/src/index.ts)
+    stop_grace_period: 3m
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_started }

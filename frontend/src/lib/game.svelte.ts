@@ -114,7 +114,11 @@ class Game {
         if (e.code === 4000) {
           toasts.show("You opened MT Ranked in another tab, so this one disconnected.", "error", 8000);
           this.wanted = false;
-        } else if (this.wanted) this.scheduleReconnect();
+        } else if (this.wanted) {
+          // 1012: the race server is restarting for an update
+          if (e.code === 1012) toasts.show("The server is restarting for an update. Reconnecting…", "info", 6000);
+          this.scheduleReconnect();
+        }
         reject(new Error("closed"));
       };
     });
