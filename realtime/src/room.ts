@@ -144,7 +144,6 @@ export class Room {
   matchId = randomUUID();
   race: Race | null = null;
   ghost?: GhostSource;
-  private lastSnapshot = 0;
   private lastSettingsSeed?: { seed: string; text: string; source?: string };
 
   constructor(
@@ -169,7 +168,7 @@ export class Room {
       players: members.map((m) => m.info),
       readyBy: room.readyBy,
     });
-    room.snapshot(true);
+    room.snapshot();
     return room;
   }
 
@@ -234,14 +233,11 @@ export class Room {
 
   broadcastRoom() {
     if (this.mode === "private") this.broadcast({ type: "room.state", room: this.publicState() });
-    this.snapshot(true);
+    this.snapshot();
   }
 
-  /** Mirror room state to Redis (throttled while racing). */
-  snapshot(force = false) {
-    const now = Date.now();
-    if (!force && now - this.lastSnapshot < 1000) return;
-    this.lastSnapshot = now;
+  /** Mirror room metadata to Redis so other nodes can find the owner (only `node` is read). */
+  snapshot() {
     const data = {
       node: NODE_ID,
       mode: this.mode,
@@ -250,12 +246,6 @@ export class Room {
       hostId: this.hostId,
       settings: this.settings,
       members: [...this.members.keys()],
-      race: this.race && {
-        id: this.race.id,
-        startAt: this.race.startAt,
-        text: this.race.text,
-        racers: [...this.race.racers.values()].map((r) => ({ id: r.id, keys: r.keys, finishMs: r.finishMs, out: r.out })),
-      },
     };
     void redis.set(`room:${this.id}`, JSON.stringify(data), "EX", 3600);
   }
@@ -476,7 +466,6 @@ export class Room {
       });
     }
     this.broadcast({ type: "race.state", raceId: race.id, t: elapsed, players });
-    this.snapshot();
 
     const humans = [...race.racers.values()].filter((r) => !r.ghost);
     const humansDone = humans.every((r) => r.out || r.finishMs !== null);

@@ -4,7 +4,7 @@
 import type { WebSocket } from "ws";
 import type { PlayerPublic, ServerMsg } from "@mtr/race-protocol";
 import type { Identity } from "./players";
-import { NODE_ID, redis, sub } from "./redis";
+import { liveNodes, NODE_ID, redis, sub } from "./redis";
 
 export class Conn {
   rtts: number[] = [];
@@ -69,9 +69,11 @@ export async function forward(node: string, f: Forwarded) {
 
 // Only pay for pub/sub fan-out when more than one node is alive.
 let multiNode = false;
-setInterval(async () => {
-  const keys = await redis.keys("node:*");
-  multiNode = keys.length > 1;
+setInterval(() => {
+  liveNodes().then(
+    (n) => (multiNode = n > 1),
+    () => {}, // keep the last answer if redis hiccups
+  );
 }, 5000).unref();
 
 await sub.subscribe(DELIVER, nodeChannel(NODE_ID));
