@@ -112,7 +112,8 @@ async function handle(conn: Conn, msg: ClientMsg) {
     case "queue.join": {
       const current = roomOf(id);
       if (current && current.mode !== "ghost") return err(id, "busy", "Finish or leave your current room first.");
-      const ban = await queueBanLeft(id);
+      // decline lockouts only apply to ranked
+      const ban = msg.mode === "ranked" ? await queueBanLeft(id) : 0;
       if (ban > 0) return err(id, "queue_timeout", `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
       if (await queueMeta(id)) await dequeue(id);
       let flagged = false;

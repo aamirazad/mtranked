@@ -74,7 +74,8 @@
     </div>
     {#if !imReady}
       <div class="mt-4 text-center text-xs text-sub">
-        declining or missing the ready check takes you out of the queue · 3 declines in 10 minutes lock the queue for 5 minutes
+        declining or missing the ready check takes you out of the queue{#if match.mode === "ranked"}
+          · 3 declines in 10 minutes lock the queue for 5 minutes{/if}
       </div>
     {/if}
   </div>

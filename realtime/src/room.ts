@@ -301,7 +301,12 @@ export class Room {
       sendTo(m.idn.id, {
         type: "match.cancelled",
         matchId: this.matchId,
-        reason: isBad ? strikeWarning(what, await recordDecline(m.idn.id)) : "Your opponent didn't accept.",
+        // only ranked declines count as strikes; casual just leaves the queue
+        reason: !isBad
+          ? "Your opponent didn't accept."
+          : this.mode === "ranked"
+            ? strikeWarning(what, await recordDecline(m.idn.id))
+            : `${what}.`,
         requeued,
       });
       if (requeued) await requeue(m, this.mode as "ranked" | "casual");
