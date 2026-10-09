@@ -7,6 +7,7 @@ import type { QueueMode, PlayerPublic } from "@mtr/race-protocol";
 import { resolveEquipped, levelFromXp } from "@mtr/shared";
 import { sendTo, conns, holdNotice } from "./hub";
 import { NODE_ID, redis } from "./redis";
+import { reportError } from "./sentry";
 import { Room, roomOf, type Member, type GhostSource } from "./room";
 import { showBanner, type Identity } from "./players";
 
@@ -243,7 +244,7 @@ setInterval(async () => {
       await matchQueue("q:casual");
     }
   } catch (e) {
-    console.error("[matcher]", e);
+    reportError("[matcher]", e);
   } finally {
     running = false;
   }

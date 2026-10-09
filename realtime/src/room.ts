@@ -43,6 +43,7 @@ import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
 import { recordDecline, requeue, strikeWarning } from "./matchmaker";
 import { offerRematch } from "./rematch";
+import { reportError } from "./sentry";
 
 const IDLE_FORFEIT_MS = 25_000;
 const ROOM_IDLE_CLOSE_MS = 30 * 60_000;
@@ -511,7 +512,7 @@ export class Room {
     try {
       await this.scoreRace(race);
     } catch (e) {
-      console.error("[race] failed to finish", race.matchId, e);
+      reportError("[race] failed to finish", e, { matchId: race.matchId });
       if (this.closed) return;
       // never leave the room stuck mid-race
       this.status = "finished";
@@ -631,7 +632,7 @@ export class Room {
       });
       saved = true;
     } catch (e) {
-      console.error("[race] failed to save", race.matchId, e);
+      reportError("[race] failed to save", e, { matchId: race.matchId });
     }
     // the room may have been closed while we were saving
     if (this.closed) return;
@@ -649,7 +650,7 @@ export class Room {
           await offerRematch(race.matchId, members as Member[], series);
           rematch = { expiresAt: Date.now() + REMATCH_MS };
         } catch (e) {
-          console.error("[race] failed to offer rematch", race.matchId, e);
+          reportError("[race] failed to offer rematch", e, { matchId: race.matchId });
         }
       }
     }
@@ -854,7 +855,7 @@ setInterval(() => {
     try {
       room.tick(now);
     } catch (e) {
-      console.error("[room] tick failed", room.id, e);
+      reportError("[room] tick failed", e, { roomId: room.id });
     }
   }
 }, 100).unref();

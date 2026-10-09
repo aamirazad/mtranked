@@ -1,3 +1,4 @@
+import { reportError } from "./sentry";
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
 import { getUser } from "@mtr/db";
@@ -218,9 +219,10 @@ const server = createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 32 * 1024 });
-wss.on("error", (e) => console.error("[ws] server error", e));
+wss.on("error", (e) => reportError("[ws] server error", e));
 
 // fire-and-forget redis writes and async handlers must never take the node down
+// (sentry.ts reports these to Sentry too)
 process.on("unhandledRejection", (e) => console.error("[realtime] unhandled rejection", e));
 
 const EARLY_MAX = 20;
@@ -336,7 +338,7 @@ wss.on("connection", async (ws, req) => {
     if (EXPENSIVE.has(msg.type) && !allowExpensive())
       return conn.send({ type: "error", code: "slow_down", message: "You're doing that too fast." });
     // keep per-connection ordering (inputs must be applied in sequence)
-    queue = queue.then(() => handle(conn, msg)).catch((e) => console.error("[ws] handler error", e));
+    queue = queue.then(() => handle(conn, msg)).catch((e) => reportError("[ws] handler error", e));
   };
   ws.off("message", buffer);
   ws.on("message", onMessage);

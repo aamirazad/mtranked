@@ -5,6 +5,7 @@ import { contract } from "@mtr/contracts";
 import { sql } from "@mtr/db";
 import { getAuth } from "../auth";
 import { env } from "../env";
+import { reportError } from "../sentry";
 
 const s = initServer();
 const stripe = env.stripe.secret ? new Stripe(env.stripe.secret) : null;
@@ -115,7 +116,7 @@ export function stripeWebhook(): Router {
       }
       res.json({ received: true });
     } catch (e) {
-      console.error("[stripe] webhook error", e);
+      reportError("[stripe] webhook error", e);
       res.status(500).end();
     }
   });

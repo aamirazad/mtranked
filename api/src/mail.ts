@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "./env";
+import { reportError } from "./sentry";
 
 const transport = env.smtpUrl ? nodemailer.createTransport(env.smtpUrl) : null;
 
@@ -11,7 +12,7 @@ export async function sendMail(to: string, subject: string, text: string, html: 
   try {
     await transport.sendMail({ from: env.mailFrom, to, subject, text, html });
   } catch (e) {
-    console.error("[mail] send failed", e);
+    reportError("[mail] send failed", e);
   }
 }
 

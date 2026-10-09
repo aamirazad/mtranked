@@ -1,3 +1,4 @@
+import { reportError } from "./sentry";
 import express from "express";
 import cookieParser from "cookie-parser";
 import { createExpressEndpoints, initServer } from "@ts-rest/express";
@@ -39,8 +40,8 @@ createExpressEndpoints(contract, router, app, {
   },
 });
 
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  reportError("[api] request failed", err, { route: `${req.method} ${req.path}` });
   res.status(500).json({ message: "Something went wrong on our side." });
 });
 
