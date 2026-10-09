@@ -128,7 +128,8 @@
         idx: game.live[p.id]?.idx ?? 0,
         color: p.caretColor,
         shape: p.caretShape,
-        name: race.players.length > 2 || p.ghost ? (p.ghost ? `ghost · ${p.name}` : p.name) : undefined,
+        // labels help tell a few opponents apart; past ~6 they just bury the text
+        name: (race.players.length > 2 && race.players.length <= 6) || p.ghost ? (p.ghost ? `ghost · ${p.name}` : p.name) : undefined,
       })),
   );
 
@@ -138,6 +139,11 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   });
   const waitingFor = $derived(lanes.filter((l) => !l.mine && !l.done && !l.out).map((l) => l.p.name));
+  const waitingText = $derived(
+    waitingFor.length > 4 ? `${waitingFor.slice(0, 3).join(", ")} and ${waitingFor.length - 3} more` : waitingFor.join(", "),
+  );
+  // 0: 1v1/ranked look, 1: tighter rows, 2: also two columns on md+ (private rooms up to 16)
+  const density = $derived(race.players.length > 8 ? 2 : race.players.length > 4 ? 1 : 0);
   // private-room host can call time once they're done
   const isHost = $derived(race.mode === "private" && !!meId && game.room?.hostId === meId);
   const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !game.result);
@@ -158,9 +164,18 @@
 
 <div class="mx-auto max-w-[1000px] animate-fade">
   <!-- lanes -->
-  <div class="mb-8 flex flex-col gap-2.5">
+  <div
+    class={[
+      density === 0 && "mb-8 flex flex-col gap-2.5 text-sm",
+      density === 1 && "mb-6 flex flex-col gap-1 text-xs",
+      density === 2 && "mb-6 grid gap-x-8 gap-y-1 text-xs md:grid-cols-2",
+    ]}
+  >
     {#each lanes as l (l.p.id)}
-      <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem] items-center gap-4 text-sm" class:opacity-50={l.out}>
+      <div
+        class={["grid items-center", density ? "grid-cols-[minmax(0,8rem)_1fr_4rem] gap-3" : "grid-cols-[minmax(0,11rem)_1fr_4.5rem] gap-4"]}
+        class:opacity-50={l.out}
+      >
         <div class="flex min-w-0 items-center gap-2">
           {#if (race.mode === "ranked" || l.p.ghost) && l.p.rating !== undefined}
             <TierBadge rating={l.p.rating} races={l.p.races} size="sm" showRating={!!l.p.ghost} />
@@ -224,7 +239,7 @@
           </div>
           {#if waitingFor.length}
             <div class="text-sm text-sub">
-              {race.deadline ? "race ends when the timer runs out" : `waiting for ${waitingFor.join(", ")} to finish…`}
+              {race.deadline ? "race ends when the timer runs out" : `waiting for ${waitingText} to finish…`}
             </div>
           {/if}
           {#if canHurry}
