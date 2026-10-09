@@ -208,16 +208,29 @@ const server = createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 32 * 1024 });
+wss.on("error", (e) => console.error("[ws] server error", e));
+
+// fire-and-forget redis writes and async handlers must never take the node down
+process.on("unhandledRejection", (e) => console.error("[realtime] unhandled rejection", e));
+
+const EARLY_MAX = 20;
 
 wss.on("connection", async (ws, req) => {
+  // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
+  ws.on("error", (e) => console.warn("[ws] socket error", e.message));
   // buffer anything the client sends while we authenticate
   const early: string[] = [];
-  const buffer = (d: unknown) => early.push(String(d));
+  const buffer = (d: unknown) => {
+    if (early.length >= EARLY_MAX) return ws.close(4008, "too many messages");
+    early.push(String(d));
+  };
   ws.on("message", buffer);
   const url = new URL(req.url ?? "", "http://x");
   const idn = await redeemTicket(url.searchParams.get("ticket") ?? "");
   if (!idn) return ws.close(4001, "unauthorized");
   const info = await publicInfo(idn);
+  // gone while we were authenticating (or closed for flooding)
+  if (ws.readyState !== ws.OPEN) return;
   const conn = new Conn(ws, idn, info);
 
   const old = conns.get(idn.id);
