@@ -1,3 +1,4 @@
+import { sentrySvelteKit } from "@sentry/sveltekit/vite";
 import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -13,16 +14,16 @@ export default defineConfig({
     __SOURCE_URL__: JSON.stringify(process.env.PUBLIC_SOURCE_URL ?? rootEnv.PUBLIC_SOURCE_URL ?? ""),
     __CONTACT_EMAIL__: JSON.stringify(process.env.PUBLIC_CONTACT_EMAIL ?? rootEnv.PUBLIC_CONTACT_EMAIL ?? ""),
   },
-  plugins: [
-    tailwindcss(),
-    sveltekit({
-      compilerOptions: {
-        runes: ({ filename }) => (filename.split(/[/\\]/).includes("node_modules") ? undefined : true),
-      },
-      // a static SPA: serve build/ from any CDN with 200.html as the fallback
-      adapter: adapter({ fallback: "200.html" }),
-    }),
-  ],
+  plugins: [sentrySvelteKit({
+    org: "aamir-lv",
+    project: "javascript-sveltekit"
+  }), tailwindcss(), sveltekit({
+    compilerOptions: {
+      runes: ({ filename }) => (filename.split(/[/\\]/).includes("node_modules") ? undefined : true),
+    },
+    // a static SPA: serve build/ from any CDN with 200.html as the fallback
+    adapter: adapter({ fallback: "200.html" }),
+  })],
   server: {
     port: 5173,
     proxy: {
