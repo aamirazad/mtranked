@@ -4,7 +4,7 @@ import { getUser } from "@mtr/db";
 import { DEFAULT_ROOM_SETTINGS, parseClientMsg, type ClientMsg, type PlayerPublic } from "@mtr/race-protocol";
 import { env } from "./env";
 import { NODE_ID, nodeAlive, redis } from "./redis";
-import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded } from "./hub";
+import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded, type RoomGone } from "./hub";
 import { checkSharedIp, currentRating, publicInfo, rankedBlock, redeemTicket, type Identity } from "./players";
 import { Room, roomByCode, roomOf, rooms, type Member } from "./room";
 import {
@@ -187,7 +187,11 @@ async function handle(conn: Conn, msg: ClientMsg) {
       const roomId = await redis.get(`roomcode:${code}`);
       const raw = roomId ? await redis.get(`room:${roomId}`) : null;
       const node = raw ? (JSON.parse(raw).node as string) : null;
-      if (!node || !(await nodeAlive(node))) return err(id, "room_join", "No room with that code. Check it and try again.");
+      if (!node || !(await nodeAlive(node))) {
+        const closed = await redis.get(`roomclosed:${code}`);
+        if (closed) return err(id, "room_closed", closed);
+        return err(id, "room_join", "No room with that code. Check it and try again.");
+      }
       await forward(node, {
         from: id,
         rtt: conn.rtt(),
@@ -280,6 +284,9 @@ wss.on("connection", async (ws, req) => {
       }
     }
   }
+  // lost a private room while offline (closed, or dropped for being away): say why
+  const gone = await redis.getdel(`roomgone:${idn.id}`);
+  if (gone && !inRoom) conn.send({ type: "room.closed", ...(JSON.parse(gone) as RoomGone) });
   // tell the client it isn't queued, so a tab that lost its place doesn't keep showing a search
   if (!(await markReconnected(idn.id)) && !inRoom) conn.send({ type: "queue.left" });
   const notice = await redis.getdel(`notice:${idn.id}`);

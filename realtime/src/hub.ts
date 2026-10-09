@@ -54,6 +54,12 @@ export async function holdNotice(id: string, message: string) {
   await redis.set(`notice:${id}`, message, "EX", 1800);
 }
 
+/** Why an offline player lost their private room, held until they reconnect. */
+export type RoomGone = { code?: string; reason: string; rejoin: boolean };
+export async function holdRoomGone(id: string, gone: RoomGone) {
+  await redis.set(`roomgone:${id}`, JSON.stringify(gone), "EX", 3600);
+}
+
 export const rttOf = (id: string) => conns.get(id)?.rtt() ?? remoteRtt.get(id) ?? 100;
 const remoteRtt = new Map<string, number>();
 

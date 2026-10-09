@@ -36,7 +36,7 @@ import {
 } from "@mtr/race-protocol";
 import { rate, ROOM_CAP_FREE, ROOM_CAP_SUBSCRIBER, ROOM_CODE_ALPHABET, SPEED_CEILING_WPM, themeById, xpForRace } from "@mtr/shared";
 import { currentSeason, type RatingRow } from "@mtr/db";
-import { deliver, holdNotice, rttOf, sendTo } from "./hub";
+import { deliver, holdNotice, holdRoomGone, rttOf, sendTo } from "./hub";
 import type { Identity } from "./players";
 import { NODE_ID, redis } from "./redis";
 import { analyzeTiming, type Flag } from "./anticheat";
@@ -46,6 +46,9 @@ import { offerRematch } from "./rematch";
 
 const IDLE_FORFEIT_MS = 25_000;
 const ROOM_IDLE_CLOSE_MS = 30 * 60_000;
+/** how long a closed room's code still says "closed" instead of "no room" */
+const CLOSED_CODE_TTL_S = 6 * 3600;
+const AWAY_TOO_LONG = "You were away too long, so you were taken out of the room.";
 const CASUAL_FORMATS: TextSettings[] = [
   RANKED_SETTINGS,
   { ...RANKED_SETTINGS, words: 30 },
@@ -438,7 +441,16 @@ export class Room {
     }
     if (this.mode === "private" && (this.status === "waiting" || this.status === "finished")) {
       for (const m of [...this.members.values()]) {
-        if (!m.connected && m.dcAt && now - m.dcAt > RECONNECT_GRACE_MS) this.removeMember(m.idn.id, null);
+        if (!m.connected && m.dcAt && now - m.dcAt > RECONNECT_GRACE_MS) {
+          this.removeMember(m.idn.id, null);
+          // they're offline: tell them when they're back (the room may have closed without them)
+          void holdRoomGone(
+            m.idn.id,
+            this.closed
+              ? { code: this.code, reason: "The room closed while you were away.", rejoin: false }
+              : { code: this.code, reason: AWAY_TOO_LONG, rejoin: true },
+          );
+        }
       }
       if (now - this.lastActivity > ROOM_IDLE_CLOSE_MS) this.close("Room closed after 30 minutes without a race.");
     }
@@ -715,7 +727,7 @@ export class Room {
     playerRoom.delete(playerId);
     void redis.del(`proom:${playerId}`);
     if (reason) sendTo(playerId, { type: "room.closed", reason });
-    if (this.members.size === 0) return this.close();
+    if (this.members.size === 0) return this.close("Everyone left, so the room closed.");
     if (this.hostId === playerId) {
       const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
       this.hostId = next.idn.id;
@@ -795,21 +807,28 @@ export class Room {
     }
   }
 
+  /** `reason` is only shown for private rooms (matchmade rooms close quietly after results). */
   close(reason?: string) {
     if (this.status === "closed") return;
     if (this.race && !this.race.ended) this.race.ended = true;
     this.status = "closed";
-    for (const id of this.members.keys()) {
+    const priv = this.mode === "private";
+    const why = reason ?? "This room was closed.";
+    for (const [id, m] of this.members) {
       if (playerRoom.get(id) === this.id) {
         playerRoom.delete(id);
         void redis.del(`proom:${id}`);
       }
-      if (reason) sendTo(id, { type: "room.closed", reason });
+      if (!priv) continue;
+      sendTo(id, { type: "room.closed", code: this.code, reason: why, rejoin: false });
+      if (!m.connected) void holdRoomGone(id, { code: this.code, reason: why, rejoin: false });
     }
     rooms.delete(this.id);
     if (this.code) {
       roomByCode.delete(this.code);
       void redis.del(`roomcode:${this.code}`);
+      // so a reload or late invite link says it closed rather than "no room with that code"
+      if (priv) void redis.set(`roomclosed:${this.code}`, why, "EX", CLOSED_CODE_TTL_S);
     }
     void redis.del(`room:${this.id}`);
   }

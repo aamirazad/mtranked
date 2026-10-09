@@ -168,7 +168,8 @@ export type ServerMsg =
   /** a warning to show the player, e.g. about a forfeit penalty (held until they reconnect if they're offline) */
   | { type: "notice"; message: string }
   | { type: "room.state"; room: RoomPublic }
-  | { type: "room.closed"; reason: string }
+  /** we're out of a private room; `rejoin` means it's still open and we may come back */
+  | { type: "room.closed"; reason: string; code?: string; rejoin?: boolean }
   | ({ type: "race.countdown" } & RaceStart)
   | ({ type: "race.resume"; keys: { k: string; t: number }[] } & RaceStart)
   | { type: "race.state"; raceId: string; t: number; players: LivePlayer[] }

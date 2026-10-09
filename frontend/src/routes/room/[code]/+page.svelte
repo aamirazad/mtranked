@@ -52,7 +52,7 @@
 
   $effect(() => {
     const e = game.lastError;
-    if (e?.code === "room_join" && Date.now() - e.at < 3000 && !game.room) joinError = e.message;
+    if ((e?.code === "room_join" || e?.code === "room_closed") && Date.now() - e.at < 3000 && !game.room) joinError = e.message;
   });
 
   function leave() {
