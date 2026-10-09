@@ -265,8 +265,25 @@ wss.on("connection", async (ws, req) => {
     old.ws.close(4000, "replaced");
   }
   conns.set(idn.id, conn);
+  // attach before any await, or a socket that closes meanwhile stays in conns forever
+  ws.on("close", async () => {
+    if (conns.get(idn.id) !== conn) return;
+    conns.delete(idn.id);
+    const room = roomOf(idn.id);
+    if (room) room.disconnect(idn.id);
+    else {
+      const roomId = await redis.get(`proom:${idn.id}`);
+      const raw = roomId ? await redis.get(`room:${roomId}`) : null;
+      const node = raw ? (JSON.parse(raw).node as string) : null;
+      if (node && node !== NODE_ID) await forward(node, { from: idn.id, rtt: 0, msg: { type: "_dc" } });
+    }
+    await markDisconnected(idn.id);
+  });
+  // closed or replaced mid-resume: stop, so we don't mark a dead socket reconnected after its close ran
+  const stale = () => conns.get(idn.id) !== conn;
 
   const rankedOk = !(await rankedBlock(idn));
+  if (stale()) return;
   conn.send({ type: "hello", you: info, serverTime: Date.now(), verified: !!idn.user?.email_verified_at, rankedOk });
 
   // resume whatever this player was doing
@@ -279,6 +296,7 @@ wss.on("connection", async (ws, req) => {
       const raw = await redis.get(`room:${roomId}`);
       const node = raw ? (JSON.parse(raw).node as string) : null;
       if (node && node !== NODE_ID && (await nodeAlive(node))) {
+        if (stale()) return;
         inRoom = true;
         await forward(node, { from: idn.id, rtt: conn.rtt(), msg: { type: "_rc" } });
       } else {
@@ -287,6 +305,7 @@ wss.on("connection", async (ws, req) => {
       }
     }
   }
+  if (stale()) return;
   // lost a private room while offline (closed, or dropped for being away): say why
   const gone = await redis.getdel(`roomgone:${idn.id}`);
   if (gone && !inRoom) conn.send({ type: "room.closed", ...(JSON.parse(gone) as RoomGone) });
@@ -327,20 +346,6 @@ wss.on("connection", async (ws, req) => {
     conn.alive = true;
     conn.rtts.push(Date.now() - conn.pingSentAt);
     if (conn.rtts.length > 7) conn.rtts.shift();
-  });
-
-  ws.on("close", async () => {
-    if (conns.get(idn.id) !== conn) return;
-    conns.delete(idn.id);
-    const room = roomOf(idn.id);
-    if (room) room.disconnect(idn.id);
-    else {
-      const roomId = await redis.get(`proom:${idn.id}`);
-      const raw = roomId ? await redis.get(`room:${roomId}`) : null;
-      const node = raw ? (JSON.parse(raw).node as string) : null;
-      if (node && node !== NODE_ID) await forward(node, { from: idn.id, rtt: 0, msg: { type: "_dc" } });
-    }
-    await markDisconnected(idn.id);
   });
 });
 
