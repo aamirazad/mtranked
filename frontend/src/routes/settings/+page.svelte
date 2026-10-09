@@ -33,7 +33,7 @@
   // hover-intent for theme previews: the first preview waits until the pointer rests on a
   // theme, so sweeping the mouse across the grid doesn't flash every theme. once a preview
   // is showing, moving to another theme swaps instantly until the pointer leaves the grid.
-  const PREVIEW_DELAY = 700;
+  const PREVIEW_DELAY = 500;
   let previewTimer: ReturnType<typeof setTimeout> | undefined;
 
   function hoverTheme(id: string) {

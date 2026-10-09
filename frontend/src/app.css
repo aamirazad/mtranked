@@ -42,6 +42,25 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* registered as colors so theme changes (hover previews, room themes, the command line)
+   fade between themes instead of snapping */
+@property --color-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-main { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-caret { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-sub { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-sub-alt { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-text { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-error { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-error-extra { syntax: "<color>"; inherits: true; initial-value: transparent; }
+html {
+  transition-property: --color-bg, --color-main, --color-caret, --color-sub, --color-sub-alt, --color-text, --color-error, --color-error-extra;
+  transition-duration: 0.25s;
+  transition-timing-function: ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { transition: none; }
+}
+
 /* resets live in the base layer so utility classes can override them */
 @layer base {
   html {
