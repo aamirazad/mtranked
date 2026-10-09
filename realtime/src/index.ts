@@ -37,6 +37,7 @@ type RoomMsg = Extract<
       | "room.lock"
       | "room.rename"
       | "room.theme"
+      | "room.hurry"
       | "input.batch"
       | "race.leave";
   }
@@ -70,6 +71,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onRename(id, msg.name);
     case "room.theme":
       return room.onTheme(id, msg.theme);
+    case "room.hurry":
+      return room.onHurry(id);
   }
 }
 
@@ -110,7 +113,7 @@ async function handle(conn: Conn, msg: ClientMsg) {
       const current = roomOf(id);
       if (current && current.mode !== "ghost") return err(id, "busy", "Finish or leave your current room first.");
       const ban = await queueBanLeft(id);
-      if (ban > 0) return err(id, "queue_timeout", `You declined or forfeited too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
+      if (ban > 0) return err(id, "queue_timeout", `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
       if (await queueMeta(id)) await dequeue(id);
       let flagged = false;
       if (!conn.idn.guest) {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
-  import { Flag, WifiOff } from "@lucide/svelte";
+  import { Flag, Timer, WifiOff } from "@lucide/svelte";
   import {
     applyKey,
     calculateWpm,
@@ -11,7 +11,7 @@
     type Keystroke,
     type TypingState,
   } from "@mtr/engine";
-  import { INPUT_BATCH_MS } from "@mtr/race-protocol";
+  import { HURRY_MS, INPUT_BATCH_MS } from "@mtr/race-protocol";
   import { resolveEquipped } from "@mtr/shared";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
@@ -34,6 +34,8 @@
   let startPerf = $state(Infinity);
   let now = $state(performance.now());
   let finishedAt = $state<number | null>(null);
+  // `ts` is mutated in place, so templates read this instead of `ts.finished`
+  const done = $derived(finishedAt !== null);
   let pending: Keystroke[] = [];
   let seqBase = 0;
   let seqN = 0;
@@ -78,7 +80,7 @@
   const elapsed = $derived(Math.max(0, now - startPerf));
 
   function onkey(k: string) {
-    if (!isRacer || iAmOut || !started || ts.finished || game.result) return;
+    if (!isRacer || iAmOut || !started || ts.finished || timeUp || game.result) return;
     const t = Math.round(performance.now() - startPerf);
     applyKey(ts, k);
     pending.push({ k, t });
@@ -97,6 +99,8 @@
   });
   const myAcc = $derived.by(() => (void version, Math.round(accuracy(ts))));
 
+  const PRISM = "linear-gradient(90deg, #ff6b9a, #e2b714, #5ce0a0, #5cb8ff, #a78bfa)";
+
   const lanes = $derived.by(() => {
     void version;
     return race.players.map((p) => {
@@ -108,10 +112,10 @@
         mine,
         progress: Math.min(1, idx / Math.max(1, ts.textLength)),
         wpm: mine ? myWpm : (live?.wpm ?? 0),
-        done: mine ? ts.finished : !!live?.done,
+        done: mine ? done : !!live?.done,
         dc: !!live?.dc,
         out: !!live?.out,
-        color: p.caretColor === "prism" ? "#e2b714" : p.caretColor,
+        color: p.caretColor === "prism" ? PRISM : p.caretColor,
       };
     });
   });
@@ -122,7 +126,8 @@
       .map((p) => ({
         id: p.id,
         idx: game.live[p.id]?.idx ?? 0,
-        color: p.caretColor === "prism" ? "#e2b714" : p.caretColor,
+        color: p.caretColor,
+        shape: p.caretShape,
         name: race.players.length > 2 || p.ghost ? (p.ghost ? `ghost · ${p.name}` : p.name) : undefined,
       })),
   );
@@ -133,10 +138,15 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   });
   const waitingFor = $derived(lanes.filter((l) => !l.mine && !l.done && !l.out).map((l) => l.p.name));
+  // private-room host can call time once they're done
+  const isHost = $derived(race.mode === "private" && !!meId && game.room?.hostId === meId);
+  const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !game.result);
+  const hurryLeft = $derived((void now, race.deadline ? Math.max(0, Math.ceil((race.deadline - game.serverNow()) / 1000)) : 0));
+  const timeUp = $derived(!!race.deadline && hurryLeft === 0);
 
   let confirmLeave = $state(false);
   function leave() {
-    if (!confirmLeave && isRacer && !ts.finished) {
+    if (!confirmLeave && isRacer && !done) {
       confirmLeave = true;
       setTimeout(() => (confirmLeave = false), 3000);
       return;
@@ -152,8 +162,8 @@
     {#each lanes as l (l.p.id)}
       <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem] items-center gap-4 text-sm" class:opacity-50={l.out}>
         <div class="flex min-w-0 items-center gap-2">
-          {#if race.mode === "ranked" && l.p.rating !== undefined}
-            <TierBadge rating={l.p.rating} races={l.p.races} size="sm" showRating={false} />
+          {#if (race.mode === "ranked" || l.p.ghost) && l.p.rating !== undefined}
+            <TierBadge rating={l.p.rating} races={l.p.races} size="sm" showRating={!!l.p.ghost} />
           {/if}
           <span class="truncate" class:text-main={l.mine}>{l.p.ghost ? `ghost · ${l.p.name}` : l.p.name}</span>
           {#if l.dc}<WifiOff size={14} class="shrink-0 text-error" />{/if}
@@ -176,16 +186,22 @@
       <span class="text-3xl text-main tabular-nums">{clock}</span>
       {#if isRacer && prefs.liveWpm}<span class="text-xl text-sub tabular-nums">{myWpm} wpm · {myAcc}%</span>{/if}
     {/if}
+    {#if race.deadline && !game.result}
+      <span class="ml-auto flex items-center gap-2 text-xl text-error tabular-nums animate-pop">
+        <Timer size={20} />{timeUp ? "time's up" : `finish in ${hurryLeft}s`}
+      </span>
+    {/if}
     {#if !isRacer}<span class="text-sub">spectating — you'll join the next race</span>{/if}
   </div>
 
-  <div class="relative">
+  <!-- tall enough for the finished card even when the text is short -->
+  <div class="relative" class:min-h-64={isRacer && done && !game.result}>
     <TypingArea
       bind:this={area}
       {ts}
       {onkey}
       {carets}
-      active={isRacer && !iAmOut && !ts.finished}
+      active={isRacer && !iAmOut && !done && !timeUp}
       blurred={!started}
       caretColor={eq.caretColor}
       caretShape={eq.caretShape}
@@ -196,6 +212,28 @@
         {#key countdown}
           <div class="animate-pop font-logo text-8xl text-main drop-shadow-lg">{countdown}</div>
         {/key}
+      </div>
+    {/if}
+    {#if isRacer && done && !game.result}
+      <div class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade">
+        <div class="flex flex-col items-center gap-3 text-center animate-pop">
+          <div class="flex items-center gap-2 font-logo text-4xl text-main"><Flag size={28} /> finished!</div>
+          <div class="text-lg text-sub tabular-nums">
+            <span class="text-text">{myWpm}</span> wpm · <span class="text-text">{myAcc}%</span> acc ·
+            <span class="text-text">{((finishedAt ?? 0) / 1000).toFixed(1)}s</span>
+          </div>
+          {#if waitingFor.length}
+            <div class="text-sm text-sub">
+              {race.deadline ? "race ends when the timer runs out" : `waiting for ${waitingFor.join(", ")} to finish…`}
+            </div>
+          {/if}
+          {#if canHurry}
+            <button class="btn btn-main mt-1" onclick={() => game.send({ type: "room.hurry" })}>
+              <Timer size={16} /> call time · {HURRY_MS / 1000}s
+            </button>
+            <div class="text-xs text-sub">everyone still typing gets {HURRY_MS / 1000} seconds to finish</div>
+          {/if}
+        </div>
       </div>
     {/if}
     {#if started && elapsed < 450 && isRacer && !race.resumeKeys}
@@ -209,9 +247,6 @@
     <div>
       {#if iAmOut && !game.result}
         <span class="text-error">you forfeited this race</span> (left or idle for too long) · waiting for it to end…
-      {:else if ts.finished && !game.result}
-        <span class="text-main">finished!</span>
-        {#if waitingFor.length}waiting for {waitingFor.join(", ")}…{/if}
       {/if}
       {#if race.source}<span class="ml-2">— {race.source}</span>{/if}
     </div>

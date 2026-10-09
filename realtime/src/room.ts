@@ -19,6 +19,7 @@ import {
 } from "@mtr/engine";
 import {
   COUNTDOWN_MS,
+  HURRY_MS,
   MAX_PING_ALLOWANCE_MS,
   RACE_CAP_MS,
   READY_CHECK_MS,
@@ -90,6 +91,7 @@ type Race = {
   startAt: number;
   endAt: number;
   timeLimit: number;
+  deadline?: number;
   racers: Map<string, Racer>;
   finishCount: number;
   ended: boolean;
@@ -270,6 +272,7 @@ export class Room {
       startAt: r.startAt,
       endAt: r.endAt,
       timeLimit: r.timeLimit,
+      deadline: r.deadline,
       players: [...r.racers.values()].map((x) => x.info),
     };
   }
@@ -378,7 +381,7 @@ export class Room {
     const race = this.race;
     if (!race || race.id !== raceId || race.ended) return;
     const now = Date.now();
-    if (now < race.startAt) return;
+    if (now < race.startAt || now >= race.endAt) return;
     const r = race.racers.get(playerId);
     if (!r || r.out || r.finishMs !== null || seq <= r.lastSeq) return;
     r.lastSeq = seq;
@@ -410,15 +413,6 @@ export class Room {
     r.out = true;
     r.forfeit = true;
     r.outAt = Date.now() - this.race!.startAt;
-    // walking out of a matchmade race is a strike, same as declining it
-    if (this.mode === "ranked" || this.mode === "casual") void this.strikeForfeit(playerId);
-  }
-
-  private async strikeForfeit(playerId: string) {
-    const message = strikeWarning("You forfeited your last match by leaving it", await recordDecline(playerId));
-    if (this.members.get(playerId)?.connected) sendTo(playerId, { type: "notice", message });
-    // closed the tab: tell them when they come back
-    else await redis.set(`notice:${playerId}`, message, "EX", 24 * 3600);
   }
 
   private forceEnd() {
@@ -485,8 +479,10 @@ export class Room {
     const humans = [...race.racers.values()].filter((r) => !r.ghost);
     const humansDone = humans.every((r) => r.out || r.finishMs !== null);
     const allDone = [...race.racers.values()].every((r) => r.out || r.finishMs !== null);
+    // a forfeit hands a matchmade 1v1 to whoever stayed
+    const walkover = (this.mode === "ranked" || this.mode === "casual") && humans.some((r) => r.forfeit);
     // ghost races end as soon as the human is done; otherwise wait for everyone
-    if ((this.mode === "ghost" ? humansDone : allDone) || now >= race.endAt) void this.endRace();
+    if ((this.mode === "ghost" ? humansDone : allDone) || walkover || now >= race.endAt) void this.endRace();
   }
 
   // ------------------------------------------------------------ results
@@ -511,6 +507,7 @@ export class Room {
           name: r.info.name,
           guest: r.info.guest,
           ghost: !!r.ghost,
+          ghostRating: r.ghost && r.info.rating !== undefined ? { rating: r.info.rating, races: r.info.races } : undefined,
           placement: 0,
           wpm: st.wpm,
           raw: st.raw,
@@ -649,6 +646,17 @@ export class Room {
     if (playerId !== this.hostId || this.mode !== "private") return;
     if (this.status === "countdown" || this.status === "racing") return;
     await this.startRace(sameText && this.lastSettingsSeed ? this.lastSettingsSeed : undefined);
+  }
+
+  /** The host is done and tired of waiting: everyone still typing gets HURRY_MS to finish. */
+  onHurry(playerId: string) {
+    const race = this.race;
+    if (playerId !== this.hostId || this.mode !== "private" || this.status !== "racing") return;
+    if (!race || race.ended || race.timeLimit || race.deadline) return;
+    if (race.racers.get(playerId)?.finishMs == null) return;
+    race.deadline = Math.min(race.endAt, Date.now() + HURRY_MS);
+    race.endAt = race.deadline;
+    this.broadcast({ type: "race.deadline", raceId: race.id, deadline: race.deadline });
   }
 
   onSettings(playerId: string, settings: TextSettings) {

@@ -1,5 +1,6 @@
 import { sql, playerBits, getUser, currentSeason, getRating, type UserRow } from "@mtr/db";
 import type { PlayerPublic } from "@mtr/race-protocol";
+import { resolveEquipped } from "@mtr/shared";
 import { redis } from "./redis";
 import { env } from "./env";
 
@@ -21,6 +22,10 @@ export async function redeemTicket(ticket: string): Promise<Identity | null> {
   return { id: user.id, guest: false, name: user.display_name, user };
 }
 
+const PLAIN_BANNER = resolveEquipped(null).banner;
+/** Only a non-default banner is worth showing to others. */
+export const showBanner = (banner?: string) => (banner && banner !== PLAIN_BANNER ? banner : undefined);
+
 export async function publicInfo(idn: Identity): Promise<PlayerPublic> {
   if (idn.guest) {
     return { id: idn.id, name: idn.name, guest: true, level: 1, caretColor: "#e2b714", caretShape: "line", subscriber: false };
@@ -33,6 +38,7 @@ export async function publicInfo(idn: Identity): Promise<PlayerPublic> {
     level: b?.level ?? 1,
     caretColor: b?.caretColor ?? "#e2b714",
     caretShape: b?.caretShape ?? "line",
+    banner: showBanner(b?.banner),
     subscriber: b?.subscriber ?? false,
     rating: b?.rating,
     races: b?.races,

@@ -252,7 +252,10 @@ export const contract = c.router(
       matches: {
         method: "GET",
         path: "/users/:name/matches",
-        query: z.object({ offset: z.coerce.number().int().min(0).default(0) }),
+        query: z.object({
+          offset: z.coerce.number().int().min(0).default(0),
+          kind: z.enum(["ranked", "casual", "private"]).default("ranked"),
+        }),
         responses: { 200: c.type<{ matches: MatchSummary[]; more: boolean; limited: boolean }>(), 404: err },
       },
       ratingHistory: {

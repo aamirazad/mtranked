@@ -67,7 +67,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "banner-forest", type: "banner", name: "Forest", value: "linear-gradient(120deg,#1f3d2c,#2c2e31 70%)", unlock: { type: "level", level: 11 } },
   { id: "banner-gold", type: "banner", name: "Gilded", value: "linear-gradient(120deg,#5a4708,#2c2e31 70%)", unlock: { type: "tier", tier: "gold" } },
   { id: "banner-diamond", type: "banner", name: "Crystal", value: "linear-gradient(120deg,#26346b,#2c2e31 70%)", unlock: { type: "tier", tier: "diamond" } },
-  { id: "banner-supporter", type: "banner", name: "Supporter", value: "linear-gradient(120deg,#e2b714 -40%,#7e2a33 30%,#2c2e31 80%)", unlock: { type: "subscriber" } },
+  { id: "banner-supporter", type: "banner", name: "Supporter", value: "linear-gradient(120deg,#433309,#3f1e25 40%,#2c2e31 80%)", unlock: { type: "subscriber" } },
 ];
 
 export type Equipped = { caret_color: string; caret_shape: string; finish: string; banner: string };

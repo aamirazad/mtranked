@@ -43,6 +43,8 @@ export const PlayerPublic = z.object({
   level: z.number(),
   caretColor: z.string(),
   caretShape: z.string(),
+  /** equipped profile banner; omitted for the default plain one */
+  banner: z.string().optional(),
   subscriber: z.boolean(),
 });
 export type PlayerPublic = z.infer<typeof PlayerPublic>;
@@ -66,6 +68,8 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room.rename"), name: z.string().max(ROOM_NAME_MAX) }),
   /** supporter hosts can dress the room in a theme (null clears it) */
   z.object({ type: z.literal("room.theme"), theme: z.string().max(32).nullable() }),
+  /** a host who has finished gives everyone still typing HURRY_MS to finish */
+  z.object({ type: z.literal("room.hurry") }),
   z.object({
     type: z.literal("input.batch"),
     raceId: z.string(),
@@ -94,6 +98,8 @@ export type RaceResultRow = {
   name: string;
   guest: boolean;
   ghost?: boolean;
+  /** a ghost's current rating, so a win over it has context */
+  ghostRating?: { rating: number; races?: number };
   placement: number;
   wpm: number;
   raw: number;
@@ -137,6 +143,8 @@ export type RaceStart = {
   startAt: number;
   endAt: number;
   timeLimit: number;
+  /** set once the host calls time: the race ends here, finished or not */
+  deadline?: number;
   players: PlayerPublic[];
 };
 
@@ -164,6 +172,7 @@ export type ServerMsg =
   | ({ type: "race.countdown" } & RaceStart)
   | ({ type: "race.resume"; keys: { k: string; t: number }[] } & RaceStart)
   | { type: "race.state"; raceId: string; t: number; players: LivePlayer[] }
+  | { type: "race.deadline"; raceId: string; deadline: number }
   | {
       type: "race.result";
       raceId: string;
@@ -196,3 +205,4 @@ export const RECONNECT_GRACE_MS = 15_000;
 export const RACE_CAP_MS = 120_000;
 export const MAX_PING_ALLOWANCE_MS = 150;
 export const REMATCH_MS = 30_000;
+export const HURRY_MS = 15_000;

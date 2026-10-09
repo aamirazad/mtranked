@@ -7,7 +7,7 @@
   import { api, errorMessage } from "#lib/api.ts";
   import TypingArea from "#lib/components/TypingArea.svelte";
 
-  type Track = { slot: number; name: string; color: string; keys: Keystroke[]; state: TypingState; i: number };
+  type Track = { slot: number; name: string; color: string; caret: string; keys: Keystroke[]; state: TypingState; i: number };
 
   let match = $state<MatchDetail | null>(null);
   let error = $state<string | null>(null);
@@ -33,6 +33,7 @@
           slot: p.slot,
           name: p.name,
           color: p.caretColor === "prism" ? "#e2b714" : p.caretColor,
+          caret: p.caretColor,
           keys: p.keystrokes!,
           state: createState(m.text),
           i: 0,
@@ -85,7 +86,7 @@
     void frame;
     return tracks
       .filter((x) => x.slot !== focusSlot)
-      .map((x) => ({ id: String(x.slot), idx: caretIndex(x.state), color: x.color, name: x.name }));
+      .map((x) => ({ id: String(x.slot), idx: caretIndex(x.state), color: x.caret, name: x.name }));
   });
   const stats = $derived.by(() => {
     void frame;
@@ -97,7 +98,7 @@
       done: x.state.finished,
     }));
   });
-  const focusColor = $derived(tracks.find((x) => x.slot === focusSlot)?.color ?? "#e2b714");
+  const focusColor = $derived(tracks.find((x) => x.slot === focusSlot)?.caret ?? "#e2b714");
 </script>
 
 <svelte:head><title>Replay · MT Ranked</title></svelte:head>

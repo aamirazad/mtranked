@@ -30,7 +30,24 @@
     if (page.url.searchParams.get("subscribed")) toasts.show("Thanks for supporting MT Ranked! Perks are active.", "success", 6000);
   });
 
-  onDestroy(() => (prefs.preview = null));
+  // hover-intent for theme previews: the first preview waits until the pointer rests on a
+  // theme, so sweeping the mouse across the grid doesn't flash every theme. once a preview
+  // is showing, moving to another theme swaps instantly until the pointer leaves the grid.
+  const PREVIEW_DELAY = 700;
+  let previewTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function hoverTheme(id: string) {
+    clearTimeout(previewTimer);
+    if (prefs.preview) prefs.preview = id;
+    else previewTimer = setTimeout(() => (prefs.preview = id), PREVIEW_DELAY);
+  }
+
+  function endPreview() {
+    clearTimeout(previewTimer);
+    prefs.preview = null;
+  }
+
+  onDestroy(endPreview);
 
   async function load() {
     const [c, s, b] = await Promise.all([api.me.cosmetics(), api.auth.sessions(), api.billing.status()]);
@@ -149,16 +166,15 @@
     <h2 class="label mb-1 text-sm">preferences</h2>
     <p class="mb-5 text-xs text-sub">{session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere to change these without the mouse.</p>
     <div class="label mb-2">theme</div>
-    <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+    <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" role="presentation" onmouseleave={endPreview}>
       {#each THEMES as t (t.id)}
         {@const on = prefs.theme === t.id}
         <button
           class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm"
           style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
-          onmouseenter={() => (prefs.preview = t.id)}
-          onmouseleave={() => (prefs.preview = null)}
+          onmouseenter={() => hoverTheme(t.id)}
           onfocus={() => (prefs.preview = t.id)}
-          onblur={() => (prefs.preview = null)}
+          onblur={endPreview}
           onclick={() => prefs.set("theme", t.id)}
         >
           <span class="truncate">{t.name}</span>

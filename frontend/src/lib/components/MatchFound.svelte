@@ -45,7 +45,11 @@
         {#if i === 1}
           <div class="font-logo text-3xl text-sub">vs</div>
         {:else if p}
-          <div class="flex flex-col items-center gap-2 text-center" class:opacity-60={!match.ready.includes(p.id)}>
+          <div
+            class="flex flex-col items-center gap-2 rounded-xl px-4 py-5 text-center transition-opacity"
+            class:opacity-60={!match.ready.includes(p.id)}
+            style={p.banner ? `background: ${p.banner}` : undefined}
+          >
             <div class="text-xl" class:text-main={p.id === meId}>{p.name}</div>
             {#if p.rating !== undefined && match.mode === "ranked"}
               <TierBadge rating={p.rating} races={p.races} />
@@ -70,7 +74,7 @@
     </div>
     {#if !imReady}
       <div class="mt-4 text-center text-xs text-sub">
-        declining or missing the ready check takes you out of the queue · 3 declines or forfeits in 10 minutes lock the queue for 5 minutes
+        declining or missing the ready check takes you out of the queue · 3 declines in 10 minutes lock the queue for 5 minutes
       </div>
     {/if}
   </div>

@@ -116,6 +116,7 @@ export type PublicProfileBits = {
   level: number;
   caretColor: string;
   caretShape: string;
+  banner: string;
   subscriber: boolean;
   rating: number;
   races: number;
@@ -133,6 +134,7 @@ export async function playerBits(userId: string): Promise<PublicProfileBits | un
     level: levelFromXp(u.xp).level,
     caretColor: eq.caretColor,
     caretShape: eq.caretShape,
+    banner: eq.banner,
     subscriber: u.is_subscriber,
     rating: Math.round(r.rating),
     races: r.races,

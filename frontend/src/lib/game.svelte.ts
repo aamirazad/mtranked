@@ -225,6 +225,9 @@ class Game {
           this.live = live;
         }
         break;
+      case "race.deadline":
+        if (this.race?.raceId === msg.raceId) this.race.deadline = msg.deadline;
+        break;
       case "race.result":
         this.result = msg;
         this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;

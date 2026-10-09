@@ -8,7 +8,7 @@ import { resolveEquipped, levelFromXp } from "@mtr/shared";
 import { sendTo, conns } from "./hub";
 import { NODE_ID, redis } from "./redis";
 import { Room, roomOf, type Member, type GhostSource } from "./room";
-import type { Identity } from "./players";
+import { showBanner, type Identity } from "./players";
 
 const META = "qmeta";
 const GHOST_AFTER_MS = 60_000;
@@ -86,7 +86,7 @@ export async function requeue(m: Member, mode: QueueMode) {
 export const STRIKE_LIMIT = 3;
 
 /**
- * Declines, missed ready checks and forfeits are strikes; STRIKE_LIMIT in 10
+ * Declines and missed ready checks are strikes; STRIKE_LIMIT in 10
  * minutes = 5 minute queue timeout. Returns how many strikes are left before
  * the timeout (0 means this one started it).
  */
@@ -104,8 +104,8 @@ export async function recordDecline(id: string): Promise<number> {
 /** What to tell a player about the strike they just got. */
 export function strikeWarning(what: string, left: number) {
   return left === 0
-    ? `${what}. That's ${STRIKE_LIMIT} declines or forfeits in 10 minutes, so the queue is locked for 5 minutes.`
-    : `${what}. ${left} more decline${left === 1 ? "" : "s"} or forfeit${left === 1 ? "" : "s"} within 10 minutes and you'll be locked out of the queue for 5 minutes.`;
+    ? `${what}. That's ${STRIKE_LIMIT} declines in 10 minutes, so the queue is locked for 5 minutes.`
+    : `${what}. ${left} more decline${left === 1 ? "" : "s"} within 10 minutes and you'll be locked out of the queue for 5 minutes.`;
 }
 
 export async function queueBanLeft(id: string): Promise<number> {
@@ -241,8 +241,7 @@ export async function startGhostRace(idn: Identity, info: PlayerPublic): Promise
   const season = await currentSeason();
   const rating = meta.rating?.rating ?? 1500;
   const rows = await sql`
-    select m.id, m.text, r.keystrokes, u.display_name, u.equipped, u.xp,
-      coalesce(rt.rating, mp.rating_before, 1500) rating
+    select m.id, m.text, r.keystrokes, u.display_name, u.equipped, u.xp, rt.rating, rt.races
     from match_players mp
     join matches m on m.id = mp.match_id
     join replays r on r.match_id = mp.match_id and r.slot = mp.slot
@@ -264,11 +263,13 @@ export async function startGhostRace(idn: Identity, info: PlayerPublic): Promise
       name: g.display_name,
       guest: false,
       ghost: true,
-      rating: Math.round(g.rating),
-      races: 99,
+      // only ghosts with a rating this season show one
+      rating: g.rating == null ? undefined : Math.round(g.rating),
+      races: g.races ?? undefined,
       level: levelFromXp(g.xp).level,
       caretColor: eq.caretColor,
       caretShape: eq.caretShape,
+      banner: showBanner(eq.banner),
       subscriber: false,
     },
   };

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export type OtherCaret = { id: string; idx: number; color: string; name?: string; done?: boolean };
+  export type OtherCaret = { id: string; idx: number; color: string; shape?: string; name?: string; done?: boolean };
 </script>
 
 <script lang="ts">
@@ -134,6 +134,9 @@
     return letterPos(el, Math.min(idx - offs[lo]!, word.length));
   }
 
+  // matches Caret: the classic and prism carets use the theme colour
+  const tagColor = (color: string) => (color === "prism" || color === "#e2b714" ? "var(--color-caret)" : color);
+
   const otherPositions = $derived.by(() => {
     void layoutVersion;
     return carets.map((c) => ({ ...c, pos: posForIndex(c.idx) }));
@@ -227,9 +230,9 @@
       {#each otherPositions as c (c.id)}
         <div
           class="other-caret pointer-events-none absolute"
-          style="transform: translate({c.pos.x}px, {c.pos.y}px); height: {c.pos.h}px; --c: {c.color}"
+          style="transform: translate({c.pos.x}px, {c.pos.y}px); height: {c.pos.h}px; --c: {tagColor(c.color)}"
         >
-          <div class="bar"></div>
+          <Caret x={0} y={0} h={c.pos.h} color={c.color} shape={c.shape ?? "line"} smooth={false} ghost />
           {#if c.name}<div class="tag">{c.name}</div>{/if}
         </div>
       {/each}
@@ -276,15 +279,6 @@
     width: 2px;
     transition: transform 0.11s linear;
     will-change: transform;
-  }
-  .other-caret .bar {
-    position: absolute;
-    top: 12%;
-    height: 76%;
-    width: 2px;
-    border-radius: 2px;
-    background: var(--c);
-    opacity: 0.55;
   }
   .other-caret .tag {
     position: absolute;

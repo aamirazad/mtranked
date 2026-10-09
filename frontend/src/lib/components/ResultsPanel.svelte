@@ -133,6 +133,7 @@
             <span class="inline-flex items-center gap-2">
               {#if r.ghost}<Ghost size={14} class="text-sub" />{/if}
               {#if !r.guest && !r.ghost}<a href="/u/{r.name}" class="hover:underline">{r.name}</a>{:else}{r.name}{/if}
+              {#if r.ghostRating}<TierBadge rating={r.ghostRating.rating} races={r.ghostRating.races} size="sm" />{/if}
               {#if r.guest}<span class="text-xs text-sub">guest</span>{/if}
               {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
             </span>

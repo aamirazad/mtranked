@@ -7,7 +7,8 @@
     shape = "line",
     blink = false,
     smooth = true,
-  }: { x: number; y: number; h: number; color?: string; shape?: string; blink?: boolean; smooth?: boolean } = $props();
+    ghost = false,
+  }: { x: number; y: number; h: number; color?: string; shape?: string; blink?: boolean; smooth?: boolean; ghost?: boolean } = $props();
 
   // the default "classic" caret follows the site theme
   const c = $derived(color === "prism" || color === "#e2b714" ? "var(--color-caret)" : color);
@@ -17,6 +18,7 @@
   class="caret {shape}"
   class:blink
   class:smooth
+  class:ghost
   class:prism={color === "prism"}
   style="transform: translate({x}px, {y}px); height: {h}px; --c: {c}"
   aria-hidden="true"
@@ -29,6 +31,10 @@
     top: 0;
     pointer-events: none;
     will-change: transform;
+  }
+  /* someone else's caret: same cosmetic, faded so yours stays the focus */
+  .caret.ghost {
+    opacity: 0.45;
   }
   .caret.smooth {
     transition: transform 0.08s ease-out;

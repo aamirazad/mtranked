@@ -8,6 +8,7 @@ import { rateLimit } from "../redis";
 const s = initServer();
 const PAGE = 20;
 const HISTORY_POINTS = 1000;
+const KIND_MODES = { ranked: ["ranked"], casual: ["casual", "ghost"], private: ["private"] };
 const unauth = { status: 401 as const, body: { message: "Sign in first." } };
 
 export const meRouter = s.router(contract.me, {
@@ -137,19 +138,20 @@ export const usersRouter = s.router(contract.users, {
   matches: async ({ params, query }) => {
     const u = await userByName(params.name);
     if (!u) return { status: 404, body: { message: "No such player." } };
-    const cap = u.is_subscriber ? Infinity : FREE_HISTORY_LIMIT;
-    const limit = Math.max(0, Math.min(PAGE, cap - query.offset));
-    const rows = limit
-      ? await sql`
+    // free accounts only see races within their last FREE_HISTORY_LIMIT, across all kinds
+    const window = u.is_subscriber
+      ? sql``
+      : sql`and m.id in (select y.match_id from match_players y join matches z on z.id = y.match_id
+          where y.user_id = ${u.id} and z.mode <> 'seed' order by z.finished_at desc limit ${FREE_HISTORY_LIMIT})`;
+    const rows = await sql`
         select m.id, m.mode, m.status, m.finished_at, mp.placement, mp.wpm, mp.accuracy, mp.rating_delta, mp.finished,
           (select count(*)::int from match_players x where x.match_id = m.id) players,
           (select coalesce(ou.display_name, x.guest_name) from match_players x left join users ou on ou.id = x.user_id
              where x.match_id = m.id and x.slot <> mp.slot order by x.slot limit 1) opponent
         from match_players mp join matches m on m.id = mp.match_id
-        where mp.user_id = ${u.id} and m.mode <> 'seed'
-        order by m.finished_at desc offset ${query.offset} limit ${limit + 1}`
-      : [];
-    const matches: MatchSummary[] = rows.slice(0, limit).map((r) => ({
+        where mp.user_id = ${u.id} and m.mode in ${sql(KIND_MODES[query.kind])} ${window}
+        order by m.finished_at desc offset ${query.offset} limit ${PAGE + 1}`;
+    const matches: MatchSummary[] = rows.slice(0, PAGE).map((r) => ({
       matchId: r.id,
       mode: r.mode,
       status: r.status,
@@ -162,8 +164,14 @@ export const usersRouter = s.router(contract.users, {
       finished: r.finished,
       opponent: r.players === 2 ? r.opponent : null,
     }));
-    const more = rows.length > limit && query.offset + limit < cap;
-    return { status: 200, body: { matches, more, limited: !u.is_subscriber && query.offset + limit >= cap } };
+    const more = rows.length > PAGE;
+    let limited = false;
+    if (!u.is_subscriber && !more) {
+      const [c] = await sql`select count(*)::int n from match_players mp join matches m on m.id = mp.match_id
+        where mp.user_id = ${u.id} and m.mode <> 'seed'`;
+      limited = c!.n > FREE_HISTORY_LIMIT;
+    }
+    return { status: 200, body: { matches, more, limited } };
   },
 
   ratingHistory: async ({ params }) => {
