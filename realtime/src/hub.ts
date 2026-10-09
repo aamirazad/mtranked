@@ -49,6 +49,11 @@ export function deliver(ids: Iterable<string>, msg: ServerMsg) {
 
 export const sendTo = (id: string, msg: ServerMsg) => deliver([id], msg);
 
+/** Hold a message for a player who's offline; it's shown when they reconnect. */
+export async function holdNotice(id: string, message: string) {
+  await redis.set(`notice:${id}`, message, "EX", 1800);
+}
+
 export const rttOf = (id: string) => conns.get(id)?.rtt() ?? remoteRtt.get(id) ?? 100;
 const remoteRtt = new Map<string, number>();
 

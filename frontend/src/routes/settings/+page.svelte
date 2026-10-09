@@ -255,7 +255,7 @@
         onpointerleave={perk ? (e) => e.currentTarget.style.removeProperty("--angle") : undefined}
         title={open ? c.name : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
       >
-        <span class="relative block h-8 w-full overflow-hidden rounded" style={c.type === "banner" ? `background: ${c.value}` : ""}>
+        <span class="relative block h-8 w-full overflow-hidden rounded" class:banner={c.type === "banner"} style={c.type === "banner" ? `background: ${c.value}` : ""}>
           {#if c.type === "caret_color"}
             <Caret x={6} y={0} h={32} color={c.value} shape={equippedId("caret_shape") ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line") : "line"} smooth={false} />
           {:else if c.type === "caret_shape"}

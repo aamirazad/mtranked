@@ -36,7 +36,7 @@ import {
 } from "@mtr/race-protocol";
 import { rate, ROOM_CAP_FREE, ROOM_CAP_SUBSCRIBER, ROOM_CODE_ALPHABET, SPEED_CEILING_WPM, themeById, xpForRace } from "@mtr/shared";
 import { currentSeason, type RatingRow } from "@mtr/db";
-import { deliver, rttOf, sendTo } from "./hub";
+import { deliver, holdNotice, rttOf, sendTo } from "./hub";
 import type { Identity } from "./players";
 import { NODE_ID, redis } from "./redis";
 import { analyzeTiming, type Flag } from "./anticheat";
@@ -298,17 +298,14 @@ export class Room {
       const isBad = bad.has(m.idn.id);
       const requeued = !isBad && (this.mode === "ranked" || this.mode === "casual");
       const what = reason === "declined" ? "You declined the match and left the queue" : "You didn't ready up in time and left the queue";
-      sendTo(m.idn.id, {
-        type: "match.cancelled",
-        matchId: this.matchId,
-        // only ranked declines count as strikes; casual just leaves the queue
-        reason: !isBad
-          ? "Your opponent didn't accept."
-          : this.mode === "ranked"
-            ? strikeWarning(what, await recordDecline(m.idn.id))
-            : `${what}.`,
-        requeued,
-      });
+      // only ranked declines count as strikes; casual just leaves the queue
+      const why = !isBad
+        ? "Your opponent didn't accept."
+        : this.mode === "ranked"
+          ? strikeWarning(what, await recordDecline(m.idn.id))
+          : `${what}.`;
+      sendTo(m.idn.id, { type: "match.cancelled", matchId: this.matchId, reason: why, requeued });
+      if (!m.connected && !requeued) await holdNotice(m.idn.id, why);
       if (requeued) await requeue(m, this.mode as "ranked" | "casual");
     }
     this.close();

@@ -1,8 +1,9 @@
 <script lang="ts">
   import "../app.css";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Crown, Info, Keyboard, Settings, Shield, Swords, UserRound, LogIn } from "@lucide/svelte";
+  import { Crown, Info, Keyboard, Settings, Shield, Swords, UserRound, LogIn, X } from "@lucide/svelte";
   import { session } from "#lib/session.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
   import Toasts from "#lib/components/Toasts.svelte";
@@ -33,6 +34,19 @@
   });
   const syncPrefs = () => void prefs.sync();
   const onvisible = () => document.visibilityState === "visible" && syncPrefs();
+
+  // queueing carries on while browsing: show it in the header, and bring the
+  // player back to the play page when a match is found
+  let now = $state(Date.now());
+  const iv = setInterval(() => (now = Date.now()), 500);
+  onDestroy(() => clearInterval(iv));
+  const queuedAway = $derived(!!game.queueMode && !game.match && page.url.pathname !== `/play/${game.queueMode}`);
+  const waited = $derived((void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0));
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  $effect(() => {
+    const m = game.match;
+    if (m && (m.mode === "ranked" || m.mode === "casual") && page.url.pathname !== `/play/${m.mode}`) goto(`/play/${m.mode}`);
+  });
 
   // during a race keep the chrome quiet, like monkeytype's focus mode
   const racing = $derived(!!game.race && !game.result && page.url.pathname !== "/");
@@ -65,6 +79,18 @@
       {/if}
     </nav>
     <div class="ml-auto flex items-center gap-2 text-sub">
+      {#if queuedAway}
+        <div class="flex items-center rounded-md bg-sub-alt text-sm animate-fade">
+          <a href="/play/{game.queueMode}" class="flex items-center gap-2 py-1.5 pl-3 pr-1 transition-colors hover:text-text" title="back to the queue">
+            <span class="h-2 w-2 animate-pulse rounded-full bg-main"></span>
+            <span class="hidden sm:inline">{game.queueMode}</span>
+            <span class="tabular-nums text-main">{game.queue ? fmt(waited) : "…"}</span>
+          </a>
+          <button class="rounded-md p-1.5 transition-colors hover:text-error" aria-label="leave queue" title="leave queue" onclick={() => game.leaveQueue()}>
+            <X size={14} />
+          </button>
+        </div>
+      {/if}
       {#if session.me}
         <a href="/u/{session.me.displayName}" class="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:text-text">
           <UserRound size={18} />

@@ -46,8 +46,9 @@
           <div class="font-logo text-3xl text-sub">vs</div>
         {:else if p}
           <div
-            class="flex flex-col items-center gap-2 rounded-xl px-4 py-5 text-center transition-opacity"
-            class:opacity-60={!match.ready.includes(p.id)}
+            class="banner flex flex-col items-center gap-2 rounded-xl bg-bg px-4 py-5 text-center outline-2 -outline-offset-2 transition-[outline-color]"
+            class:outline-win={match.ready.includes(p.id)}
+            class:outline-transparent={!match.ready.includes(p.id)}
             style={p.banner ? `background: ${p.banner}` : undefined}
           >
             <div class="text-xl" class:text-main={p.id === meId}>{p.name}</div>
@@ -56,7 +57,7 @@
             {:else}
               <div class="text-sm text-sub">level {p.level}</div>
             {/if}
-            <div class="text-xs {match.ready.includes(p.id) ? 'text-win' : 'text-sub'}">{match.ready.includes(p.id) ? "ready" : "waiting"}</div>
+            <div class="rounded-full bg-black/30 px-2.5 py-0.5 text-xs {match.ready.includes(p.id) ? 'text-win' : 'text-sub'}">{match.ready.includes(p.id) ? "ready" : "waiting"}</div>
           </div>
         {/if}
       {/each}

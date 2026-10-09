@@ -75,6 +75,15 @@
   .link { @apply text-main hover:text-text transition-colors; }
   .toggle { @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text; }
   .toggle.on { @apply text-main; }
+  /* profile banner surface; the gradient itself comes in via inline style.
+     a hairline inner edge and shadowed text keep it legible on any banner,
+     and muted text is lifted so it doesn't vanish into the colour */
+  .banner {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.1);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+  }
+  .banner .text-sub,
+  .banner .label { color: color-mix(in srgb, var(--color-text) 70%, transparent); }
   /* dim rainbow border for supporter cosmetics among the regular ones.
      --angle is pointed at the cursor while hovering (see settings page) */
   .supporter-tile {

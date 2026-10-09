@@ -45,7 +45,7 @@
   <div class="pt-16 text-center text-sub">loading…</div>
 {:else}
   <div class="mx-auto max-w-[1000px] animate-fade">
-    <div class="rounded-2xl p-8" style="background: {profile.banner}">
+    <div class="banner rounded-2xl p-8" style="background: {profile.banner}">
       <div class="flex flex-wrap items-center gap-8">
         <TierBadge rating={profile.rating} races={profile.races} size="lg" showRating={false} />
         <div class="min-w-0">

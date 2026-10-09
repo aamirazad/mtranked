@@ -14,11 +14,14 @@ import {
   markReconnected,
   queueBanLeft,
   queueMeta,
+  resumeQueue,
   startGhostRace,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
+
+const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
 
 const member = (idn: Identity, info: PlayerPublic): Member => ({ idn, info, connected: true, dcAt: null, ready: false });
 
@@ -112,6 +115,7 @@ async function handle(conn: Conn, msg: ClientMsg) {
     case "queue.join": {
       const current = roomOf(id);
       if (current && current.mode !== "ghost") return err(id, "busy", "Finish or leave your current room first.");
+      if (await resumeQueue(id, msg.mode)) return;
       // decline lockouts only apply to ranked
       const ban = msg.mode === "ranked" ? await queueBanLeft(id) : 0;
       if (ban > 0) return err(id, "queue_timeout", `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
@@ -155,7 +159,7 @@ async function handle(conn: Conn, msg: ClientMsg) {
         else if (current.mode === "ghost") current.close();
         else return err(id, "busy", "Finish your current match first.");
       }
-      await dequeue(id);
+      await dequeue(id, LEFT_FOR_ROOM);
       conn.info = await publicInfo(conn.idn);
       Room.createPrivate(member(conn.idn, conn.info), { ...DEFAULT_ROOM_SETTINGS, ...msg.settings });
       return;
@@ -169,7 +173,7 @@ async function handle(conn: Conn, msg: ClientMsg) {
         else if (current.mode === "ghost") current.close();
         else return err(id, "busy", "Finish your current match first.");
       }
-      await dequeue(id);
+      await dequeue(id, LEFT_FOR_ROOM);
       conn.info = await publicInfo(conn.idn);
       const localId = roomByCode.get(code);
       if (localId) {
@@ -227,6 +231,7 @@ wss.on("connection", async (ws, req) => {
 
   // resume whatever this player was doing
   const local = roomOf(idn.id);
+  let inRoom = !!local;
   if (local) local.reconnect(idn.id);
   else {
     const roomId = await redis.get(`proom:${idn.id}`);
@@ -234,6 +239,7 @@ wss.on("connection", async (ws, req) => {
       const raw = await redis.get(`room:${roomId}`);
       const node = raw ? (JSON.parse(raw).node as string) : null;
       if (node && node !== NODE_ID && (await nodeAlive(node))) {
+        inRoom = true;
         await forward(node, { from: idn.id, rtt: conn.rtt(), msg: { type: "_rc" } });
       } else {
         await redis.del(`proom:${idn.id}`);
@@ -241,7 +247,8 @@ wss.on("connection", async (ws, req) => {
       }
     }
   }
-  await markReconnected(idn.id);
+  // tell the client it isn't queued, so a tab that lost its place doesn't keep showing a search
+  if (!(await markReconnected(idn.id)) && !inRoom) conn.send({ type: "queue.left" });
   const notice = await redis.getdel(`notice:${idn.id}`);
   if (notice) conn.send({ type: "notice", message: notice });
 

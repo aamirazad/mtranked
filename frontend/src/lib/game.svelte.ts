@@ -166,7 +166,10 @@ class Game {
       case "error":
         this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
         // queue refusals are shown in place by the play page
-        if (msg.code !== "queue_timeout" && msg.code !== "ranked_blocked") toasts.show(msg.message, "error", 6000);
+        if (msg.code === "queue_timeout" || msg.code === "ranked_blocked") {
+          this.queue = null;
+          this.queueMode = null;
+        } else toasts.show(msg.message, "error", 6000);
         break;
       case "notice":
         toasts.show(msg.message, "error", 10_000);
@@ -178,6 +181,9 @@ class Game {
       case "queue.left":
         this.queue = null;
         this.queueMode = null;
+        // sent on reconnect when we're in neither a queue nor a room, so a ready
+        // check that ended while we were away is over
+        if (this.match && this.serverNow() > this.match.readyBy) this.match = null;
         if (msg.reason) toasts.show(msg.reason);
         break;
       case "match.found":

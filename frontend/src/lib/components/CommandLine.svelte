@@ -177,7 +177,7 @@
     // esc opens it too, unless the user picked esc as their quick restart key
     if (e.key !== "Escape" || prefs.quickRestart === "esc") return;
     // esc already means something in these places
-    if (game.queueMode || game.match) return;
+    if ((game.queueMode && page.url.pathname.startsWith("/play/")) || game.match) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") && !t.closest("[role=textbox]")) return;
     e.preventDefault();

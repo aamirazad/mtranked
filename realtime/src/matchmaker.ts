@@ -5,7 +5,7 @@ import { randomInt } from "node:crypto";
 import { sql, currentSeason, type RatingRow } from "@mtr/db";
 import type { QueueMode, PlayerPublic } from "@mtr/race-protocol";
 import { resolveEquipped, levelFromXp } from "@mtr/shared";
-import { sendTo, conns } from "./hub";
+import { sendTo, conns, holdNotice } from "./hub";
 import { NODE_ID, redis } from "./redis";
 import { Room, roomOf, type Member, type GhostSource } from "./room";
 import { showBanner, type Identity } from "./players";
@@ -62,7 +62,21 @@ export async function queueMeta(id: string) {
   return getMeta(id);
 }
 
-/** Player's socket dropped: keep their spot for the grace period. */
+/**
+ * Asked to join the queue they're already in (e.g. the page reloaded): keep
+ * their place and wait time instead of starting over.
+ */
+export async function resumeQueue(id: string, mode: QueueMode): Promise<boolean> {
+  const meta = await getMeta(id);
+  if (meta?.mode !== mode) return false;
+  await markReconnected(id);
+  return true;
+}
+
+/**
+ * Player's socket dropped: keep their spot for the grace period so a page
+ * reload or a short network blip doesn't cost them their place.
+ */
 export async function markDisconnected(id: string) {
   const meta = await getMeta(id);
   if (!meta) return;
@@ -70,12 +84,14 @@ export async function markDisconnected(id: string) {
   await redis.hset(META, id, JSON.stringify(meta));
 }
 
-export async function markReconnected(id: string) {
+/** Returns whether the player is still queued. */
+export async function markReconnected(id: string): Promise<boolean> {
   const meta = await getMeta(id);
-  if (!meta) return;
+  if (!meta) return false;
   delete meta.dcAt;
   await redis.hset(META, id, JSON.stringify(meta));
-  sendStatus(meta, 0);
+  sendStatus(meta, await redis.zcard(meta.key));
+  return true;
 }
 
 export async function requeue(m: Member, mode: QueueMode) {
@@ -151,6 +167,7 @@ async function matchQueue(key: QueueKey) {
     const m = JSON.parse(raw) as Meta;
     if (m.dcAt && now - m.dcAt > QUEUE_GRACE_MS) {
       await redis.multi().zrem(key, m.idn.id).hdel(META, m.idn.id).exec();
+      await holdNotice(m.idn.id, "You were away for a while, so you were taken out of the queue.");
       continue;
     }
     entries.push(m);

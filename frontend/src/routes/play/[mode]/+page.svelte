@@ -32,9 +32,11 @@
     if (!busy && game.queueMode !== mode) game.joinQueue(mode);
   });
 
+  // the queue keeps searching while the player browses the rest of the site;
+  // a ghost race is only played here, so leaving drops it
   onDestroy(() => {
     clearInterval(iv);
-    if (game.queueMode && !game.match) game.leaveQueue();
+    if (game.race?.mode === "ghost" && !game.result) game.leaveRace();
     if (game.result) game.clearRace();
   });
 
@@ -193,7 +195,10 @@
         {/if}
       </div>
     {/if}
-    <button class="btn btn-ghost mt-10" onclick={cancel}><X size={16} /> cancel <kbd>esc</kbd></button>
+    <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+      <a class="btn" href="/">queue in the background</a>
+      <button class="btn btn-ghost" onclick={cancel}><X size={16} /> cancel <kbd>esc</kbd></button>
+    </div>
   </div>
 {/if}
 
