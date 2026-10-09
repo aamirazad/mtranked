@@ -179,7 +179,7 @@ class Game {
       case "error":
         this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
         // queue refusals are shown in place by the play page
-        if (msg.code === "queue_timeout" || msg.code === "ranked_blocked") {
+        if (msg.code === "queue_timeout" || msg.code === "ranked_blocked" || msg.code === "suspended") {
           this.queue = null;
           this.queueMode = null;
         } else toasts.show(msg.message, "error", 6000);

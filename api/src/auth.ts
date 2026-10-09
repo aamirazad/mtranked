@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 import type { Request, Response } from "express";
-import { sql, getUser, currentSeason, getRating, type UserRow } from "@mtr/db";
+import { sql, getUser, currentSeason, getRating, suspension, type UserRow } from "@mtr/db";
 import { levelFromXp, DEFAULT_EQUIPPED, type Equipped } from "@mtr/shared";
 import type { Me } from "@mtr/contracts";
 import { env } from "./env";
@@ -66,7 +66,8 @@ export async function deleteSessionByToken(req: Request) {
 }
 
 export function rankedBlock(u: UserRow): string | null {
-  if (u.banned_at) return "This account is banned.";
+  const suspended = suspension(u);
+  if (suspended) return suspended;
   if (!u.email_verified_at) return "Verify your email to play ranked.";
   const ageH = (Date.now() - u.created_at.getTime()) / 3600_000;
   if (ageH < env.rankedMinAgeHours) {
@@ -107,6 +108,7 @@ export async function buildMe(u: UserRow): Promise<Me> {
     peak: Math.round(r.peak),
     equipped: { ...DEFAULT_EQUIPPED, ...(u.equipped as Partial<Equipped>) },
     rankedBlock: rankedBlock(u),
+    suspended: suspension(u),
     nameChangeAt: nextNameChange(u)?.toISOString() ?? null,
   };
 }

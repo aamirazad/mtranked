@@ -12,11 +12,25 @@ async function mod(req: Request, res: Response) {
   return auth?.user.is_moderator ? auth.user : null;
 }
 
+/** Why this user can't be suspended, or null if they can. Moderators are left to the admins. */
+async function cannotSuspend(userId: string) {
+  const [u] = await sql`select is_moderator from users where id = ${userId}`;
+  if (!u) return { status: 404 as const, body: { message: "No such player." } };
+  if (u.is_moderator) return { status: 400 as const, body: { message: "Moderators can't be banned or timed out here." } };
+  return null;
+}
+
 /** Ban a user and give back rating their recent ranked opponents lost to them. */
-async function banUser(userId: string) {
+async function banUser(userId: string, reason: string | null) {
   const season = await currentSeason();
   await sql.begin(async (tx) => {
-    await tx`update users set banned_at = now() where id = ${userId}`;
+    // remember where they played from so signups from those addresses get flagged
+    await tx`update users set banned_at = now(), suspension_reason = ${reason},
+      ban_ips = array(select distinct ip from (
+        select signup_ip ip from users where id = ${userId}
+        union select ip from sessions where user_id = ${userId}
+        union select unnest(ban_ips) from users where id = ${userId}) a where ip is not null)
+      where id = ${userId}`;
     await tx`delete from sessions where user_id = ${userId}`;
     const losses = await tx`
       select o.user_id, o.rating_delta, m.id from matches m
@@ -32,6 +46,13 @@ async function banUser(userId: string) {
     await tx`update matches set status = 'void' where id in (
       select match_id from match_players where user_id = ${userId}) and mode = 'ranked'`;
   });
+}
+
+/** Keep a user out of ranked and casual for a while. A longer existing timeout is never shortened. */
+async function timeoutUser(userId: string, hours: number, reason: string | null) {
+  await sql`update users set suspension_reason = ${reason},
+    timed_out_until = greatest(timed_out_until, now() + make_interval(hours => ${hours}))
+    where id = ${userId}`;
 }
 
 export const modRouter = s.router(contract.mod, {
@@ -64,7 +85,15 @@ export const modRouter = s.router(contract.mod, {
     if (!m) return forbidden;
     const [r] = await sql`select * from reports where id = ${params.id}`;
     if (!r) return { status: 404, body: { message: "No such report." } };
-    if (body.action === "ban" && r.reported_user_id) await banUser(r.reported_user_id);
+    if ((body.action === "ban" || body.action === "timeout") && r.reported_user_id) {
+      const no = await cannotSuspend(r.reported_user_id);
+      if (no) return no;
+    }
+    if (body.action === "ban" && r.reported_user_id) await banUser(r.reported_user_id, body.reason || null);
+    if (body.action === "timeout" && r.reported_user_id) {
+      if (!body.hours) return { status: 400, body: { message: "Pick how long the timeout lasts." } };
+      await timeoutUser(r.reported_user_id, body.hours, body.reason || null);
+    }
     if (body.action === "flag" && r.reported_user_id) {
       await sql`update users set flagged_at = coalesce(flagged_at, now()) where id = ${r.reported_user_id}`;
     }
@@ -113,7 +142,7 @@ export const modRouter = s.router(contract.mod, {
 
   flags: async ({ req, res }) => {
     if (!(await mod(req, res))) return forbidden;
-    const rows = await sql`select f.*, u.display_name from flags f join users u on u.id = f.user_id
+    const rows = await sql`select f.*, u.display_name, u.banned_at, u.timed_out_until from flags f join users u on u.id = f.user_id
       order by f.created_at desc limit 200`;
     return {
       status: 200,
@@ -126,6 +155,8 @@ export const modRouter = s.router(contract.mod, {
           reason: f.reason,
           details: f.details,
           createdAt: f.created_at.toISOString(),
+          bannedAt: f.banned_at?.toISOString() ?? null,
+          timedOutUntil: f.timed_out_until > new Date() ? f.timed_out_until.toISOString() : null,
         })),
       },
     };
@@ -134,6 +165,31 @@ export const modRouter = s.router(contract.mod, {
   unflag: async ({ req, res, params }) => {
     if (!(await mod(req, res))) return forbidden;
     await sql`update users set flagged_at = null where id = ${params.id}`;
+    return { status: 200, body: { ok: true } };
+  },
+
+  ban: async ({ req, res, params, body }) => {
+    if (!(await mod(req, res))) return forbidden;
+    const no = await cannotSuspend(params.id);
+    if (no) return no;
+    await banUser(params.id, body.reason || null);
+    return { status: 200, body: { ok: true } };
+  },
+
+  timeout: async ({ req, res, params, body }) => {
+    if (!(await mod(req, res))) return forbidden;
+    const no = await cannotSuspend(params.id);
+    if (no) return no;
+    await timeoutUser(params.id, body.hours, body.reason || null);
+    return { status: 200, body: { ok: true } };
+  },
+
+  unsuspend: async ({ req, res, params }) => {
+    if (!(await mod(req, res))) return forbidden;
+    // voided races and refunded rating from a ban stay as they are
+    const r = await sql`update users set banned_at = null, timed_out_until = null, suspension_reason = null, ban_ips = '{}'
+      where id = ${params.id} returning id`;
+    if (!r.length) return { status: 404, body: { message: "No such player." } };
     return { status: 200, body: { ok: true } };
   },
 });

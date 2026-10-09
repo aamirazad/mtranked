@@ -16,6 +16,8 @@
 
   const mode = $derived(page.params.mode as QueueMode);
   let blocked = $state<string | null>(null);
+  // a ban or timeout covers casual too, so don't offer it as a way out
+  let suspended = $state(false);
   let now = $state(Date.now());
   let reporting = $state(false);
   const iv = setInterval(() => (now = Date.now()), 250);
@@ -24,6 +26,11 @@
     if (mode !== "ranked" && mode !== "casual") return goto("/");
     if (!session.loaded) await session.refresh();
     if (mode === "ranked" && !session.me) return goto("/login?next=/play/ranked");
+    if (session.me?.suspended) {
+      blocked = session.me.suspended;
+      suspended = true;
+      return;
+    }
     if (mode === "ranked" && session.me?.rankedBlock) {
       blocked = session.me.rankedBlock;
       return;
@@ -44,8 +51,9 @@
   // the server refused the queue (not verified, decline timeout, ...)
   $effect(() => {
     const e = game.lastError;
-    if (e && (e.code === "ranked_blocked" || e.code === "queue_timeout") && Date.now() - e.at < 2000) {
+    if (e && ["ranked_blocked", "queue_timeout", "suspended"].includes(e.code) && Date.now() - e.at < 2000) {
       blocked = e.message;
+      suspended = e.code === "suspended";
       game.queueMode = null;
     }
   });
@@ -109,8 +117,10 @@
   <div class="mx-auto max-w-md pt-16 text-center animate-rise">
     <div class="text-xl">{blocked}</div>
     <div class="mt-6 flex justify-center gap-3">
-      {#if session.me && !session.me.verified}<a class="btn btn-main" href="/settings">verify email</a>{/if}
-      <a class="btn" href="/play/casual">play casual</a>
+      {#if !suspended}
+        {#if session.me && !session.me.verified}<a class="btn btn-main" href="/settings">verify email</a>{/if}
+        {#if mode !== "casual"}<a class="btn" href="/play/casual">play casual</a>{/if}
+      {/if}
       <a class="btn btn-ghost" href="/">home</a>
     </div>
   </div>

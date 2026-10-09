@@ -15,8 +15,13 @@ if (process.env.SENTRY_DSN) {
       databaseQueryData: false,
       stackFrameVariables: false,
     },
-    // report unhandled rejections, then crash as Node would without Sentry
-    integrations: [Sentry.onUnhandledRejectionIntegration({ mode: "strict" })],
+    integrations: [
+      // report unhandled rejections, then crash as Node would without Sentry
+      Sentry.onUnhandledRejectionIntegration({ mode: "strict" }),
+      // the app's error handler reports real failures itself; the automatic capture would
+      // also report every request ts-rest rejects as invalid, since those carry no 4xx status
+      Sentry.expressIntegration({ shouldHandleError: false }),
+    ],
   });
 }
 

@@ -1,4 +1,4 @@
-import { sql, playerBits, getUser, currentSeason, getRating, type UserRow } from "@mtr/db";
+import { sql, playerBits, getUser, currentSeason, getRating, suspension, type UserRow } from "@mtr/db";
 import type { PlayerPublic } from "@mtr/race-protocol";
 import { resolveEquipped } from "@mtr/shared";
 import { redis } from "./redis";
@@ -49,7 +49,8 @@ export async function publicInfo(idn: Identity): Promise<PlayerPublic> {
 export async function rankedBlock(idn: Identity): Promise<string | null> {
   if (idn.guest || !idn.user) return "Sign in to play ranked.";
   const u = (await getUser(idn.id)) ?? idn.user;
-  if (u.banned_at) return "This account is banned.";
+  const suspended = suspension(u);
+  if (suspended) return suspended;
   if (!u.email_verified_at) return "Verify your email to play ranked.";
   const ageH = (Date.now() - u.created_at.getTime()) / 3600_000;
   if (ageH < env.rankedMinAgeHours) return `Ranked unlocks when your account is ${env.rankedMinAgeHours}h old.`;

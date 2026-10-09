@@ -50,6 +50,8 @@ export type Me = {
   peak: number;
   equipped: Equipped;
   rankedBlock: string | null;
+  /** why a ban or timeout keeps this account out of ranked and casual; null if none */
+  suspended: string | null;
   /** when the display name can next be changed; null if it can be changed now */
   nameChangeAt: string | null;
 };
@@ -142,7 +144,22 @@ export type ReportRow = {
 };
 
 export type HeldMatch = { matchId: string; finishedAt: string; players: { name: string; wpm: number; acc: number }[] };
-export type FlagRow = { id: number; user: string; userId: string; matchId: string | null; reason: string; details: unknown; createdAt: string };
+export type FlagRow = {
+  id: number;
+  user: string;
+  userId: string;
+  matchId: string | null;
+  reason: string;
+  details: unknown;
+  createdAt: string;
+  bannedAt: string | null;
+  timedOutUntil: string | null;
+};
+
+/** Longest timeout a moderator can hand out, in hours (90 days). */
+export const MAX_TIMEOUT_HOURS = 90 * 24;
+const UserId = z.object({ id: z.string().uuid() });
+const ModReason = z.string().trim().max(300).optional();
 
 const err = c.type<ErrorBody>();
 const ok = c.type<{ ok: true }>();
@@ -301,8 +318,15 @@ export const contract = c.router(
       resolveReport: {
         method: "POST",
         path: "/mod/reports/:id",
-        body: z.object({ action: z.enum(["dismiss", "ban", "flag"]), notes: z.string().max(1000).optional() }),
-        responses: { 200: ok, 403: err, 404: err },
+        body: z.object({
+          action: z.enum(["dismiss", "ban", "timeout", "flag"]),
+          /** timeout length, required for the timeout action */
+          hours: z.number().int().min(1).max(MAX_TIMEOUT_HOURS).optional(),
+          /** shown to the player for a ban or timeout */
+          reason: ModReason,
+          notes: z.string().max(1000).optional(),
+        }),
+        responses: { 200: ok, 400: err, 403: err, 404: err },
       },
       held: { method: "GET", path: "/mod/held", responses: { 200: c.type<{ matches: HeldMatch[] }>(), 403: err } },
       resolveHeld: {
@@ -317,6 +341,28 @@ export const contract = c.router(
         path: "/mod/users/:id/unflag",
         body: c.noBody(),
         responses: { 200: ok, 403: err },
+      },
+      ban: {
+        method: "POST",
+        path: "/mod/users/:id/ban",
+        pathParams: UserId,
+        body: z.object({ reason: ModReason }),
+        responses: { 200: ok, 400: err, 403: err, 404: err },
+      },
+      timeout: {
+        method: "POST",
+        path: "/mod/users/:id/timeout",
+        pathParams: UserId,
+        body: z.object({ hours: z.number().int().min(1).max(MAX_TIMEOUT_HOURS), reason: ModReason }),
+        responses: { 200: ok, 400: err, 403: err, 404: err },
+      },
+      /** lift any ban or timeout */
+      unsuspend: {
+        method: "POST",
+        path: "/mod/users/:id/unsuspend",
+        pathParams: UserId,
+        body: c.noBody(),
+        responses: { 200: ok, 403: err, 404: err },
       },
     },
     billing: {

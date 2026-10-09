@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/node";
 import { reportError } from "./sentry";
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
-import { getUser } from "@mtr/db";
+import { getUser, suspension } from "@mtr/db";
 import { DEFAULT_ROOM_SETTINGS, parseClientMsg, type ClientMsg, type PlayerPublic } from "@mtr/race-protocol";
 import { env } from "./env";
 import { NODE_ID, nodeAlive, redis, sub } from "./redis";
@@ -136,16 +136,20 @@ async function handle(conn: Conn, msg: ClientMsg) {
     case "queue.join": {
       const current = roomOf(id);
       if (current && current.mode !== "ghost") return err(id, "busy", "Finish or leave your current room first.");
+      if (!conn.idn.guest) {
+        conn.idn.user = (await getUser(id)) ?? conn.idn.user;
+        const suspended = conn.idn.user && suspension(conn.idn.user);
+        if (suspended) {
+          await dequeue(id);
+          return err(id, "suspended", suspended);
+        }
+      }
       if (await resumeQueue(id, msg.mode)) return;
       // decline lockouts only apply to ranked
       const ban = msg.mode === "ranked" ? await queueBanLeft(id) : 0;
       if (ban > 0) return err(id, "queue_timeout", `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
       if (await queueMeta(id)) await dequeue(id);
-      let flagged = false;
-      if (!conn.idn.guest) {
-        conn.idn.user = (await getUser(id)) ?? conn.idn.user;
-        flagged = conn.idn.user?.flagged_at != null;
-      }
+      const flagged = conn.idn.user?.flagged_at != null;
       if (msg.mode === "ranked") {
         const block = await rankedBlock(conn.idn);
         if (block) return err(id, "ranked_blocked", block);

@@ -66,6 +66,8 @@ export type UserRow = {
   is_moderator: boolean;
   is_bot: boolean;
   banned_at: Date | null;
+  timed_out_until: Date | null;
+  suspension_reason: string | null;
   flagged_at: Date | null;
   xp: number;
   equipped: Partial<Equipped>;
@@ -75,9 +77,19 @@ export type UserRow = {
 export async function getUser(id: string): Promise<UserRow | undefined> {
   const [u] = await sql<UserRow[]>`
     select id, email, display_name, email_verified_at, created_at, country, is_subscriber,
-      early_supporter, is_moderator, is_bot, banned_at, flagged_at, xp, equipped, name_changed_at
+      early_supporter, is_moderator, is_bot, banned_at, timed_out_until, suspension_reason, flagged_at, xp, equipped, name_changed_at
     from users where id = ${id}`;
   return u;
+}
+
+/** Why a moderator action keeps this user out of matchmaking, or null if nothing does. */
+export function suspension(u: Pick<UserRow, "banned_at" | "timed_out_until" | "suspension_reason">): string | null {
+  const why = u.suspension_reason ? ` Reason: ${u.suspension_reason}` : "";
+  if (u.banned_at) return `This account is banned.${why}`;
+  if (u.timed_out_until && u.timed_out_until.getTime() > Date.now()) {
+    return `You're timed out from ranked and casual until ${u.timed_out_until.toUTCString()}.${why}`;
+  }
+  return null;
 }
 
 /** Cosmetic ids the user has unlocked. */

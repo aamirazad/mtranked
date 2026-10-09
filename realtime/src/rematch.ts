@@ -2,6 +2,7 @@
 // a short window; either player can ask to run it back, and once both have,
 // whichever node sees the second request starts a new room carrying the
 // running series score.
+import { getUser, suspension } from "@mtr/db";
 import { REMATCH_MS, type PlayerPublic } from "@mtr/race-protocol";
 import { conns, deliver, sendTo, type Conn } from "./hub";
 import { queueMeta } from "./matchmaker";
@@ -41,6 +42,9 @@ export async function requestRematch(conn: Conn, matchId: string) {
   }
   const ids = offer.players.map((p) => p.idn.id);
   if (!ids.includes(conn.id)) return;
+  const user = conn.idn.guest ? undefined : await getUser(conn.id);
+  const suspended = user && suspension(user);
+  if (suspended) return sendTo(conn.id, { type: "error", code: "suspended", message: suspended });
   const res = await redis
     .multi()
     .sadd(requestKey(matchId), conn.id)

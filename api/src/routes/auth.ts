@@ -1,6 +1,6 @@
 import { initServer } from "@ts-rest/express";
 import { contract } from "@mtr/contracts";
-import { sql, getUser } from "@mtr/db";
+import { sql, getUser, suspension } from "@mtr/db";
 import { EARLY_SUPPORTER_SIGNUPS, OFFENSIVE_NAME_MESSAGE, isOffensiveName } from "@mtr/shared";
 import {
   buildMe,
@@ -21,6 +21,21 @@ import { resetEmail, verificationEmail } from "../mail";
 
 const s = initServer();
 const tooMany = { status: 429 as const, body: { message: "Too many attempts. Try again in a few minutes." } };
+
+/**
+ * Soft signal for moderators: a new account from an address a banned account used.
+ * Never blocks the signup, since schools, offices and carrier NAT share addresses.
+ */
+async function flagPossibleBanEvader(userId: string, ip: string | undefined) {
+  if (!ip) return;
+  const banned = await sql<{ id: string; display_name: string }[]>`
+    select id, display_name from users
+    where banned_at is not null and id <> ${userId} and (signup_ip = ${ip} or ${ip} = any(ban_ips))
+    order by banned_at desc limit 10`;
+  if (!banned.length) return;
+  await sql`insert into flags (user_id, reason, details)
+    values (${userId}, 'possible_ban_evader', ${sql.json({ banned: banned.map((b) => ({ id: b.id, name: b.display_name })) })})`;
+}
 
 async function sendVerification(userId: string, email: string) {
   const token = newToken();
@@ -54,6 +69,7 @@ export const authRouter = s.router(contract.auth, {
       values (${body.email}, ${await hashPassword(body.password)}, ${body.displayName}, ${req.ip ?? null},
         ${EARLY_SUPPORTER_SIGNUPS}, ${EARLY_SUPPORTER_SIGNUPS})
       returning id`;
+    await flagPossibleBanEvader(u!.id, req.ip);
     await sendVerification(u!.id, body.email);
     await createSession(req, res, u!.id);
     return { status: 200, body: { user: await buildMe((await getUser(u!.id))!) } };
@@ -63,11 +79,11 @@ export const authRouter = s.router(contract.auth, {
     if (!(await rateLimit(`login:${req.ip}`, 10, 300)) || !(await rateLimit(`login:${body.email.toLowerCase()}`, 10, 300))) {
       return tooMany;
     }
-    const [row] = await sql<{ id: string; password_hash: string; banned_at: Date | null }[]>`
-      select id, password_hash, banned_at from users where email = ${body.email} and not is_bot`;
+    const [row] = await sql<{ id: string; password_hash: string; banned_at: Date | null; suspension_reason: string | null }[]>`
+      select id, password_hash, banned_at, suspension_reason from users where email = ${body.email} and not is_bot`;
     const valid = row ? await verifyPassword(row.password_hash, body.password) : (await verifyPassword(await dummyHash, body.password), false);
     if (!row || !valid) return { status: 401, body: { message: "Wrong email or password." } };
-    if (row.banned_at) return { status: 401, body: { message: "This account has been banned." } };
+    if (row.banned_at) return { status: 401, body: { message: suspension({ ...row, timed_out_until: null })! } };
     await createSession(req, res, row.id);
     return { status: 200, body: { user: await buildMe((await getUser(row.id))!) } };
   },
