@@ -145,6 +145,13 @@ export class Room {
   race: Race | null = null;
   ghost?: GhostSource;
   private lastSettingsSeed?: { seed: string; text: string; source?: string };
+  /** a start is in flight (text generation is async) */
+  private starting = false;
+
+  /** read through a getter so checks after an await aren't narrowed away */
+  get closed() {
+    return this.status === "closed";
+  }
 
   constructor(
     public mode: Mode,
@@ -303,12 +310,18 @@ export class Room {
 
   // ------------------------------------------------------------ racing
   async startRace(reuse?: { seed: string; text: string; source?: string }) {
-    if (this.status === "countdown" || this.status === "racing" || this.status === "closed") return;
+    if (this.starting || this.status === "countdown" || this.status === "racing" || this.status === "closed") return;
     let gen = reuse;
     if (!gen) {
-      const seed = randomSeed();
-      const t = await generateText(this.settings, seed);
-      gen = { seed, text: t.text, source: t.source };
+      this.starting = true;
+      try {
+        const seed = randomSeed();
+        const t = await generateText(this.settings, seed);
+        gen = { seed, text: t.text, source: t.source };
+      } finally {
+        this.starting = false;
+      }
+      if (this.closed) return;
     }
     this.lastSettingsSeed = gen;
     const now = Date.now();
@@ -481,6 +494,21 @@ export class Room {
     const race = this.race!;
     if (race.ended) return;
     race.ended = true;
+    try {
+      await this.scoreRace(race);
+    } catch (e) {
+      console.error("[race] failed to finish", race.matchId, e);
+      if (this.closed) return;
+      // never leave the room stuck mid-race
+      this.status = "finished";
+      this.lastActivity = Date.now();
+      this.broadcast({ type: "error", code: "race_failed", message: "Something went wrong scoring that race." });
+      if (this.mode === "private") this.broadcastRoom();
+      else this.close();
+    }
+  }
+
+  private async scoreRace(race: Race) {
     const now = Date.now();
     const elapsed = Math.min(now - race.startAt, race.endAt - race.startAt);
     const timed = race.timeLimit > 0;
@@ -591,6 +619,8 @@ export class Room {
     } catch (e) {
       console.error("[race] failed to save", race.matchId, e);
     }
+    // the room may have been closed while we were saving
+    if (this.closed) return;
 
     // casual 1v1: update the running series and offer a rematch
     let series: Record<string, number> | undefined;
@@ -609,6 +639,7 @@ export class Room {
         }
       }
     }
+    if (this.closed) return;
 
     if (this.mode === "private") {
       const winner = rows[0];

@@ -59,7 +59,10 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       if (room.mode === "ghost") room.close();
       return;
     case "room.leave":
-      return room.removeMember(id, null);
+      if (room.mode === "private") return room.removeMember(id, null);
+      // matchmade players decline a ready check instead; mid-race it's a forfeit
+      if (room.status === "countdown" || room.status === "racing") room.forfeit(id);
+      return;
     case "room.settings":
       return room.onSettings(id, msg.settings);
     case "room.start":
