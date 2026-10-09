@@ -5,5 +5,6 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "check": "tsc -p .", "test": "vitest run" },
+  "dependencies": { "obscenity": "0.4.6" },
   "devDependencies": { "vitest": "5.0.3" }
 }

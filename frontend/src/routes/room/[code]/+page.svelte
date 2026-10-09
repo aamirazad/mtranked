@@ -3,7 +3,7 @@
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
   import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
-  import { THEMES, themeById } from "@mtr/shared";
+  import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
@@ -45,6 +45,10 @@
     if (!session.me && guestName && guestName !== session.guest?.name) {
       if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(guestName)) {
         joinError = "Names are 3–20 letters, numbers, _ . or -";
+        return;
+      }
+      if (isOffensiveName(guestName)) {
+        joinError = OFFENSIVE_NAME_MESSAGE;
         return;
       }
       await game.reconnect(guestName).catch(() => {});
@@ -112,6 +116,11 @@
   });
   function saveName() {
     if (!room || nameDraft.trim() === (room.name ?? "")) return;
+    if (isOffensiveName(nameDraft)) {
+      toasts.show(OFFENSIVE_NAME_MESSAGE, "error");
+      nameDraft = room.name ?? "";
+      return;
+    }
     game.send({ type: "room.rename", name: nameDraft });
   }
 

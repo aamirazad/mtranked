@@ -34,7 +34,17 @@ import {
   type ServerMsg,
   type TextSettings,
 } from "@mtr/race-protocol";
-import { rate, ROOM_CAP_FREE, ROOM_CAP_SUBSCRIBER, ROOM_CODE_ALPHABET, SPEED_CEILING_WPM, themeById, xpForRace } from "@mtr/shared";
+import {
+  isOffensiveName,
+  OFFENSIVE_NAME_MESSAGE,
+  rate,
+  ROOM_CAP_FREE,
+  ROOM_CAP_SUBSCRIBER,
+  ROOM_CODE_ALPHABET,
+  SPEED_CEILING_WPM,
+  themeById,
+  xpForRace,
+} from "@mtr/shared";
 import { currentSeason, type RatingRow } from "@mtr/db";
 import { deliver, holdNotice, holdRoomGone, rttOf, sendTo } from "./hub";
 import type { Identity } from "./players";
@@ -780,7 +790,12 @@ export class Room {
       sendTo(playerId, { type: "error", code: "subscriber_only", message: "Naming rooms is a supporter perk." });
       return;
     }
-    this.name = name.replace(/\p{C}/gu, "").replace(/\s+/g, " ").trim() || null;
+    const clean = name.replace(/\p{C}/gu, "").replace(/\s+/g, " ").trim();
+    if (isOffensiveName(clean)) {
+      sendTo(playerId, { type: "error", code: "name_rejected", message: OFFENSIVE_NAME_MESSAGE });
+      return;
+    }
+    this.name = clean || null;
     this.broadcastRoom();
   }
 

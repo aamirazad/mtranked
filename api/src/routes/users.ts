@@ -1,7 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { contract, type MatchSummary, type SyncedPrefs } from "@mtr/contracts";
 import { sql, currentSeason, getRating, getUser, unlockedCosmetics } from "@mtr/db";
-import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
+import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, OFFENSIVE_NAME_MESSAGE, isOffensiveName, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
 import { buildMe, getAuth, nextNameChange } from "../auth";
 import { rateLimit } from "../redis";
 
@@ -19,6 +19,9 @@ export const meRouter = s.router(contract.me, {
     const name = body.displayName;
     const renaming = !!name && name !== u.display_name;
     if (renaming) {
+      if (isOffensiveName(name)) {
+        return { status: 400, body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } } };
+      }
       const next = nextNameChange(u);
       if (next) {
         const msg = `You can change your name again on ${next.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`;

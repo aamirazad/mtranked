@@ -1,7 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { contract } from "@mtr/contracts";
 import { sql, getUser } from "@mtr/db";
-import { EARLY_SUPPORTER_SIGNUPS } from "@mtr/shared";
+import { EARLY_SUPPORTER_SIGNUPS, OFFENSIVE_NAME_MESSAGE, isOffensiveName } from "@mtr/shared";
 import {
   buildMe,
   clearSession,
@@ -41,6 +41,9 @@ export const authRouter = s.router(contract.auth, {
 
   signup: async ({ body, req, res }) => {
     if (!(await rateLimit(`signup:${req.ip}`, 5, 600))) return tooMany;
+    if (isOffensiveName(body.displayName)) {
+      return { status: 400, body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } } };
+    }
     const taken = await sql`select email, display_name from users
       where email = ${body.email} or display_name = ${body.displayName}`;
     if (taken.some((t) => t.email.toLowerCase() === body.email.toLowerCase())) {
@@ -152,6 +155,9 @@ export const authRouter = s.router(contract.auth, {
     if (!(await rateLimit(`ticket:${req.ip}`, 60, 60))) return tooMany;
     const auth = await getAuth(req, res);
     if (auth) return { status: 200, body: { ticket: await issueTicket({ kind: "user", userId: auth.user.id }) } };
+    if (body.guestName && isOffensiveName(body.guestName)) {
+      return { status: 400, body: { message: OFFENSIVE_NAME_MESSAGE, fields: { guestName: OFFENSIVE_NAME_MESSAGE } } };
+    }
     const guest = await ensureGuest(req, res, body.guestName);
     return { status: 200, body: { ticket: await issueTicket({ kind: "guest", id: guest.id, name: guest.name }) } };
   },

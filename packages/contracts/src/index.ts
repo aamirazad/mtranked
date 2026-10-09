@@ -208,7 +208,7 @@ export const contract = c.router(
         method: "POST",
         path: "/auth/ticket",
         body: z.object({ guestName: DisplayName.optional() }),
-        responses: { 200: c.type<{ ticket: string }>(), 429: err },
+        responses: { 200: c.type<{ ticket: string }>(), 400: err, 429: err },
       },
     },
     me: {

@@ -81,9 +81,15 @@ class Game {
     if (this.wanted) await this.connect();
   }
 
-  private async open() {
+  private async open(): Promise<void> {
     this.status = "connecting";
     const r = await api.auth.ticket({ body: { guestName: this.guestName } }).catch(() => null);
+    if (r?.status === 400 && this.guestName) {
+      // the server refused the guest name: say so and carry on under the old one
+      toasts.show(r.body.message, "error", 6000);
+      this.guestName = undefined;
+      return this.open();
+    }
     if (r?.status !== 200) {
       this.status = "offline";
       this.down = true;
