@@ -27,6 +27,7 @@
   async function createRoom() {
     creating = true;
     game.room = null;
+    game.roomClosed = null;
     await game.connect().catch(() => {});
     game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS });
   }

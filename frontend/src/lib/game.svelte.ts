@@ -19,6 +19,7 @@ type QueueStatus = Extract<ServerMsg, { type: "queue.status" }>;
 export type MatchFound = { matchId: string; mode: Mode; players: PlayerPublic[]; readyBy: number; ready: string[] };
 export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type">;
 export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
+export type RoomClosed = { code?: string; reason: string; rejoin: boolean };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
 
 class Game {
@@ -39,6 +40,8 @@ class Game {
   room = $state<RoomPublic | null>(null);
   /** the server confirmed our room on the current connection (cleared when it drops) */
   roomLive = $state(false);
+  /** why we last lost our private room (closed, kicked, away too long); cleared by the next room */
+  roomClosed = $state<RoomClosed | null>(null);
   /** open casual rematch offer for the last result */
   rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
@@ -170,6 +173,8 @@ class Game {
           this.queue = null;
           this.queueMode = null;
         } else toasts.show(msg.message, "error", 6000);
+        // a failed join leaves us in no room, so a stale one can't hide the error
+        if (msg.code === "room_join" || msg.code === "room_closed") this.dropRoom();
         break;
       case "notice":
         toasts.show(msg.message, "error", 10_000);
@@ -208,11 +213,11 @@ class Game {
       case "room.state":
         this.room = msg.room;
         this.roomLive = true;
+        this.roomClosed = null;
         break;
       case "room.closed":
-        this.room = null;
-        this.roomLive = false;
-        if (this.race && this.race.mode === "private") this.race = null;
+        this.dropRoom();
+        this.roomClosed = { code: msg.code, reason: msg.reason, rejoin: !!msg.rejoin };
         toasts.show(msg.reason, "info", 6000);
         break;
       case "race.countdown":
@@ -246,6 +251,12 @@ class Game {
         }
         break;
     }
+  }
+
+  private dropRoom() {
+    this.room = null;
+    this.roomLive = false;
+    if (this.race && this.race.mode === "private") this.race = null;
   }
 
   // ------------------------------------------------------------ actions

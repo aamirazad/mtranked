@@ -5,7 +5,7 @@
   import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
   import { THEMES, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
-  import { ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
+  import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
@@ -13,9 +13,12 @@
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
 
-  const code = $derived((page.params.code ?? "").toUpperCase());
+  // fixed per instance: the layout remounts this page when the code changes
+  const code = (page.params.code ?? "").toUpperCase();
   let joined = $state(false);
   let joinError = $state<string | null>(null);
+  /** the join failed because the room has closed */
+  let joinClosed = $state(false);
   let guestName = $state("");
   let needsName = $state(false);
 
@@ -36,6 +39,9 @@
   async function join(e?: SubmitEvent) {
     e?.preventDefault();
     joinError = null;
+    joinClosed = false;
+    hadRoom = false;
+    game.roomClosed = null;
     if (!session.me && guestName && guestName !== session.guest?.name) {
       if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(guestName)) {
         joinError = "Names are 3–20 letters, numbers, _ . or -";
@@ -52,11 +58,16 @@
 
   $effect(() => {
     const e = game.lastError;
-    if ((e?.code === "room_join" || e?.code === "room_closed") && Date.now() - e.at < 3000 && !game.room) joinError = e.message;
+    if ((e?.code === "room_join" || e?.code === "room_closed") && Date.now() - e.at < 3000 && !game.room) {
+      joinError = e.message;
+      joinClosed = e.code === "room_closed";
+    }
   });
 
   function leave() {
-    if (game.room) game.send({ type: "room.leave" });
+    // never leave a room we've just moved on to (e.g. "new room" from here)
+    if (game.room?.code !== code) return;
+    game.send({ type: "room.leave" });
     game.room = null;
     game.clearRace();
   }
@@ -68,7 +79,7 @@
     }
   });
 
-  const room = $derived(game.room);
+  const room = $derived(game.room?.code === code ? game.room : null);
   const meId = $derived(game.you?.id);
   const isHost = $derived(!!room && room.hostId === meId);
   const inRace = $derived(!!game.race && game.race.mode === "private" && !game.result);
@@ -107,7 +118,25 @@
   // kicked, or the room closed underneath us
   let hadRoom = $state(false);
   $effect(() => {
-    if (game.room) hadRoom = true;
+    if (room) hadRoom = true;
+  });
+  const closed = $derived.by(() => {
+    if (room) return null;
+    if (joinClosed && joinError) return { reason: joinError, rejoin: false };
+    const c = game.roomClosed;
+    return c && (!c.code || c.code === code) ? c : null;
+  });
+
+  let creating = $state(false);
+  async function newRoom() {
+    creating = true;
+    game.roomClosed = null;
+    game.room = null;
+    await game.connect().catch(() => {});
+    game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS });
+  }
+  $effect(() => {
+    if (creating && game.room?.code) goto(`/room/${game.room.code}`);
   });
 
   const describe = (s: TextSettings) =>
@@ -133,6 +162,15 @@
     <button class="btn btn-main w-full">join as guest</button>
     <div class="text-center text-sm text-sub">or <a class="link" href="/login?next=/room/{code}">sign in</a> to keep your stats</div>
   </form>
+{:else if closed}
+  <div class="mx-auto max-w-md pt-16 text-center animate-rise">
+    <div class="text-xl">{closed.reason}</div>
+    <div class="mt-6 flex justify-center gap-3">
+      {#if closed.rejoin}<button class="btn btn-main" onclick={() => join()}>rejoin</button>{/if}
+      <button class="btn" class:btn-main={!closed.rejoin} onclick={newRoom} disabled={creating}>{creating ? "creating…" : "new room"}</button>
+      <a class="btn btn-ghost" href="/">home</a>
+    </div>
+  </div>
 {:else if joinError && !room}
   <div class="mx-auto max-w-md pt-16 text-center animate-rise">
     <div class="text-xl">{joinError}</div>
