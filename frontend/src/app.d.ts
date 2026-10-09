@@ -4,5 +4,7 @@ declare global {
   const __SOURCE_URL__: string;
   /** Contact address shown in the terms and privacy policy. */
   const __CONTACT_EMAIL__: string;
+  /** Sentry DSN for browser error reports; empty disables reporting. */
+  const __SENTRY_DSN__: string;
 }
 export {};

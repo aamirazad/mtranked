@@ -8,6 +8,8 @@ x-server: &server
     args:
       PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
       PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
+      PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
+    secrets: [sentry_auth_token]
   image: mt-ranked-server
   env_file: .env.production
   environment:
@@ -66,12 +68,19 @@ services:
       args:
         PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
         PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
+        PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
+      secrets: [sentry_auth_token]
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes: [caddy_data:/data, caddy_config:/config]
     depends_on: [api, realtime]
     restart: unless-stopped
+
+# optional: lets the frontend build upload source maps to Sentry
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN
 
 volumes:
   pgdata:

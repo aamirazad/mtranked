@@ -1,13 +1,9 @@
-import { handleErrorWithSentry, replayIntegration } from "@sentry/sveltekit";
-import * as Sentry from '@sentry/sveltekit';
+import * as Sentry from "@sentry/sveltekit";
 
+// Errors only (no tracing), from production builds that set PUBLIC_SENTRY_DSN.
 Sentry.init({
-  dsn: 'https://da01325cae4b8b0b52fe815626318a89@o4512223997067265.ingest.us.sentry.io/4512224004341760',
-
-  tracesSampleRate: 1.0,
-
-
-
+  dsn: __SENTRY_DSN__,
+  enabled: import.meta.env.PROD,
   // Turns off collection of data that could identify users. Adjust per category:
   // https://docs.sentry.io/platforms/javascript/configuration/options/#dataCollection
   dataCollection: {
@@ -23,5 +19,4 @@ Sentry.init({
   },
 });
 
-// If you have a custom error handler, pass it to `handleErrorWithSentry`
-export const handleError = handleErrorWithSentry();
+export const handleError = Sentry.handleErrorWithSentry();

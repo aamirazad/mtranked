@@ -11,6 +11,9 @@
         "dist/**",
         "build/**",
         ".svelte-kit/**"
+      ],
+      "passThroughEnv": [
+        "SENTRY_AUTH_TOKEN"
       ]
     },
     "dev": {

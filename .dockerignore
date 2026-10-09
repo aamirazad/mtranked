@@ -4,5 +4,5 @@
 **/.svelte-kit
 **/.turbo
 .git
-.env
-.env.*
+**/.env
+**/.env.*

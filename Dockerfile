@@ -14,7 +14,10 @@ ARG PUBLIC_SOURCE_URL=""
 ENV PUBLIC_SOURCE_URL=$PUBLIC_SOURCE_URL
 ARG PUBLIC_CONTACT_EMAIL=""
 ENV PUBLIC_CONTACT_EMAIL=$PUBLIC_CONTACT_EMAIL
-RUN pnpm build
+ARG PUBLIC_SENTRY_DSN=""
+ENV PUBLIC_SENTRY_DSN=$PUBLIC_SENTRY_DSN
+# optional build secret: when set, frontend source maps are uploaded to Sentry
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN pnpm build
 
 # production dependencies only (workspace packages are bundled into the dists)
 FROM base AS prod-deps
