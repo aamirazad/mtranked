@@ -269,17 +269,26 @@ export async function startGhostRace(idn: Identity, info: PlayerPublic): Promise
   if (roomOf(idn.id)) return "You're already in a race.";
   const season = await currentSeason();
   const rating = meta.rating?.rating ?? 1500;
+  // Candidates are the 2000 most recent eligible matches (served by matches_ghost_pool_idx, whose
+  // predicate must stay in sync with this where clause); replays are read only for the final 8.
   const rows = await sql`
-    select m.id, m.text, r.keystrokes, u.display_name, u.equipped, u.xp, rt.rating, rt.races
-    from match_players mp
-    join matches m on m.id = mp.match_id
-    join replays r on r.match_id = mp.match_id and r.slot = mp.slot
-    join users u on u.id = mp.user_id
-    left join ratings rt on rt.user_id = mp.user_id and rt.season_id = ${season.id}
-    where m.mode in ('ranked', 'casual', 'seed') and m.status = 'finished' and mp.finished
-      and u.banned_at is null and u.flagged_at is null and mp.user_id <> ${idn.guest ? null : idn.id}
-      and m.text_settings @> '{"mode":"words","words":50,"language":"english","punctuation":false,"numbers":false}'
-    order by abs(coalesce(rt.rating, mp.rating_before, 1500) - ${rating}) limit 8`;
+    with recent as (
+      select m.id, m.text from matches m
+      where m.mode in ('ranked', 'casual', 'seed') and m.status = 'finished'
+        and m.text_settings @> '{"mode":"words","words":50,"language":"english","punctuation":false,"numbers":false}'
+      order by m.finished_at desc limit 2000
+    ), pick as (
+      select m.id, m.text, mp.slot, u.display_name, u.equipped, u.xp, rt.rating, rt.races
+      from recent m
+      join match_players mp on mp.match_id = m.id
+      join users u on u.id = mp.user_id
+      left join ratings rt on rt.user_id = mp.user_id and rt.season_id = ${season.id}
+      where mp.finished and u.banned_at is null and u.flagged_at is null and mp.user_id <> ${idn.guest ? null : idn.id}
+        and exists (select 1 from replays r where r.match_id = mp.match_id and r.slot = mp.slot)
+      order by abs(coalesce(rt.rating, mp.rating_before, 1500) - ${rating}) limit 8
+    )
+    select p.id, p.text, r.keystrokes, p.display_name, p.equipped, p.xp, p.rating, p.races
+    from pick p join replays r on r.match_id = p.id and r.slot = p.slot`;
   if (!rows.length) return "No ghosts available yet.";
   const g = rows[randomInt(rows.length)]!;
   const eq = resolveEquipped(g.equipped);
