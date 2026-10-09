@@ -2,12 +2,13 @@
   import type { Snippet } from "svelte";
   import { onMount } from "svelte";
   import { Ghost } from "@lucide/svelte";
-  import { tierFor, PLACEMENT_RACES, resolveEquipped } from "@mtr/shared";
+  import { tierFor, tierIndex, PLACEMENT_RACES, resolveEquipped } from "@mtr/shared";
   import type { RaceResult } from "#lib/game.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import { celebrate } from "#lib/celebrate.ts";
   import TierBadge from "./TierBadge.svelte";
+  import RankUp from "./RankUp.svelte";
   import SpeedChart from "./SpeedChart.svelte";
 
   let { result, actions }: { result: RaceResult; actions?: Snippet } = $props();
@@ -26,10 +27,29 @@
     return won ? "victory" : "defeat";
   });
 
+  // finishing placements or climbing a tier gets the full screen reveal first
+  const rankUp = $derived.by(() => {
+    if (result.held || me?.ratingBefore === undefined || me.ratingAfter === undefined) return null;
+    const races = me.races ?? 0;
+    const to = tierFor(me.ratingAfter);
+    if (races === PLACEMENT_RACES) return { from: null, to, rating: me.ratingAfter };
+    const from = tierFor(me.ratingBefore);
+    if (races > PLACEMENT_RACES && tierIndex(to.id) > tierIndex(from.id)) return { from, to, rating: me.ratingAfter };
+    return null;
+  });
+  let revealing = $state(false);
+
   // count the rating up/down for a bit of drama
   let shown = $state(0);
   onMount(() => {
     void session.refresh();
+    shown = me?.ratingBefore ?? 0;
+    if (rankUp) revealing = true;
+    else play();
+  });
+
+  function play() {
+    revealing = false;
     if (won) celebrate(resolveEquipped(session.me?.equipped).finish);
     if (me?.ratingBefore === undefined || me.ratingAfter === undefined) return;
     const from = me.ratingBefore;
@@ -42,7 +62,7 @@
     };
     shown = from;
     setTimeout(() => requestAnimationFrame(step), 350);
-  });
+  }
 
   const tierUp = $derived(
     me?.ratingBefore !== undefined && me.ratingAfter !== undefined && (me.races ?? 0) >= PLACEMENT_RACES
@@ -55,6 +75,10 @@
   const opponent = $derived(result.results.find((r) => r.id !== meId));
   const fmtTime = (ms: number | null) => (ms === null ? "—" : `${(ms / 1000).toFixed(2)}s`);
 </script>
+
+{#if revealing && rankUp}
+  <RankUp from={rankUp.from} to={rankUp.to} rating={rankUp.rating} onclose={play} />
+{/if}
 
 <div class="mx-auto max-w-[1000px] animate-rise">
   <div class="mb-8 flex flex-wrap items-end justify-between gap-6">
