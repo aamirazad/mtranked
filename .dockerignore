@@ -6,3 +6,4 @@
 .git
 **/.env
 **/.env.*
+backups

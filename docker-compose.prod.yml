@@ -33,6 +33,24 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # pg_dump on start and then daily into BACKUP_DIR; see deploy/backup.sh and "Backups" in README
+  backup:
+    image: postgres:17-alpine
+    entrypoint: ["sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: mtr
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      PGDATABASE: mtr
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]

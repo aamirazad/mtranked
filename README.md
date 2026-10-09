@@ -106,6 +106,7 @@ ssh you@your-server
 git clone https://github.com/your-name/mt-ranked.git && cd mt-ranked
 cp .env.production.example .env.production
 nano .env.production        # DOMAIN, APP_URL, POSTGRES_PASSWORD, SMTP_URL, MAIL_FROM, PUBLIC_SOURCE_URL
+mkdir -p backups             # daily database dumps land here (see Backups below)
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
@@ -140,10 +141,40 @@ For now every new account is an **early supporter**: supporter perks for life, a
 
 Perks follow `users.is_subscriber`, which the webhook keeps in sync. Cancelled plans stay active until the paid period ends.
 
-### 5. Backups and operations
+### 5. Backups
 
-- **Database backups**: either point `DATABASE_URL` at a managed Postgres (Neon, Supabase or RDS, with daily backups and PITR) or add a nightly cron on the VPS:
-  `docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U mtr mtr | gzip > /backups/mtr-$(date +%F).sql.gz` and copy the files off the box.
+The `backup` service dumps the database with `pg_dump -Fc` when the stack starts and then once a day. Dumps go to `./backups` in the repo checkout on the VPS, named like `mtr-2026-01-31T030000Z.dump`. Dumps from the last 14 days are kept; older ones are deleted only after a new dump succeeds, so a failing backup never removes good ones. The files are owned by whoever owns the directory, so run `mkdir -p backups` as your SSH user before the first `up` (if Docker creates it, it and the dumps belong to root). Change the location with `BACKUP_DIR` and the retention with `BACKUP_KEEP_DAYS` in `.env.production`, then run `docker compose ... up -d`.
+
+Check that it's working:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml logs backup   # "ok: mtr-....dump (1.2M)" per run
+ls -lh backups/
+```
+
+**Restore** (this **overwrites** the live database with the dump):
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml stop api realtime
+deploy/restore.sh backups/mtr-2026-01-31T030000Z.dump
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+The restore runs `pg_restore --clean --if-exists` in a single transaction, so it either fully succeeds or changes nothing. Tables that were added after the dump was taken are left in place.
+
+**Copy backups off the VPS.** Dumps stored on the VPS are lost along with it if the server dies, is deleted or is compromised. Pull them to another machine every day, for example from a home server or laptop with cron:
+
+```sh
+# crontab -e on another machine: daily at 04:30
+30 4 * * * rsync -a you@your-server:mt-ranked/backups/ ~/mt-ranked-backups/
+```
+
+`rclone copy` to S3/R2/Backblaze works the same way. Turning on your VPS provider's backup or snapshot feature (Hetzner, DigitalOcean and Vultr all offer it for a small fee) adds a second safety net. Test a restore now and then.
+
+If you point `DATABASE_URL` at a managed Postgres (Neon, Supabase, RDS), use its built-in backups instead; the `backup` service only dumps the bundled `postgres` container.
+
+### 6. Operations
+
 - **Managed Redis** (optional): set `REDIS_URL` (Upstash/Redis Cloud). The bundled Redis uses an append-only file.
 - **Logs**: `docker compose -f docker-compose.prod.yml logs -f api realtime`.
 - **Health**: `https://your-domain/api/health`. The realtime server exposes `/health` inside the Docker network.
