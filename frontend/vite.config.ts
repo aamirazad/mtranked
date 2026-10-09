@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [
     sentrySvelteKit({
       org: "aamir-lv",
-      project: "javascript-sveltekit",
+      project: "mtranked",
       // source maps are uploaded (then deleted from the build) only when a token is available
       autoUploadSourceMaps: !!process.env.SENTRY_AUTH_TOKEN,
       sourcemaps: { filesToDeleteAfterUpload: ["./build/**/*.map", "./.svelte-kit/output/**/*.map"] },
