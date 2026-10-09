@@ -21,6 +21,7 @@ import {
   COUNTDOWN_MS,
   HURRY_MS,
   MAX_PING_ALLOWANCE_MS,
+  PREPARE_MS,
   RACE_CAP_MS,
   READY_CHECK_MS,
   RECONNECT_GRACE_MS,
@@ -285,6 +286,7 @@ export class Room {
       raceId: r.id,
       matchId: r.matchId,
       mode: this.mode,
+      settings: r.settings,
       text: r.text,
       source: r.source,
       startAt: r.startAt,
@@ -346,7 +348,9 @@ export class Room {
     }
     this.lastSettingsSeed = gen;
     const now = Date.now();
-    const startAt = now + COUNTDOWN_MS + 200;
+    // matchmade games have a random format, so players get a moment to see what's coming
+    const prepare = this.mode === "ranked" || this.mode === "casual" ? PREPARE_MS : 0;
+    const startAt = now + prepare + COUNTDOWN_MS + 200;
     const timeLimit = this.settings.mode === "time" ? this.settings.time * 1000 : 0;
     const cap =
       timeLimit ||

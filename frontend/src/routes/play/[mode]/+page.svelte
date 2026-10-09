@@ -3,13 +3,14 @@
   import { goto, beforeNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { Bell, Ghost, X } from "@lucide/svelte";
-  import type { QueueMode } from "@mtr/race-protocol";
+  import { COUNTDOWN_MS, type QueueMode } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import { notifier } from "#lib/notify.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
   import MatchFound from "#lib/components/MatchFound.svelte";
+  import GameIntro from "#lib/components/GameIntro.svelte";
   import TierBadge from "#lib/components/TierBadge.svelte";
   import ReportDialog from "#lib/components/ReportDialog.svelte";
 
@@ -63,6 +64,16 @@
   });
 
   const inRace = $derived(!!game.race && !game.result);
+  // show the game type until the typing countdown starts
+  let preparing = $state(false);
+  $effect(() => {
+    const r = game.race;
+    const wait = r && !r.resumeKeys?.length ? r.startAt - COUNTDOWN_MS - game.serverNow() : 0;
+    preparing = wait > 0;
+    if (wait <= 0) return;
+    const t = setTimeout(() => (preparing = false), wait);
+    return () => clearTimeout(t);
+  });
   // `now` ticks so the timer re-renders
   const waited = $derived((void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0));
   const rematch = $derived(game.rematch && game.rematch.matchId === game.result?.matchId ? game.rematch : null);
@@ -103,6 +114,8 @@
       <a class="btn btn-ghost" href="/">home</a>
     </div>
   </div>
+{:else if inRace && preparing && game.race!.mode !== "ghost"}
+  <GameIntro race={game.race!} />
 {:else if inRace}
   <RaceView />
 {:else if game.result}

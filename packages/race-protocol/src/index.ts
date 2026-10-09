@@ -140,6 +140,8 @@ export type RaceStart = {
   raceId: string;
   matchId: string;
   mode: Mode;
+  /** what's being typed, for the pre-race intro */
+  settings: TextSettings;
   text: string;
   source?: string;
   startAt: number;
@@ -203,6 +205,8 @@ export function parseClientMsg(raw: string): ClientMsg | null {
 export const INPUT_BATCH_MS = 100;
 export const STATE_TICK_MS = 100;
 export const COUNTDOWN_MS = 3000;
+/** matchmade races show the game type for this long before the countdown */
+export const PREPARE_MS = 3000;
 export const READY_CHECK_MS = 20_000;
 export const RECONNECT_GRACE_MS = 15_000;
 export const RACE_CAP_MS = 120_000;
