@@ -45,32 +45,34 @@
   <div class="pt-16 text-center text-sub">loading…</div>
 {:else}
   <div class="mx-auto max-w-[1000px] animate-fade">
-    <div class="banner rounded-2xl p-8" style="background: {profile.banner}">
-      <div class="flex flex-wrap items-center gap-8">
-        <TierBadge rating={profile.rating} races={profile.races} size="lg" showRating={false} />
-        <div class="min-w-0">
-          <div class="flex items-center gap-3 text-4xl">
-            <span class="truncate">{profile.name}</span>
-            {#if profile.country}<span class="text-2xl" title={profile.country}>{flag(profile.country)}</span>{/if}
-            {#if profile.subscriber}<span class="rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
-          </div>
-          <div class="mt-2 flex items-center gap-3 text-sm text-sub">
-            <span>level <span class="text-text">{lvl?.level}</span></span>
-            <div class="h-1.5 w-32 overflow-hidden rounded bg-bg/60">
-              <div class="h-full bg-main" style="width: {lvl ? (lvl.into / lvl.need) * 100 : 0}%"></div>
+    <div class="banner rounded-2xl p-4" style="background: {profile.banner}">
+      <div class="flex items-stretch gap-4">
+        <div class="banner-panel flex flex-none items-center gap-6">
+          <TierBadge rating={profile.rating} races={profile.races} size="lg" showRating={false} />
+          <div class="min-w-0">
+            <div class="flex items-center gap-3 text-4xl">
+              <span class="max-w-[12ch] truncate" title={profile.name}>{profile.name}</span>
+              {#if profile.country}<span class="text-2xl" title={profile.country}>{flag(profile.country)}</span>{/if}
+              {#if profile.subscriber}<span class="rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
             </div>
-            <span>joined {new Date(profile.createdAt).toLocaleDateString()}</span>
+            <div class="mt-2 flex items-center gap-3 text-sm text-white/90">
+              <span>level <span class="text-white">{lvl?.level}</span></span>
+              <div class="h-1.5 w-32 overflow-hidden rounded bg-black/30">
+                <div class="h-full bg-main" style="width: {lvl ? (lvl.into / lvl.need) * 100 : 0}%"></div>
+              </div>
+              <span>joined {new Date(profile.createdAt).toLocaleDateString()}</span>
+            </div>
           </div>
         </div>
-        <div class="ml-auto grid grid-cols-3 gap-8 text-center">
-          <div>
+        <div class="@container banner-panel grid min-w-0 flex-1 grid-cols-3 content-center divide-x divide-white/10 px-2 text-center">
+          <div class="min-w-0 px-3">
             <div class="label">rating</div>
-            <div class="text-3xl" style="color: {placed ? tierFor(profile.rating).color : 'inherit'}">{placed ? profile.rating : "—"}</div>
+            <div class="text-2xl @sm:text-3xl" style="color: {placed ? tierFor(profile.rating).color : 'inherit'}">{placed ? profile.rating : "—"}</div>
           </div>
-          <div><div class="label">season peak</div><div class="text-3xl">{profile.peak || "—"}</div></div>
-          <div>
+          <div class="min-w-0 px-3"><div class="label">season peak</div><div class="text-2xl @sm:text-3xl">{profile.peak || "—"}</div></div>
+          <div class="min-w-0 px-3">
             <div class="label">win rate</div>
-            <div class="text-3xl">{profile.races ? Math.round((profile.wins / profile.races) * 100) + "%" : "—"}</div>
+            <div class="text-2xl @sm:text-3xl">{profile.races ? Math.round((profile.wins / profile.races) * 100) + "%" : "—"}</div>
           </div>
         </div>
       </div>
