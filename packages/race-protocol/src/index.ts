@@ -65,6 +65,8 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room.kick"), playerId: z.string() }),
   z.object({ type: z.literal("room.transfer"), playerId: z.string() }),
   z.object({ type: z.literal("room.lock"), locked: z.boolean() }),
+  /** host only: ends the room for everyone */
+  z.object({ type: z.literal("room.close") }),
   z.object({ type: z.literal("room.rename"), name: z.string().max(ROOM_NAME_MAX) }),
   /** supporter hosts can dress the room in a theme (null clears it) */
   z.object({ type: z.literal("room.theme"), theme: z.string().max(32).nullable() }),

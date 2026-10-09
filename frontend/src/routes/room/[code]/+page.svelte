@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Copy, Crown, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
+  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
   import { THEMES, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -211,6 +211,9 @@
         {#if isHost}
           <button class="btn" onclick={() => game.send({ type: "room.lock", locked: !room.locked })} title={room.locked ? "unlock room" : "lock room"}>
             {#if room.locked}<Lock size={16} /> locked{:else}<LockOpen size={16} /> open{/if}
+          </button>
+          <button class="btn" onclick={() => confirm("Close this room for everyone?") && game.send({ type: "room.close" })} title="close room">
+            <DoorClosed size={16} /> close room
           </button>
           <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" })}><Play size={16} /> start race</button>
         {/if}

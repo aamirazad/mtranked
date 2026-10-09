@@ -38,6 +38,7 @@ type RoomMsg = Extract<
       | "room.kick"
       | "room.transfer"
       | "room.lock"
+      | "room.close"
       | "room.rename"
       | "room.theme"
       | "room.hurry"
@@ -73,6 +74,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onTransfer(id, msg.playerId);
     case "room.lock":
       return room.onLock(id, msg.locked);
+    case "room.close":
+      return room.onClose(id);
     case "room.rename":
       return room.onRename(id, msg.name);
     case "room.theme":

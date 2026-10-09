@@ -148,6 +148,8 @@ export class Room {
   race: Race | null = null;
   ghost?: GhostSource;
   private lastSettingsSeed?: { seed: string; text: string; source?: string };
+  /** players the host kicked; they can't come back */
+  private kicked = new Set<string>();
   /** a start is in flight (text generation is async) */
   private starting = false;
 
@@ -709,6 +711,7 @@ export class Room {
       this.reconnect(m.idn.id);
       return null;
     }
+    if (this.kicked.has(m.idn.id)) return "You were removed from this room by the host.";
     if (this.locked) return "This room is locked.";
     if (this.members.size >= this.cap) return `This room is full (${this.cap} players).`;
     this.addMember(m);
@@ -721,12 +724,16 @@ export class Room {
   }
 
   removeMember(playerId: string, reason: string | null) {
-    if (!this.members.has(playerId)) return;
+    const m = this.members.get(playerId);
+    if (!m) return;
     if (this.status === "racing" || this.status === "countdown") this.forfeit(playerId);
     this.members.delete(playerId);
     playerRoom.delete(playerId);
     void redis.del(`proom:${playerId}`);
-    if (reason) sendTo(playerId, { type: "room.closed", reason });
+    if (reason) {
+      sendTo(playerId, { type: "room.closed", code: this.code, reason, rejoin: false });
+      if (!m.connected) void holdRoomGone(playerId, { code: this.code, reason, rejoin: false });
+    }
     if (this.members.size === 0) return this.close("Everyone left, so the room closed.");
     if (this.hostId === playerId) {
       const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
@@ -738,7 +745,8 @@ export class Room {
   }
 
   onKick(playerId: string, target: string) {
-    if (playerId !== this.hostId || target === playerId) return;
+    if (playerId !== this.hostId || target === playerId || !this.members.has(target)) return;
+    this.kicked.add(target);
     this.removeMember(target, "You were removed from the room by the host.");
   }
 
@@ -747,6 +755,11 @@ export class Room {
     this.hostId = target;
     this.hostSubscriber = this.members.get(target)!.info.subscriber;
     this.broadcastRoom();
+  }
+
+  onClose(playerId: string) {
+    if (playerId !== this.hostId || this.mode !== "private") return;
+    this.close("The host closed the room.");
   }
 
   onLock(playerId: string, locked: boolean) {
