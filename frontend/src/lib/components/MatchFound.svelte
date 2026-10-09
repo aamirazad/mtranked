@@ -70,7 +70,7 @@
     </div>
     {#if !imReady}
       <div class="mt-4 text-center text-xs text-sub">
-        declining or missing the ready check takes you out of the queue · twice in 10 minutes locks the queue for 5 minutes
+        declining or missing the ready check takes you out of the queue · 3 declines or forfeits in 10 minutes lock the queue for 5 minutes
       </div>
     {/if}
   </div>

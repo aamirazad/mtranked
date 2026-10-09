@@ -157,6 +157,8 @@ export type ServerMsg =
   | { type: "match.found"; matchId: string; mode: Mode; players: PlayerPublic[]; readyBy: number }
   | { type: "match.ready"; matchId: string; ready: string[] }
   | { type: "match.cancelled"; matchId: string; reason: string; requeued: boolean }
+  /** a warning to show the player, e.g. about a forfeit penalty (held until they reconnect if they're offline) */
+  | { type: "notice"; message: string }
   | { type: "room.state"; room: RoomPublic }
   | { type: "room.closed"; reason: string }
   | ({ type: "race.countdown" } & RaceStart)

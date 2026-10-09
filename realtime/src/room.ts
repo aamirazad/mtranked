@@ -40,7 +40,7 @@ import type { Identity } from "./players";
 import { NODE_ID, redis } from "./redis";
 import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
-import { recordDecline, requeue } from "./matchmaker";
+import { recordDecline, requeue, strikeWarning } from "./matchmaker";
 import { offerRematch } from "./rematch";
 
 const IDLE_FORFEIT_MS = 25_000;
@@ -293,17 +293,12 @@ export class Room {
     const bad = culprits ?? new Set([...this.members.values()].filter((m) => !m.ready).map((m) => m.idn.id));
     for (const m of this.members.values()) {
       const isBad = bad.has(m.idn.id);
-      const banned = isBad && (await recordDecline(m.idn.id));
       const requeued = !isBad && (this.mode === "ranked" || this.mode === "casual");
-      const what = reason === "declined" ? "You declined the match" : "You didn't ready up in time";
+      const what = reason === "declined" ? "You declined the match and left the queue" : "You didn't ready up in time and left the queue";
       sendTo(m.idn.id, {
         type: "match.cancelled",
         matchId: this.matchId,
-        reason: !isBad
-          ? "Your opponent didn't accept."
-          : banned
-            ? `${what} twice in 10 minutes, so the queue is locked for 5 minutes.`
-            : `${what} and left the queue. Do it again within 10 minutes and you'll be locked out of the queue for 5 minutes.`,
+        reason: isBad ? strikeWarning(what, await recordDecline(m.idn.id)) : "Your opponent didn't accept.",
         requeued,
       });
       if (requeued) await requeue(m, this.mode as "ranked" | "casual");
@@ -415,6 +410,15 @@ export class Room {
     r.out = true;
     r.forfeit = true;
     r.outAt = Date.now() - this.race!.startAt;
+    // walking out of a matchmade race is a strike, same as declining it
+    if (this.mode === "ranked" || this.mode === "casual") void this.strikeForfeit(playerId);
+  }
+
+  private async strikeForfeit(playerId: string) {
+    const message = strikeWarning("You forfeited your last match by leaving it", await recordDecline(playerId));
+    if (this.members.get(playerId)?.connected) sendTo(playerId, { type: "notice", message });
+    // closed the tab: tell them when they come back
+    else await redis.set(`notice:${playerId}`, message, "EX", 24 * 3600);
   }
 
   private forceEnd() {

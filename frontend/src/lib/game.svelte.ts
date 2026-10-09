@@ -168,6 +168,9 @@ class Game {
         // queue refusals are shown in place by the play page
         if (msg.code !== "queue_timeout" && msg.code !== "ranked_blocked") toasts.show(msg.message, "error", 6000);
         break;
+      case "notice":
+        toasts.show(msg.message, "error", 10_000);
+        break;
       case "queue.status":
         this.queue = msg;
         this.queueMode = msg.mode;

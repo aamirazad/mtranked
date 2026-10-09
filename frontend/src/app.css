@@ -79,7 +79,7 @@
      --angle is pointed at the cursor while hovering (see settings page) */
   .supporter-tile {
     --angle: 135deg;
-    --dim: 45%;
+    --dim: 25%;
     border-color: transparent;
     background:
       linear-gradient(var(--color-sub-alt), var(--color-sub-alt)) padding-box,

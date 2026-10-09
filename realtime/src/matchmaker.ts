@@ -83,16 +83,29 @@ export async function requeue(m: Member, mode: QueueMode) {
   await enqueue(m.idn, m.info, mode, m.rating ?? null, flagged, m.queueSince ?? Date.now());
 }
 
-/** Two declines (or missed ready checks) in 10 minutes = 5 minute queue timeout. Returns true if this one started it. */
-export async function recordDecline(id: string): Promise<boolean> {
+export const STRIKE_LIMIT = 3;
+
+/**
+ * Declines, missed ready checks and forfeits are strikes; STRIKE_LIMIT in 10
+ * minutes = 5 minute queue timeout. Returns how many strikes are left before
+ * the timeout (0 means this one started it).
+ */
+export async function recordDecline(id: string): Promise<number> {
   const n = await redis.incr(`declines:${id}`);
   if (n === 1) await redis.expire(`declines:${id}`, 600);
-  if (n >= 2) {
+  if (n >= STRIKE_LIMIT) {
     await redis.set(`qban:${id}`, "1", "EX", 300);
     await redis.del(`declines:${id}`);
-    return true;
+    return 0;
   }
-  return false;
+  return STRIKE_LIMIT - n;
+}
+
+/** What to tell a player about the strike they just got. */
+export function strikeWarning(what: string, left: number) {
+  return left === 0
+    ? `${what}. That's ${STRIKE_LIMIT} declines or forfeits in 10 minutes, so the queue is locked for 5 minutes.`
+    : `${what}. ${left} more decline${left === 1 ? "" : "s"} or forfeit${left === 1 ? "" : "s"} within 10 minutes and you'll be locked out of the queue for 5 minutes.`;
 }
 
 export async function queueBanLeft(id: string): Promise<number> {

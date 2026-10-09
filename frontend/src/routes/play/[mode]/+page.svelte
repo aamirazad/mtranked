@@ -55,7 +55,7 @@
 
   beforeNavigate((nav) => {
     if (game.race && !game.result && game.race.mode !== "ghost" && nav.type !== "leave") {
-      if (!confirm("Leaving now forfeits the race. Leave anyway?")) nav.cancel();
+      if (!confirm("Leaving now forfeits the race. 3 declines or forfeits in 10 minutes lock the queue for 5 minutes. Leave anyway?")) nav.cancel();
       else game.leaveRace();
     }
   });
