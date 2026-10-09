@@ -215,6 +215,23 @@ process.on("unhandledRejection", (e) => console.error("[realtime] unhandled reje
 
 const EARLY_MAX = 20;
 
+/** Token bucket: up to `burst` at once, refilling `rate` per second. */
+function bucket(burst: number, rate: number) {
+  let tokens = burst;
+  let last = Date.now();
+  return () => {
+    const now = Date.now();
+    tokens = Math.min(burst, tokens + ((now - last) / 1000) * rate);
+    last = now;
+    if (tokens < 1) return false;
+    tokens--;
+    return true;
+  };
+}
+
+/** Messages that hit the DB or redis get a much tighter budget. */
+const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request"]);
+
 wss.on("connection", async (ws, req) => {
   // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
   ws.on("error", (e) => console.warn("[ws] socket error", e.message));
@@ -266,9 +283,26 @@ wss.on("connection", async (ws, req) => {
   if (notice) conn.send({ type: "notice", message: notice });
 
   let queue = Promise.resolve();
+  // clients send an input batch every 100ms plus the odd ping/action
+  const allow = bucket(40, 20);
+  const allowExpensive = bucket(5, 0.5);
+  let dropped = 0;
+  let dropSince = 0;
   const onMessage = (data: unknown) => {
+    if (!allow()) {
+      const now = Date.now();
+      if (now - dropSince > 10_000) {
+        dropSince = now;
+        dropped = 0;
+      }
+      // still flooding after hundreds of drops: cut them off
+      if (++dropped > 200) ws.close(4008, "rate limited");
+      return;
+    }
     const msg = parseClientMsg(String(data));
     if (!msg) return;
+    if (EXPENSIVE.has(msg.type) && !allowExpensive())
+      return conn.send({ type: "error", code: "slow_down", message: "You're doing that too fast." });
     // keep per-connection ordering (inputs must be applied in sequence)
     queue = queue.then(() => handle(conn, msg)).catch((e) => console.error("[ws] handler error", e));
   };
