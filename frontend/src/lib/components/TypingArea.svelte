@@ -3,12 +3,16 @@
 </script>
 
 <script lang="ts">
-  // Monkeytype-style words view: 3 visible lines, smooth caret, and
-  // opponent carets interpolated between server updates with CSS transitions.
+  // Monkeytype-style words view: 3 visible lines (or all lines, or a one-line
+  // tape), smooth caret, and opponent carets interpolated between server
+  // updates with CSS transitions. Everything the player can tweak here is
+  // cosmetic (see prefs); it never changes which keys count.
   import { tick, untrack } from "svelte";
   import { BACKSPACE, WORD_DELETE, type TypingState } from "@mtr/engine";
   import Caret from "./Caret.svelte";
-  import { prefs } from "#lib/prefs.svelte.ts";
+  import { CARET_MS, prefs } from "#lib/prefs.svelte.ts";
+  import { emulateKey } from "#lib/layouts.ts";
+  import { playClick, playError } from "#lib/sound.ts";
 
   let {
     ts,
@@ -20,6 +24,7 @@
     showOwnCaret = true,
     onkey,
     lines = 3,
+    allowAllLines = true,
   }: {
     ts: TypingState;
     active?: boolean;
@@ -30,6 +35,8 @@
     showOwnCaret?: boolean;
     onkey?: (key: string) => void;
     lines?: number;
+    /** "show all lines" is skipped for very long texts (time mode) */
+    allowAllLines?: boolean;
   } = $props();
 
   let inputs = $state<string[]>([]);
@@ -44,8 +51,18 @@
 
   let caretPos = $state({ x: 0, y: 0, h: 0 });
   let scroll = $state(0);
+  let tapeX = $state(0);
+  let boxW = $state(0);
   let lineH = $state(48);
   let layoutVersion = $state(0);
+
+  const tape = $derived(prefs.tapeMode !== "off");
+  const allLines = $derived(!tape && prefs.showAllLines && allowAllLines);
+  const shownLines = $derived(tape ? 1 : lines);
+  /** extra letters aren't drawn, so the caret stops at the word's end */
+  const hideExtra = $derived(prefs.blindMode || prefs.hideExtraLetters);
+  /** where the tape keeps the caret, as a share of the width */
+  const TAPE_MARGIN = 0.4;
 
   /** Re-read the engine state after the parent applied keys. */
   export function sync(all = false) {
@@ -85,10 +102,15 @@
     if (active) void tick().then(focus);
   });
 
-  // the font size preference changes every position
+  // font, size and view preferences change every position
   $effect(() => {
-    void prefs.fontSize;
+    void [prefs.fontSize, prefs.fontFamily, prefs.tapeMode, prefs.showAllLines, prefs.hideExtraLetters, prefs.blindMode, prefs.indicateTypos, boxW];
     void tick().then(measure);
+  });
+  // web fonts arrive after first layout
+  $effect(() => {
+    void prefs.fontFamily;
+    void document.fonts?.ready.then(() => measure());
   });
 
   function measure() {
@@ -100,9 +122,17 @@
       lineH = first.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
     }
     const input = inputs[wi] ?? "";
-    caretPos = letterPos(el, ts.finished ? el.children.length : input.length);
-    const target = Math.max(0, el.offsetTop - (lines >= 3 ? lineH : 0) - (first?.offsetTop ?? 0));
-    if (target !== scroll) scroll = target;
+    const word = ts.words[wi] ?? "";
+    caretPos = letterPos(el, ts.finished ? el.children.length : hideExtra ? Math.min(input.length, word.length) : input.length);
+    if (tape) {
+      scroll = 0;
+      const at = prefs.tapeMode === "word" ? el.offsetLeft : caretPos.x;
+      tapeX = boxW * TAPE_MARGIN - at;
+    } else {
+      tapeX = 0;
+      const target = allLines ? 0 : Math.max(0, el.offsetTop - (lines >= 3 ? lineH : 0) - (first?.offsetTop ?? 0));
+      if (target !== scroll) scroll = target;
+    }
     layoutVersion++;
   }
 
@@ -114,7 +144,9 @@
       const l = letters[letterIdx]!;
       return { x: wordEl.offsetLeft + l.offsetLeft, y: wordEl.offsetTop, h };
     }
-    const last = letters[letters.length - 1]!;
+    // the last visible letter (hidden extras have no box)
+    let last = letters[letters.length - 1]!;
+    for (let i = letters.length - 1; i > 0 && last.offsetWidth === 0; i--) last = letters[i - 1]!;
     return { x: wordEl.offsetLeft + last.offsetLeft + last.offsetWidth, y: wordEl.offsetTop, h };
   }
 
@@ -142,19 +174,34 @@
     return carets.map((c) => ({ ...c, pos: posForIndex(c.idx) }));
   });
 
+  /** Hand a key to the parent, then play the click (or error) sound for what it did. */
+  function send(k: string, code?: string) {
+    const before = ts.incorrectKeys;
+    onkey!(k);
+    if (prefs.soundOnError !== "off" && ts.incorrectKeys > before) playError(prefs.soundOnError, prefs.soundVolume);
+    else if (prefs.soundOnClick !== "off") playClick(prefs.soundOnClick, prefs.soundVolume, code);
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (!active || !onkey) return;
     // only real keyboard events count (no synthetic/scripted input)
     if (!e.isTrusted) return e.preventDefault();
     if (e.key === "Backspace") {
       e.preventDefault();
-      onkey(e.ctrlKey || e.altKey || e.metaKey ? WORD_DELETE : BACKSPACE);
+      send(e.ctrlKey || e.altKey || e.metaKey ? WORD_DELETE : BACKSPACE, e.code);
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // layout emulation: the physical key types its character on the chosen layout
+    const emulated = prefs.layout !== "default" && e.key !== "Dead" ? emulateKey(prefs.layout, e) : null;
+    if (emulated) {
+      e.preventDefault();
+      send(emulated, e.code);
+      return;
+    }
     if (e.key.length === 1) {
       e.preventDefault();
-      onkey(e.key);
+      send(e.key, e.code);
     }
   }
 
@@ -167,7 +214,7 @@
     // a dead key or IME commit yields a character or two; anything longer is
     // a paste/autofill in disguise and is ignored
     if ([...v].length > 2) return;
-    for (const ch of v) onkey(ch);
+    for (const ch of v) send(ch);
   }
 
   const block = (e: Event) => e.preventDefault();
@@ -195,7 +242,8 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
   class="relative select-none"
-  style="height: {lineH * lines}px; --typing-size: {prefs.fontSize}rem"
+  style="{allLines ? '' : `height: ${lineH * shownLines}px;`} --typing-size: {prefs.fontSize}rem"
+  bind:clientWidth={boxW}
   onclick={focus}
   role="textbox"
   tabindex="-1"
@@ -215,14 +263,32 @@
     onfocus={() => (focused = true)}
     onblur={() => (focused = false)}
   />
-  <div class="h-full overflow-hidden transition-[filter] duration-300" class:blur-sm={blurred || (active && !focused)}>
-    <div bind:this={wrapper} class="words relative flex flex-wrap content-start" style="transform: translateY({-scroll}px)">
+  <div class="h-full transition-[filter] duration-300" class:overflow-hidden={!allLines} class:tape-mask={tape} class:blur-sm={blurred || (active && !focused)}>
+    <div
+      bind:this={wrapper}
+      class="words relative flex content-start"
+      class:flex-wrap={!tape}
+      class:smooth-scroll={prefs.smoothLineScroll}
+      class:flipped={prefs.flipColors}
+      class:colorful={prefs.colorfulMode}
+      class:blind={prefs.blindMode}
+      class:hide-extra={prefs.hideExtraLetters}
+      class:hl-word={prefs.highlightMode === "word"}
+      class:hl-off={prefs.highlightMode === "off"}
+      class:typos-below={prefs.indicateTypos === "below"}
+      style="transform: translate({tapeX}px, {-scroll}px)"
+    >
       {#each ts.words as word, i (i)}
         {@const input = inputs[i] ?? ""}
         {@const isTyped = i <= wi}
-        <div class="word" class:error={i < wi && input !== word}>
+        <div class="word" class:error={i < wi && input !== word} class:typed={i < wi} class:active={i === wi}>
           {#each { length: isTyped ? Math.max(word.length, input.length) : word.length } as _, j (j)}
-            <span class={letterClass(word, input, j, isTyped)}>{j < word.length ? word[j] : input[j]}</span>
+            {@const cls = letterClass(word, input, j, isTyped)}
+            <span class={cls}
+              >{j >= word.length || (cls === "incorrect" && prefs.indicateTypos === "replace" && !prefs.blindMode) ? input[j] : word[j]}{#if cls === "incorrect" && prefs.indicateTypos === "below" && !prefs.blindMode}<span
+                  class="typo">{input[j]}</span
+                >{/if}</span
+            >
           {/each}
         </div>
       {/each}
@@ -238,7 +304,16 @@
       {/each}
 
       {#if showOwnCaret && !ts.finished}
-        <Caret x={caretPos.x} y={caretPos.y} h={caretPos.h} color={caretColor} shape={caretShape} blink={!typing} smooth={prefs.smoothCaret} />
+        <Caret
+          x={caretPos.x}
+          y={caretPos.y}
+          h={caretPos.h}
+          color={caretColor}
+          shape={caretShape}
+          blink={!typing}
+          smooth={prefs.smoothCaret !== "off"}
+          speed={CARET_MS[prefs.smoothCaret]}
+        />
       {/if}
     </div>
   </div>
@@ -253,25 +328,86 @@
   .words {
     font-size: var(--typing-size);
     line-height: 1.6;
+    --c-correct: var(--color-text);
+    --c-untyped: var(--color-sub);
+    --c-incorrect: var(--color-error);
+    --c-extra: var(--color-error-extra);
+  }
+  .words.smooth-scroll {
     transition: transform 0.12s ease-out;
+  }
+  .tape-mask {
+    mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+  }
+  .words.flipped {
+    --c-correct: var(--color-sub);
+    --c-untyped: var(--color-text);
+  }
+  .words.colorful {
+    --c-correct: var(--color-main);
+  }
+  .words.flipped.colorful {
+    --c-correct: var(--color-sub);
+    --c-untyped: var(--color-main);
   }
   .word {
     position: relative;
+    flex-shrink: 0;
     margin: 0.1em 0.3em;
-    color: var(--color-sub);
+    color: var(--c-untyped);
     border-bottom: 2px solid transparent;
   }
   .word.error {
-    border-bottom-color: var(--color-error);
+    border-bottom-color: var(--c-incorrect);
   }
-  .word span.correct {
-    color: var(--color-text);
+  .word > span {
+    position: relative;
   }
-  .word span.incorrect {
-    color: var(--color-error);
+  .word > span.correct {
+    color: var(--c-correct);
   }
-  .word span.extra {
-    color: var(--color-error-extra);
+  .word > span.incorrect {
+    color: var(--c-incorrect);
+  }
+  .word > span.extra {
+    color: var(--c-extra);
+  }
+  .typo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 1.1em;
+    font-size: 0.55em;
+    text-align: center;
+    color: var(--c-incorrect);
+    opacity: 0.8;
+  }
+  /* blind mode: mistakes look like correct letters */
+  .blind .word > span.incorrect {
+    color: var(--c-correct);
+  }
+  .blind .word.error {
+    border-bottom-color: transparent;
+  }
+  .blind .word > span.extra,
+  .hide-extra .word > span.extra {
+    display: none;
+  }
+  /* highlight mode off: only mistakes stand out */
+  .hl-off .word > span.correct,
+  .hl-off.blind .word > span.incorrect {
+    color: var(--c-untyped);
+  }
+  /* highlight mode word: the whole current word lights up, typed words dim again */
+  .hl-word .word.typed > span {
+    color: var(--c-untyped);
+  }
+  .hl-word .word.active > span {
+    color: var(--c-correct);
+  }
+  .hl-word:not(.blind) .word.typed.error > span,
+  .hl-word:not(.blind) .word.active:has(> span.incorrect) > span {
+    color: var(--c-incorrect);
   }
   .other-caret {
     left: 0;

@@ -8,7 +8,19 @@
     blink = false,
     smooth = true,
     ghost = false,
-  }: { x: number; y: number; h: number; color?: string; shape?: string; blink?: boolean; smooth?: boolean; ghost?: boolean } = $props();
+    speed = 80,
+  }: {
+    x: number;
+    y: number;
+    h: number;
+    color?: string;
+    shape?: string;
+    blink?: boolean;
+    smooth?: boolean;
+    ghost?: boolean;
+    /** glide duration in ms when smooth */
+    speed?: number;
+  } = $props();
 
   // the default "classic" caret follows the site theme
   const c = $derived(color === "prism" || color === "#e2b714" ? "var(--color-caret)" : color);
@@ -20,7 +32,7 @@
   class:smooth
   class:ghost
   class:prism={color === "prism"}
-  style="transform: translate({x}px, {y}px); height: {h}px; --c: {c}"
+  style="transform: translate({x}px, {y}px); height: {h}px; --c: {c}; --glide: {speed}ms"
   aria-hidden="true"
 ></div>
 
@@ -37,7 +49,7 @@
     opacity: 0.45;
   }
   .caret.smooth {
-    transition: transform 0.08s ease-out;
+    transition: transform var(--glide, 80ms) ease-out;
   }
   .caret::before {
     content: "";

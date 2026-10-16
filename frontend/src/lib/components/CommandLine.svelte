@@ -9,9 +9,39 @@
   // also on the settings page.
   import { tick } from "svelte";
   import { page } from "$app/state";
-  import { Check, ChevronLeft, ChevronRight, Gauge, Paintbrush, Palette, RotateCcw, Search, TextCursor, Type } from "@lucide/svelte";
+  import {
+    AlignJustify,
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    Eye,
+    Gauge,
+    Highlighter,
+    Keyboard,
+    Paintbrush,
+    Palette,
+    RotateCcw,
+    Search,
+    TextCursor,
+    Type,
+    Volume2,
+  } from "@lucide/svelte";
   import { THEMES, themeById, type Theme } from "@mtr/shared";
-  import { FONT_SIZES, QUICK_RESTARTS, fontSizeName, prefs } from "#lib/prefs.svelte.ts";
+  import {
+    CARET_SPEEDS,
+    FONT_SIZES,
+    HIGHLIGHT_MODES,
+    INDICATE_TYPOS,
+    LIVE_STYLES,
+    PROGRESS_STYLES,
+    QUICK_RESTARTS,
+    TAPE_MODES,
+    fontSizeName,
+    prefs,
+  } from "#lib/prefs.svelte.ts";
+  import { FONTS } from "#lib/fonts.ts";
+  import { CLICK_SOUNDS, ERROR_SOUNDS, VOLUMES, playClick, playError } from "#lib/sound.ts";
+  import { LAYOUT_IDS, layoutName } from "#lib/layouts.ts";
   import { game } from "#lib/game.svelte.ts";
 
   type Option = {
@@ -33,6 +63,8 @@
 
   const onOff = (value: boolean, set: (v: boolean) => void): Option[] =>
     [true, false].map((v) => ({ label: v ? "on" : "off", active: value === v, run: () => set(v) }));
+  const pick = <T,>(list: readonly T[], value: T, set: (v: T) => void, name: (v: T) => string = String): Option[] =>
+    list.map((v) => ({ label: name(v), active: value === v, run: () => set(v) }));
 
   const room = $derived(game.room);
   const canThemeRoom = $derived(!!room && room.hostId === game.you?.id && room.hostSubscriber && page.url.pathname.startsWith("/room/"));
@@ -76,8 +108,35 @@
       icon: Type,
       options: FONT_SIZES.map((s) => ({ label: fontSizeName(s), active: prefs.fontSize === s, run: () => prefs.set("fontSize", s) })),
     },
-    { id: "smooth-caret", label: "Smooth caret", icon: TextCursor, options: onOff(prefs.smoothCaret, (v) => prefs.set("smoothCaret", v)) },
-    { id: "live-wpm", label: "Live wpm", icon: Gauge, options: onOff(prefs.liveWpm, (v) => prefs.set("liveWpm", v)) },
+    { id: "font-family", label: "Font family", icon: Type, options: pick(FONTS.map((f) => f.id), prefs.fontFamily, (v) => prefs.set("fontFamily", v), (v) => FONTS.find((f) => f.id === v)!.name) },
+    { id: "smooth-caret", label: "Smooth caret", icon: TextCursor, options: pick(CARET_SPEEDS, prefs.smoothCaret, (v) => prefs.set("smoothCaret", v)) },
+    { id: "live-progress", label: "Live progress", icon: Gauge, options: pick(PROGRESS_STYLES, prefs.liveProgress, (v) => prefs.set("liveProgress", v)) },
+    { id: "live-wpm", label: "Live speed", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveWpm, (v) => prefs.set("liveWpm", v)) },
+    { id: "live-acc", label: "Live accuracy", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveAcc, (v) => prefs.set("liveAcc", v)) },
+    { id: "live-burst", label: "Live burst", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveBurst, (v) => prefs.set("liveBurst", v)) },
+    { id: "tape-mode", label: "Tape mode", icon: AlignJustify, options: pick(TAPE_MODES, prefs.tapeMode, (v) => prefs.set("tapeMode", v)) },
+    { id: "show-all-lines", label: "Show all lines", icon: AlignJustify, options: onOff(prefs.showAllLines, (v) => prefs.set("showAllLines", v)) },
+    { id: "smooth-line-scroll", label: "Smooth line scroll", icon: AlignJustify, options: onOff(prefs.smoothLineScroll, (v) => prefs.set("smoothLineScroll", v)) },
+    { id: "highlight-mode", label: "Highlight mode", icon: Highlighter, options: pick(HIGHLIGHT_MODES, prefs.highlightMode, (v) => prefs.set("highlightMode", v)) },
+    { id: "indicate-typos", label: "Indicate typos", icon: Highlighter, options: pick(INDICATE_TYPOS, prefs.indicateTypos, (v) => prefs.set("indicateTypos", v)) },
+    { id: "blind-mode", label: "Blind mode", icon: Eye, options: onOff(prefs.blindMode, (v) => prefs.set("blindMode", v)) },
+    { id: "hide-extra", label: "Hide extra letters", icon: Eye, options: onOff(prefs.hideExtraLetters, (v) => prefs.set("hideExtraLetters", v)) },
+    { id: "flip-colors", label: "Flip test colors", icon: Paintbrush, options: onOff(prefs.flipColors, (v) => prefs.set("flipColors", v)) },
+    { id: "colorful-mode", label: "Colorful mode", icon: Paintbrush, options: onOff(prefs.colorfulMode, (v) => prefs.set("colorfulMode", v)) },
+    {
+      id: "sound-click",
+      label: "Sound on click",
+      icon: Volume2,
+      options: pick(Object.keys(CLICK_SOUNDS), prefs.soundOnClick, (v) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)), (v) => CLICK_SOUNDS[v]!.name),
+    },
+    {
+      id: "sound-error",
+      label: "Sound on error",
+      icon: Volume2,
+      options: pick(Object.keys(ERROR_SOUNDS), prefs.soundOnError, (v) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)), (v) => ERROR_SOUNDS[v]!.name),
+    },
+    { id: "sound-volume", label: "Sound volume", icon: Volume2, options: pick(VOLUMES, prefs.soundVolume, (v) => prefs.set("soundVolume", v), (v) => `${v * 100}%`) },
+    { id: "layout", label: "Layout emulation", icon: Keyboard, options: pick(LAYOUT_IDS, prefs.layout, (v) => prefs.set("layout", v), layoutName) },
   ]);
 
   const opened = $derived(groups.find((g) => g.id === openId) ?? null);

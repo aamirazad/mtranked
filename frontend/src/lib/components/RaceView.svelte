@@ -9,6 +9,7 @@
     correctChars,
     createState,
     accuracy,
+    describeRules,
     type Keystroke,
     type TypingState,
   } from "@mtr/engine";
@@ -16,9 +17,9 @@
   import { resolveEquipped } from "@mtr/shared";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
-  import { prefs } from "#lib/prefs.svelte.ts";
   import TypingArea from "./TypingArea.svelte";
   import TierBadge from "./TierBadge.svelte";
+  import LiveStats from "./LiveStats.svelte";
 
   let { onleave }: { onleave?: () => void } = $props();
 
@@ -53,8 +54,8 @@
   $effect(() => {
     const r = race;
     untrack(() => {
-      const state = createState(r.text);
-      for (const k of r.resumeKeys ?? []) applyKey(state, k.k);
+      const state = createState(r.text, r.settings.rules);
+      for (const k of r.resumeKeys ?? []) applyKey(state, k.k, k.t);
       ts = state;
       pending = [];
       // sequence numbers only need to increase, also across reconnects
@@ -89,12 +90,14 @@
   const elapsed = $derived(Math.max(0, now - startPerf));
 
   function onkey(k: string) {
-    if (!isRacer || iAmOut || !started || ts.finished || timeUp || game.result) return;
+    if (!isRacer || iAmOut || !started || ts.finished || ts.failed || timeUp || game.result) return;
     const t = Math.round(performance.now() - startPerf);
-    applyKey(ts, k);
+    applyKey(ts, k, t);
     pending.push({ k, t });
     area?.sync();
     version++;
+    // a failed room rule: the server replays the same keys and agrees
+    if (ts.failed) flush();
     if (ts.finished) {
       finishedAt = t;
       flush(); // send the final key straight away: finish time is server-measured
@@ -107,6 +110,14 @@
     return t < 300 ? 0 : Math.round(calculateWpm(correctChars(ts, true), t));
   });
   const myAcc = $derived.by(() => (void version, Math.round(accuracy(ts))));
+  const myBurst = $derived.by(() => (void version, ts.lastBurst ?? 0));
+  /** failed a room rule (the server decides min speed/accuracy) */
+  const myFailed = $derived.by(() => (void version, ts.failed ?? (meId ? game.live[meId]?.failed : undefined) ?? null));
+  const ruleList = $derived(describeRules(race.settings.rules));
+  const myProgress = $derived.by(() => {
+    void version;
+    return race.timeLimit ? Math.min(1, elapsed / race.timeLimit) : caretIndex(ts) / Math.max(1, ts.textLength);
+  });
 
   const PRISM = "linear-gradient(90deg, #ff6b9a, #e2b714, #5ce0a0, #5cb8ff, #a78bfa)";
 
@@ -124,6 +135,7 @@
         done: mine ? done : !!live?.done,
         dc: !!live?.dc,
         out: !!live?.out,
+        failed: mine ? (myFailed ?? undefined) : live?.failed,
         color: p.caretColor === "prism" ? PRISM : p.caretColor,
       };
     });
@@ -191,7 +203,7 @@
           {/if}
           <span class="truncate" class:text-main={l.mine}>{l.p.ghost ? `ghost · ${l.p.name}` : l.p.name}</span>
           {#if l.dc}<WifiOff size={14} class="shrink-0 text-error" />{/if}
-          {#if l.out}<span class="text-xs text-error">left</span>{/if}
+          {#if l.failed}<span class="text-xs text-error">failed</span>{:else if l.out}<span class="text-xs text-error">left</span>{/if}
         </div>
         <div class="relative h-2 rounded-full bg-sub-alt">
           <div
@@ -205,18 +217,22 @@
     {/each}
   </div>
 
-  <div class="mb-2 flex h-10 items-end gap-6">
-    {#if started}
-      <span class="text-3xl text-main tabular-nums">{clock}</span>
-      {#if isRacer && prefs.liveWpm}<span class="text-xl text-sub tabular-nums">{myWpm} wpm · {myAcc}%</span>{/if}
-    {/if}
+  <LiveStats
+    show={started}
+    counter={clock}
+    progress={myProgress}
+    wpm={isRacer ? myWpm : undefined}
+    acc={isRacer ? myAcc : undefined}
+    burst={isRacer ? myBurst : undefined}
+  >
+    {#if ruleList.length && !race.deadline}<span class="ml-auto self-center text-xs text-sub" title="room rules">{ruleList.join(" · ")}</span>{/if}
     {#if race.deadline && !game.result}
       <span class="ml-auto flex items-center gap-2 text-xl text-error tabular-nums animate-pop">
         <Timer size={20} />{timeUp ? "time's up" : `finish in ${hurryLeft}s`}
       </span>
     {/if}
     {#if !isRacer}<span class="text-sub">spectating — you'll join the next race</span>{/if}
-  </div>
+  </LiveStats>
 
   <!-- tall enough for the finished card even when the text is short -->
   <div class="relative" class:min-h-64={isRacer && done && !game.result && !docked}>
@@ -225,7 +241,8 @@
       {ts}
       {onkey}
       {carets}
-      active={isRacer && !iAmOut && !done && !timeUp}
+      active={isRacer && !iAmOut && !myFailed && !done && !timeUp}
+      allowAllLines={race.settings.mode !== "time"}
       blurred={!started}
       caretColor={eq.caretColor}
       caretShape={eq.caretShape}
@@ -280,7 +297,9 @@
 
   <div class="mt-8 flex min-h-10 items-center justify-between text-sm text-sub">
     <div>
-      {#if iAmOut && !game.result}
+      {#if myFailed && !game.result}
+        <span class="text-error">you failed this race · {myFailed}</span> · waiting for it to end…
+      {:else if iAmOut && !game.result}
         <span class="text-error">you forfeited this race</span> (left or idle for too long) · waiting for it to end…
       {/if}
       {#if race.source}<span class="ml-2">— {race.source}</span>{/if}

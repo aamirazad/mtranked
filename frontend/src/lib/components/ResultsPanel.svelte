@@ -21,6 +21,7 @@
   const title = $derived.by(() => {
     if (!me) return "race over";
     if (me.forfeit) return "forfeit";
+    if (me.failed) return `failed · ${me.failed}`;
     if (result.mode === "ghost") return won ? "you beat the ghost" : "the ghost wins";
     if (result.results.length === 1) return "finished";
     if (many) return `#${me.placement} of ${result.results.length}`;
@@ -159,7 +160,7 @@
               {#if !r.guest && !r.ghost}<a href="/u/{r.name}" class="hover:underline">{r.name}</a>{:else}{r.name}{/if}
               {#if r.ghostRating}<TierBadge rating={r.ghostRating.rating} races={r.ghostRating.races} size="sm" />{/if}
               {#if r.guest}<span class="text-xs text-sub">guest</span>{/if}
-              {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
+              {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if r.failed}<span class="text-xs text-error" title={r.failed}>failed</span>{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
             </span>
           </td>
           {#if showMinis}
