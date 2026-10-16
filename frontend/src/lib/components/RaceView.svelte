@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import { Flag, Timer, WifiOff } from "@lucide/svelte";
   import {
     applyKey,
@@ -36,6 +37,14 @@
   let finishedAt = $state<number | null>(null);
   // `ts` is mutated in place, so templates read this instead of `ts.finished`
   const done = $derived(finishedAt !== null);
+  // the finished card covers the text at first, then docks below it so the player can watch the others
+  const DOCK_MS = 2500;
+  let docked = $state(false);
+  $effect(() => {
+    if (!done) return void (docked = false);
+    const id = setTimeout(() => (docked = true), DOCK_MS);
+    return () => clearTimeout(id);
+  });
   let pending: Keystroke[] = [];
   let seqBase = 0;
   let seqN = 0;
@@ -210,7 +219,7 @@
   </div>
 
   <!-- tall enough for the finished card even when the text is short -->
-  <div class="relative" class:min-h-64={isRacer && done && !game.result}>
+  <div class="relative" class:min-h-64={isRacer && done && !game.result && !docked}>
     <TypingArea
       bind:this={area}
       {ts}
@@ -229,25 +238,11 @@
         {/key}
       </div>
     {/if}
-    {#if isRacer && done && !game.result}
-      <div class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade">
+    {#if isRacer && done && !game.result && !docked}
+      <div class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade" out:fade={{ duration: 250 }}>
         <div class="flex flex-col items-center gap-3 text-center animate-pop">
           <div class="flex items-center gap-2 font-logo text-4xl text-main"><Flag size={28} /> finished!</div>
-          <div class="text-lg text-sub tabular-nums">
-            <span class="text-text">{myWpm}</span> wpm · <span class="text-text">{myAcc}%</span> acc ·
-            <span class="text-text">{((finishedAt ?? 0) / 1000).toFixed(1)}s</span>
-          </div>
-          {#if waitingFor.length}
-            <div class="text-sm text-sub">
-              {race.deadline ? "race ends when the timer runs out" : `waiting for ${waitingText} to finish…`}
-            </div>
-          {/if}
-          {#if canHurry}
-            <button class="btn btn-main mt-1" onclick={() => game.send({ type: "room.hurry" })}>
-              <Timer size={16} /> call time · {HURRY_MS / 1000}s
-            </button>
-            <div class="text-xs text-sub">everyone still typing gets {HURRY_MS / 1000} seconds to finish</div>
-          {/if}
+          {@render finishedInfo()}
         </div>
       </div>
     {/if}
@@ -257,6 +252,31 @@
       </div>
     {/if}
   </div>
+
+  {#if isRacer && done && !game.result && docked}
+    <div class="mt-6 flex flex-col items-center gap-3 text-center" in:fly={{ y: -80, duration: 400 }}>
+      <div class="flex items-center gap-2 font-logo text-2xl text-main"><Flag size={20} /> finished!</div>
+      {@render finishedInfo()}
+    </div>
+  {/if}
+
+  {#snippet finishedInfo()}
+    <div class="text-lg text-sub tabular-nums">
+      <span class="text-text">{myWpm}</span> wpm · <span class="text-text">{myAcc}%</span> acc ·
+      <span class="text-text">{((finishedAt ?? 0) / 1000).toFixed(1)}s</span>
+    </div>
+    {#if waitingFor.length}
+      <div class="text-sm text-sub">
+        {race.deadline ? "race ends when the timer runs out" : `waiting for ${waitingText} to finish…`}
+      </div>
+    {/if}
+    {#if canHurry}
+      <button class="btn btn-main mt-1" onclick={() => game.send({ type: "room.hurry" })}>
+        <Timer size={16} /> call time · {HURRY_MS / 1000}s
+      </button>
+      <div class="text-xs text-sub">everyone still typing gets {HURRY_MS / 1000} seconds to finish</div>
+    {/if}
+  {/snippet}
 
   <div class="mt-8 flex min-h-10 items-center justify-between text-sm text-sub">
     <div>
