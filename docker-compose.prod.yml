@@ -1,23 +1,10 @@
-# Production stack on a single VPS:  docker compose -f docker-compose.prod.yml up -d --build
+# Production stack on a single VPS:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml pull
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+# The app image comes from GHCR (MTR_TAG: main, latest, a release like 1.2.3, or sha-abc1234).
+# To build it locally instead, add --build to `up`.
 # Reads secrets from .env.production (copy .env.production.example).
 name: mt-ranked
-x-server: &server
-  build:
-    context: .
-    target: server
-    args:
-      PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
-      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
-      PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
-    secrets: [sentry_auth_token]
-  image: mt-ranked-server
-  env_file: .env.production
-  environment:
-    NODE_ENV: production
-    DATABASE_URL: ${DATABASE_URL:-postgres://mtr:${POSTGRES_PASSWORD}@postgres:5432/mtr}
-    REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-    TRUST_PROXY: uniquelocal
-  restart: unless-stopped
 
 services:
   postgres:
@@ -57,47 +44,30 @@ services:
     volumes: [redisdata:/data]
     restart: unless-stopped
 
-  # one-off: applies migrations and seeds (idempotent), then exits
-  migrate:
-    <<: *server
-    command: ["sh", "-c", "node packages/db/dist/migrate.js && node packages/db/dist/seed.js"]
-    restart: "no"
-    depends_on:
-      postgres: { condition: service_healthy }
-
-  api:
-    <<: *server
-    command: ["node", "api/dist/index.js"]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      redis: { condition: service_started }
-
-  realtime:
-    <<: *server
-    command: ["node", "realtime/dist/index.js"]
-    # SIGTERM drains races in progress for up to 150s before exiting (see realtime/src/index.ts)
-    stop_grace_period: 3m
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      redis: { condition: service_started }
-
-  web:
+  # migrations + seed, then API, realtime server and Caddy (see deploy/start.mjs)
+  app:
+    image: ghcr.io/aamirazad/mtranked:${MTR_TAG:-main}
     build:
       context: .
-      target: web
       args:
         PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-}
         PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
         PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
       secrets: [sentry_auth_token]
+    env_file: .env.production
     environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
+      DATABASE_URL: ${DATABASE_URL:-postgres://mtr:${POSTGRES_PASSWORD}@postgres:5432/mtr}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes: [caddy_data:/data, caddy_config:/config]
-    depends_on: [api, realtime]
+    # SIGTERM drains races in progress for up to 150s before exiting (see realtime/src/index.ts)
+    stop_grace_period: 3m
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
     restart: unless-stopped
 
-# optional: lets the frontend build upload source maps to Sentry
+# optional: lets a local frontend build upload source maps to Sentry
 secrets:
   sentry_auth_token:
     environment: SENTRY_AUTH_TOKEN

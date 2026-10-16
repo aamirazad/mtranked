@@ -1,13 +1,14 @@
-# Caddy gets and renews HTTPS certificates for $DOMAIN automatically.
-{$DOMAIN:localhost} {
+# Runs inside the app container next to the API and realtime server (see deploy/start.mjs).
+# SITE_ADDRESS is DOMAIN by default, so Caddy gets and renews HTTPS certificates automatically.
+{$SITE_ADDRESS} {
 	encode zstd gzip
 
 	handle /api/* {
-		reverse_proxy api:4001
+		reverse_proxy 127.0.0.1:{$API_PORT}
 	}
 
 	handle /ws {
-		reverse_proxy realtime:4002
+		reverse_proxy 127.0.0.1:{$REALTIME_PORT}
 	}
 
 	handle {
