@@ -131,6 +131,7 @@
     const deg = (Math.atan2(e.clientX - r.left - r.width / 2, r.top + r.height / 2 - e.clientY) * 180) / Math.PI;
     e.currentTarget.style.setProperty("--angle", `${deg}deg`);
   }
+  const cosmeticName = (c: Cosmetic) => (session.supporterSales ? c.name : (c.quietName ?? c.name));
   const equippedId = (type: CosmeticType) => session.me?.equipped[type];
   const shortUa = (ua: string | null) =>
     !ua ? "unknown device" : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
@@ -186,7 +187,7 @@
     </div>
     <div class="space-y-6">
       {@render choice<QuickRestart>("quick restart", "restart a practice test with a single key.", QUICK_RESTARTS, prefs.quickRestart, (v) => prefs.set("quickRestart", v))}
-      {@render choice("room themes", "show a supporter host's room theme while you're in their room. your own theme comes back when you leave.", [true, false], prefs.roomThemes, (v) => prefs.set("roomThemes", v), (v) => (v ? "on" : "off"))}
+      {@render choice("room themes", `show ${session.supporterSales ? "a supporter host's" : "the host's"} room theme while you're in their room. your own theme comes back when you leave.`, [true, false], prefs.roomThemes, (v) => prefs.set("roomThemes", v), (v) => (v ? "on" : "off"))}
       {@render choice("font size", "size of the words you type.", FONT_SIZES, prefs.fontSize, (v) => prefs.set("fontSize", v), fontSizeName)}
       {@render choice("smooth caret", "glide the caret between letters instead of jumping.", [true, false], prefs.smoothCaret, (v) => prefs.set("smoothCaret", v), (v) => (v ? "on" : "off"))}
       {@render choice("live wpm", "show your speed while typing.", [true, false], prefs.liveWpm, (v) => prefs.set("liveWpm", v), (v) => (v ? "on" : "off"))}
@@ -242,7 +243,7 @@
     {#snippet tile(c: Cosmetic)}
       {@const open = unlocked.has(c.id)}
       {@const on = equippedId(c.type) === c.id}
-      {@const perk = me.subscriber && c.unlock.type === "subscriber"}
+      {@const perk = session.supporterSales && me.subscriber && c.unlock.type === "subscriber"}
       <button
         class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
         class:supporter-tile={perk}
@@ -253,7 +254,7 @@
         onclick={() => equip(c)}
         onpointermove={perk ? aim : undefined}
         onpointerleave={perk ? (e) => e.currentTarget.style.removeProperty("--angle") : undefined}
-        title={open ? c.name : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
+        title={open ? cosmeticName(c) : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
       >
         <span class="relative block h-8 w-full overflow-hidden rounded" class:banner={c.type === "banner"} style={c.type === "banner" ? `background: ${c.value}` : ""}>
           {#if c.type === "caret_color"}
@@ -265,7 +266,7 @@
           {/if}
         </span>
         <span class="flex w-full items-center justify-between gap-2">
-          {c.name}
+          {cosmeticName(c)}
           {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
         </span>
         {#if !open && rule(c)}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
@@ -291,47 +292,49 @@
       {/each}
     </section>
 
-    <section>
-      <h2 class="label mb-4 text-sm">supporter</h2>
-      <div class="card">
-        {#if me.earlySupporter}
-          <div class="text-main">thank you for being one of our first users ♥</div>
-          <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
-          {@render perks()}
-        {:else if me.subscriber}
-          <div class="text-main">you're a supporter ♥ thank you</div>
-          <div class="mt-1 text-sm text-sub">
-            {billing?.status === "active" && billing.renewsAt ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}` : ""}
-          </div>
-        {:else}
-          <div>support mt ranked</div>
-          {@render perks()}
-        {/if}
-        {#if !me.subscriber}
-          <div class="label mb-2 mt-5">supporter cosmetics</div>
-          <div class="flex flex-wrap gap-2">
-            {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
-              {@render tile(c)}
-            {/each}
-          </div>
-        {/if}
-        <div class="mt-5 flex flex-wrap gap-2">
+    {#if session.supporterSales}
+      <section>
+        <h2 class="label mb-4 text-sm">supporter</h2>
+        <div class="card">
           {#if me.earlySupporter}
-            {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}>manage subscription</button>{/if}
-          {:else if billing?.enabled}
-            {#if me.subscriber}
-              <button class="btn" onclick={portal}>manage subscription</button>
-            {:else}
-              <button class="btn btn-main" onclick={() => checkout("month")}>monthly</button>
-              <button class="btn" onclick={() => checkout("year")}>yearly (save ~20%)</button>
-            {/if}
+            <div class="text-main">thank you for being one of our first users ♥</div>
+            <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
+            {@render perks()}
+          {:else if me.subscriber}
+            <div class="text-main">you're a supporter ♥ thank you</div>
+            <div class="mt-1 text-sm text-sub">
+              {billing?.status === "active" && billing.renewsAt ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}` : ""}
+            </div>
           {:else}
-            <span class="text-sm text-sub">payments aren't configured on this server.</span>
-            {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}>dev: toggle supporter</button>{/if}
+            <div>support mt ranked</div>
+            {@render perks()}
           {/if}
+          {#if !me.subscriber}
+            <div class="label mb-2 mt-5">supporter cosmetics</div>
+            <div class="flex flex-wrap gap-2">
+              {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
+                {@render tile(c)}
+              {/each}
+            </div>
+          {/if}
+          <div class="mt-5 flex flex-wrap gap-2">
+            {#if me.earlySupporter}
+              {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}>manage subscription</button>{/if}
+            {:else if billing?.enabled}
+              {#if me.subscriber}
+                <button class="btn" onclick={portal}>manage subscription</button>
+              {:else}
+                <button class="btn btn-main" onclick={() => checkout("month")}>monthly</button>
+                <button class="btn" onclick={() => checkout("year")}>yearly (save ~20%)</button>
+              {/if}
+            {:else}
+              <span class="text-sm text-sub">payments aren't configured on this server.</span>
+              {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}>dev: toggle supporter</button>{/if}
+            {/if}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    {/if}
 
     <section>
       <h2 class="label mb-4 text-sm">sessions</h2>

@@ -32,6 +32,8 @@ export type Cosmetic = {
   id: string;
   type: CosmeticType;
   name: string;
+  /** shown instead of name while supporter isn't for sale, if the name gives the tier away */
+  quietName?: string;
   /** colour, gradient or shape key, interpreted by the frontend */
   value: string;
   unlock: UnlockRule;
@@ -67,7 +69,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "banner-forest", type: "banner", name: "Forest", value: "radial-gradient(circle at 90% 0%,#5ce0a055,transparent 60%),linear-gradient(135deg,#2e7049,#204d35 55%,#163322)", unlock: { type: "level", level: 11 } },
   { id: "banner-gold", type: "banner", name: "Gilded", value: "radial-gradient(circle at 90% 0%,#ffd75e66,transparent 60%),linear-gradient(135deg,#86650e,#5e470a 55%,#3d2e07)", unlock: { type: "tier", tier: "gold" } },
   { id: "banner-diamond", type: "banner", name: "Crystal", value: "radial-gradient(circle at 90% 0%,#9cc0ff66,transparent 60%),linear-gradient(135deg,#3c52b8,#2a3c85 55%,#1b2658)", unlock: { type: "tier", tier: "diamond" } },
-  { id: "banner-supporter", type: "banner", name: "Supporter", value: "radial-gradient(circle at 10% 0%,#ffd75e55,transparent 55%),radial-gradient(circle at 100% 100%,#a78bfa55,transparent 60%),linear-gradient(120deg,#86620c,#8e2f4a 50%,#4d2470)", unlock: { type: "subscriber" } },
+  { id: "banner-supporter", type: "banner", name: "Supporter", quietName: "Aurora", value: "radial-gradient(circle at 10% 0%,#ffd75e55,transparent 55%),radial-gradient(circle at 100% 100%,#a78bfa55,transparent 60%),linear-gradient(120deg,#86620c,#8e2f4a 50%,#4d2470)", unlock: { type: "subscriber" } },
 ];
 
 export type Equipped = { caret_color: string; caret_shape: string; finish: string; banner: string };

@@ -7,6 +7,12 @@ export const env = {
   mailFrom: process.env.MAIL_FROM ?? "MT Ranked <no-reply@localhost>",
   rankedMinAgeHours: Number(process.env.RANKED_MIN_ACCOUNT_AGE_HOURS ?? 24),
   trustProxy: process.env.TRUST_PROXY ?? "loopback",
+  /**
+   * Off: every new account is quietly an early supporter (perks for life, never
+   * asked to pay) and the site shows no trace of a supporter tier. On: supporter
+   * is sold to new signups; existing early supporters keep their perks.
+   */
+  supporterSales: process.env.SUPPORTER_SALES === "true",
   stripe: {
     secret: process.env.STRIPE_SECRET_KEY ?? "",
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",

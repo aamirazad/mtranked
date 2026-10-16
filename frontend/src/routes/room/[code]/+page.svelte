@@ -292,7 +292,7 @@
         </ul>
         {#if room.races}<div class="mt-4 text-xs text-sub">{room.races} race{room.races === 1 ? "" : "s"} played</div>{/if}
         {#if !room.hostSubscriber && room.players.length >= room.cap}
-          <div class="mt-4 text-xs text-sub">room is full. supporter hosts get rooms of up to 16.</div>
+          <div class="mt-4 text-xs text-sub">room is full.{#if session.supporterSales} supporter hosts get rooms of up to 16.{/if}</div>
         {/if}
       </div>
 

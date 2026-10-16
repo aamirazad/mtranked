@@ -28,7 +28,7 @@ export const billingRouter = s.router(contract.billing, {
     return {
       status: 200,
       body: {
-        enabled: !!stripe,
+        enabled: !!stripe && env.supporterSales,
         status: sub?.status ?? "inactive",
         renewsAt: sub?.renews_at?.toISOString() ?? null,
         subscriber: auth.user.is_subscriber,
@@ -39,7 +39,7 @@ export const billingRouter = s.router(contract.billing, {
   checkout: async ({ req, res, body }) => {
     const auth = await getAuth(req, res);
     if (!auth) return unauth;
-    if (!stripe) return { status: 400, body: { message: "Payments aren't configured on this server." } };
+    if (!stripe || !env.supporterSales) return { status: 400, body: { message: "Payments aren't configured on this server." } };
     const price = body.interval === "year" ? env.stripe.priceYearly : env.stripe.priceMonthly;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

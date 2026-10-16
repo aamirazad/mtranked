@@ -193,7 +193,7 @@
         {#each rows as r (r.id)}
           <tr class="border-t border-sub-alt transition-colors hover:bg-sub-alt/50" class:text-main={r.id === session.me?.id}>
             <td class="py-2.5 tabular-nums {r.rank <= 3 ? 'text-main' : 'text-sub'}">{r.rank}</td>
-            <td><a href="/u/{r.name}" class="hover:underline">{flag(r.country)} {r.name}</a>{#if r.subscriber}<span class="ml-2 text-xs text-main" title="supporter">♥</span>{/if}</td>
+            <td><a href="/u/{r.name}" class="hover:underline">{flag(r.country)} {r.name}</a>{#if r.subscriber && session.supporterSales}<span class="ml-2 text-xs text-main" title="supporter">♥</span>{/if}</td>
             <td><TierBadge rating={r.rating} showRating={false} /></td>
             <td class="text-right tabular-nums">{r.rating}</td>
             <td class="text-right text-sm tabular-nums text-sub">{r.wins} / {r.races - r.wins}</td>

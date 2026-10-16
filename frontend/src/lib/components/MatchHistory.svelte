@@ -2,6 +2,7 @@
   import { Play } from "@lucide/svelte";
   import type { MatchSummary } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
+  import { session } from "#lib/session.svelte.ts";
 
   type Kind = "ranked" | "casual" | "private";
   const KINDS: { id: Kind; label: string }[] = [
@@ -92,5 +93,5 @@
     </tbody>
   </table>
   {#if more}<button class="btn btn-ghost mt-4" onclick={() => load(name, kind, matches.length)}>load more</button>{/if}
-  {#if limited}<div class="mt-4 text-xs text-sub">free accounts keep their last 50 races. supporters keep everything.</div>{/if}
+  {#if limited && session.supporterSales}<div class="mt-4 text-xs text-sub">free accounts keep their last 50 races. supporters keep everything.</div>{/if}
 {/if}

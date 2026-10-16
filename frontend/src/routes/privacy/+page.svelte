@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { session } from "#lib/session.svelte.ts";
+</script>
+
 <svelte:head><title>Privacy Policy · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[760px] space-y-10 leading-relaxed animate-fade">
@@ -17,7 +21,7 @@
       <li><span class="text-text">races:</span> the text, your keystrokes and their timing, results, ratings and match history. ranked races are stored as replays.</li>
       <li><span class="text-text">sessions:</span> your IP address and browser user agent for each sign-in, so you can review and sign out devices in settings.</li>
       <li><span class="text-text">fair play:</span> IP addresses and keystroke timing are used to detect cheating and alternate accounts. reports you file or receive are kept for moderators.</li>
-      <li><span class="text-text">payments:</span> if you become a supporter, Stripe processes your payment. we store your Stripe customer id and subscription status, never your card details.</li>
+      {#if session.supporterSales}<li><span class="text-text">payments:</span> if you become a supporter, Stripe processes your payment. we store your Stripe customer id and subscription status, never your card details.</li>{/if}
     </ul>
   </section>
 
@@ -41,7 +45,7 @@
   <section>
     <h2 class="mb-3 text-xl">who we share it with</h2>
     <ul class="list-inside list-disc space-y-1 text-sub">
-      <li>Stripe, to process supporter payments.</li>
+      {#if session.supporterSales}<li>Stripe, to process supporter payments.</li>{/if}
       <li>our email provider, to send verification and password reset emails.</li>
       <li>our hosting provider, which stores the data on our behalf.</li>
       <li>authorities, if the law requires it.</li>

@@ -4,6 +4,7 @@
   import { tierFor, levelFromXp, PLACEMENT_RACES } from "@mtr/shared";
   import { api } from "#lib/api.ts";
   import { flag } from "#lib/countries.ts";
+  import { session } from "#lib/session.svelte.ts";
   import TierBadge from "#lib/components/TierBadge.svelte";
   import EloChart from "#lib/components/EloChart.svelte";
   import MatchHistory from "#lib/components/MatchHistory.svelte";
@@ -53,7 +54,7 @@
             <div class="flex items-center gap-3 text-4xl">
               <span class="max-w-[12ch] truncate" title={profile.name}>{profile.name}</span>
               {#if profile.country}<span class="text-2xl" title={profile.country}>{flag(profile.country)}</span>{/if}
-              {#if profile.subscriber}<span class="rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
+              {#if profile.subscriber && session.supporterSales}<span class="rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
             </div>
             <div class="mt-2 flex items-center gap-3 text-sm text-white/90">
               <span>level <span class="text-white">{lvl?.level}</span></span>

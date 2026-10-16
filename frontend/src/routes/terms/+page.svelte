@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { session } from "#lib/session.svelte.ts";
+</script>
+
 <svelte:head><title>Terms of Service · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[760px] space-y-10 leading-relaxed animate-fade">
@@ -41,15 +45,17 @@
     </p>
   </section>
 
-  <section>
-    <h2 class="mb-3 text-xl">supporter subscriptions</h2>
-    <ul class="list-inside list-disc space-y-1 text-sub">
-      <li>payments are handled by Stripe. subscriptions renew automatically until you cancel.</li>
-      <li>you can cancel any time from settings. you keep supporter perks until the end of the period you've paid for.</li>
-      <li>payments are non-refundable except where the law requires otherwise.</li>
-      <li>perks are cosmetic and convenience features. we may change them, and an account banned for cheating loses them without a refund.</li>
-    </ul>
-  </section>
+  {#if session.supporterSales}
+    <section>
+      <h2 class="mb-3 text-xl">supporter subscriptions</h2>
+      <ul class="list-inside list-disc space-y-1 text-sub">
+        <li>payments are handled by Stripe. subscriptions renew automatically until you cancel.</li>
+        <li>you can cancel any time from settings. you keep supporter perks until the end of the period you've paid for.</li>
+        <li>payments are non-refundable except where the law requires otherwise.</li>
+        <li>perks are cosmetic and convenience features. we may change them, and an account banned for cheating loses them without a refund.</li>
+      </ul>
+    </section>
+  {/if}
 
   <section>
     <h2 class="mb-3 text-xl">the software</h2>

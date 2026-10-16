@@ -167,7 +167,7 @@ const ok = c.type<{ ok: true }>();
 export const contract = c.router(
   {
     auth: {
-      me: { method: "GET", path: "/auth/me", responses: { 200: c.type<{ user: Me | null; guest: Guest | null }>() } },
+      me: { method: "GET", path: "/auth/me", responses: { 200: c.type<{ user: Me | null; guest: Guest | null; supporterSales: boolean }>() } },
       signup: {
         method: "POST",
         path: "/auth/signup",

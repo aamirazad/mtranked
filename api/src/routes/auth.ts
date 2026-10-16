@@ -1,7 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { contract } from "@mtr/contracts";
 import { sql, getUser, suspension } from "@mtr/db";
-import { EARLY_SUPPORTER_SIGNUPS, OFFENSIVE_NAME_MESSAGE, isOffensiveName } from "@mtr/shared";
+import { OFFENSIVE_NAME_MESSAGE, isOffensiveName } from "@mtr/shared";
 import {
   buildMe,
   clearSession,
@@ -16,6 +16,7 @@ import {
   sha256,
   verifyPassword,
 } from "../auth";
+import { env } from "../env";
 import { rateLimit } from "../redis";
 import { resetEmail, verificationEmail } from "../mail";
 
@@ -50,8 +51,8 @@ const dummyHash = hashPassword("not-a-real-password");
 export const authRouter = s.router(contract.auth, {
   me: async ({ req, res }) => {
     const auth = await getAuth(req, res);
-    if (auth) return { status: 200, body: { user: await buildMe(auth.user), guest: null } };
-    return { status: 200, body: { user: null, guest: await getGuest(req) } };
+    if (auth) return { status: 200, body: { user: await buildMe(auth.user), guest: null, supporterSales: env.supporterSales } };
+    return { status: 200, body: { user: null, guest: await getGuest(req), supporterSales: env.supporterSales } };
   },
 
   signup: async ({ body, req, res }) => {
@@ -67,7 +68,7 @@ export const authRouter = s.router(contract.auth, {
     if (taken.length) return { status: 409, body: { message: "That name is taken.", fields: { displayName: "Taken" } } };
     const [u] = await sql<{ id: string }[]>`insert into users (email, password_hash, display_name, signup_ip, early_supporter, is_subscriber)
       values (${body.email}, ${await hashPassword(body.password)}, ${body.displayName}, ${req.ip ?? null},
-        ${EARLY_SUPPORTER_SIGNUPS}, ${EARLY_SUPPORTER_SIGNUPS})
+        ${!env.supporterSales}, ${!env.supporterSales})
       returning id`;
     await flagPossibleBanEvader(u!.id, req.ip);
     await sendVerification(u!.id, body.email);
