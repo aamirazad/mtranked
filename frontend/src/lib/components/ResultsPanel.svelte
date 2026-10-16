@@ -10,6 +10,8 @@
   import TierBadge from "./TierBadge.svelte";
   import RankUp from "./RankUp.svelte";
   import SpeedChart from "./SpeedChart.svelte";
+  import ResultStats from "./ResultStats.svelte";
+  import { testType } from "#lib/format.ts";
 
   let { result, actions }: { result: RaceResult; actions?: Snippet } = $props();
 
@@ -75,17 +77,18 @@
   const showMinis = $derived(result.results.some((r) => r.id !== meId && r.timeline?.length));
   const opponent = $derived(result.results.find((r) => r.id !== meId));
   const fmtTime = (ms: number | null) => (ms === null ? "—" : `${(ms / 1000).toFixed(2)}s`);
+  const settings = $derived(game.race?.matchId === result.matchId ? game.race.settings : null);
 </script>
 
 {#if revealing && rankUp}
   <RankUp from={rankUp.from} to={rankUp.to} rating={rankUp.rating} onclose={play} />
 {/if}
 
-<div class="mx-auto max-w-[1000px] animate-rise">
-  <div class="mb-8 flex flex-wrap items-end justify-between gap-6">
+<div class="mx-auto max-w-[1100px] animate-rise">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-6">
     <div>
       <div class="label mb-1">{result.mode === "ghost" ? "ghost race · unrated" : result.mode}</div>
-      <div class="font-logo text-6xl {won ? 'text-main' : me?.forfeit ? 'text-error' : 'text-text'}">{title}</div>
+      <div class="font-logo text-5xl {won ? 'text-main' : me?.forfeit ? 'text-error' : 'text-text'}">{title}</div>
     </div>
     {#if result.series && me && opponent}
       <div class="text-right animate-pop">
@@ -118,25 +121,39 @@
   </div>
 
   {#if me}
-    <div class="mb-10 flex flex-wrap gap-12">
-      <div><div class="label text-xl">wpm</div><div class="text-6xl text-main tabular-nums">{Math.round(me.wpm)}</div></div>
-      <div><div class="label text-xl">acc</div><div class="text-6xl text-main tabular-nums">{Math.round(me.acc)}%</div></div>
-      <div><div class="label text-xl">time</div><div class="text-6xl text-main tabular-nums">{me.timeMs !== null ? (me.timeMs / 1000).toFixed(1) + "s" : "—"}</div></div>
-      {#if me.xp}<div><div class="label text-xl">xp</div><div class="text-6xl text-main tabular-nums">+{me.xp}</div></div>{/if}
+    <div class="mb-10">
+      <ResultStats
+        wpm={me.wpm}
+        acc={me.acc}
+        raw={me.raw}
+        timeMs={me.timeMs}
+        consistency={me.consistency}
+        chars={me.chars}
+        timeline={me.timeline}
+        words={me.words}
+        testType={testType(settings)}
+        {chartMax}
+      >
+        {#snippet extra()}
+          {#if result.results.length > 1}
+            <div>
+              <div class="label text-sm">place</div>
+              <div class="text-3xl text-main tabular-nums">{me.placement}<span class="text-xl text-sub">/{result.results.length}</span></div>
+            </div>
+          {/if}
+          {#if me.xp}
+            <div>
+              <div class="label text-sm">xp</div>
+              <div class="text-3xl text-main tabular-nums">+{me.xp}</div>
+            </div>
+          {/if}
+        {/snippet}
+      </ResultStats>
     </div>
-    {#if me.timeline?.length}
-      <div class="card mb-10">
-        <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-sub">
-          <span class="label">speed over time</span>
-          <span class="ml-auto inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-main"></span>wpm</span>
-          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-sub"></span>raw</span>
-          <span class="inline-flex items-center gap-1.5"><span class="text-error">×</span>errors</span>
-        </div>
-        <SpeedChart points={me.timeline} max={chartMax} label="your speed over time" />
-      </div>
-    {/if}
   {/if}
 
+  {#if result.results.length > 1}
+  <div class="label mb-1 text-sm">players</div>
   <table class="w-full text-left text-sm">
     <thead class="text-sub">
       <tr>
@@ -152,7 +169,7 @@
     </thead>
     <tbody>
       {#each result.results as r (r.id)}
-        <tr class="border-t border-sub-alt" class:text-main={r.id === meId}>
+        <tr class="border-t border-sub-alt transition-colors hover:bg-sub-alt/40" class:text-main={r.id === meId}>
           <td class="py-2.5">{r.placement}</td>
           <td>
             <span class="inline-flex items-center gap-2">
@@ -183,6 +200,7 @@
       {/each}
     </tbody>
   </table>
+  {/if}
   {#if !result.saved}
     <div class="mt-4 text-sm text-error">We couldn't save this race. It won't count towards your stats.</div>
   {/if}

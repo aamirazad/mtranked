@@ -1,6 +1,6 @@
 // Every WebSocket message exchanged between the frontend and the realtime server.
 import { z } from "zod";
-import { CONFIDENCE, DIFFICULTY, FUNBOX_IDS, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type FailReason, type TimelinePoint } from "@mtr/engine";
+import { CONFIDENCE, DIFFICULTY, FUNBOX_IDS, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type CharStats, type FailReason, type TimelinePoint, type WordStat } from "@mtr/engine";
 
 export const Mode = z.enum(["ranked", "casual", "private", "ghost"]);
 export type Mode = z.infer<typeof Mode>;
@@ -145,6 +145,12 @@ export type RaceResultRow = {
   xp?: number;
   /** per-second samples for the results graph */
   timeline?: TimelinePoint[];
+  /** consistency of the per-second raw speed, 0-100 */
+  consistency?: number;
+  /** [correct, incorrect, extra, missed] characters */
+  chars?: CharStats;
+  /** input history: each word reached, what was typed and its burst wpm */
+  words?: WordStat[];
 };
 
 export type RoomPublic = {

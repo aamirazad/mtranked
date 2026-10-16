@@ -4,6 +4,7 @@ import { sql, currentSeason, getRating, getUser, unlockedCosmetics } from "@mtr/
 import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, OFFENSIVE_NAME_MESSAGE, isOffensiveName, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
 import { buildMe, getAuth, nextNameChange } from "../auth";
 import { rateLimit } from "../redis";
+import { activity, profileStats, wpmHistory, type StatsUser } from "./stats";
 
 const s = initServer();
 const PAGE = 20;
@@ -83,7 +84,7 @@ export const meRouter = s.router(contract.me, {
 });
 
 async function userByName(name: string) {
-  const [u] = await sql`select id, display_name, country, created_at, is_subscriber, xp, equipped, is_bot
+  const [u] = await sql<(StatsUser & { display_name: string; country: string | null; is_subscriber: boolean; xp: number; equipped: Partial<Equipped> })[]>`select id, display_name, country, created_at, is_subscriber, xp, equipped, is_bot, flagged_at
     from users where display_name = ${name} and banned_at is null`;
   return u;
 }
@@ -192,6 +193,24 @@ export const usersRouter = s.router(contract.users, {
       points.unshift({ at: season.starts_at.toISOString(), rating: DEFAULT_RATING, races: 0 });
     }
     return { status: 200, body: { season: { id: season.id, name: season.name }, points } };
+  },
+
+  stats: async ({ params }) => {
+    const u = await userByName(params.name);
+    if (!u) return { status: 404, body: { message: "No such player." } };
+    return { status: 200, body: { stats: await profileStats(u) } };
+  },
+
+  wpmHistory: async ({ params, query }) => {
+    const u = await userByName(params.name);
+    if (!u) return { status: 404, body: { message: "No such player." } };
+    return { status: 200, body: { points: await wpmHistory(u, query.kind) } };
+  },
+
+  activity: async ({ params, query }) => {
+    const u = await userByName(params.name);
+    if (!u) return { status: 404, body: { message: "No such player." } };
+    return { status: 200, body: await activity(u, query.year) };
   },
 
   search: async ({ query, req }) => {
