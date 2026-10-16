@@ -1,5 +1,5 @@
-# Tests for every pull request and every push to a branch other than main.
-# Also called by publish.yml so main and release tags are tested before an image is pushed.
+# Tests for every pull request. Also called by publish.yml so main and release
+# tags are tested before an image is pushed.
 # Pull requests whose conventional-commit title has the `ci` scope, e.g.
 # "feat(ci): ...", also build the Docker image and smoke test it.
 name: CI
@@ -7,17 +7,14 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
-  push:
-    branches-ignore: [main]
-    tags-ignore: ["**"]
   workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  # retitling a PR (`edited`) restarts its run, e.g. to pick up the docker job
-  group: ci-${{ github.workflow_ref }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # a new push (or retitling the PR) supersedes the run in progress
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,6 +32,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-frontend-${{ github.sha }}
+          restore-keys: turbo-frontend-
       - name: Type check (svelte-check)
         run: pnpm turbo run check --filter=@mtr/frontend
       - name: Build
@@ -67,12 +70,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Type check
-        run: pnpm turbo run check --filter=!@mtr/frontend
-      - name: Unit tests
-        run: pnpm turbo run test --filter=!@mtr/frontend
-      - name: Build
-        run: pnpm turbo run build --filter=!@mtr/frontend
+      - name: Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-backend-${{ github.sha }}
+          restore-keys: turbo-backend-
+      - name: Type check, unit tests and build
+        run: pnpm turbo run check test build --filter=!@mtr/frontend
       - name: Migrations and seed apply to a fresh database
         run: |
           pnpm db:migrate
@@ -83,11 +88,12 @@ jobs:
 
   docker:
     name: Docker image
-    # only on pull requests titled with the ci scope, e.g. "feat(ci): ..." or "fix(ci)!: ..."
+    # only on pull requests titled with the ci scope, e.g. "feat(ci): ..." or "fix(ci)!: ...";
+    # runs alongside the tests rather than after them
     if: >-
       github.event_name == 'pull_request' &&
+      (github.event.action != 'edited' || github.event.changes.title) &&
       (contains(github.event.pull_request.title, '(ci):') || contains(github.event.pull_request.title, '(ci)!:'))
-    needs: [frontend, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

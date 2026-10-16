@@ -198,11 +198,11 @@ GitHub Actions (`.github/workflows/`) tests every change and publishes the image
 
 | Event                                   | Runs                                                       | Image tags                                  |
 | --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------- |
-| Pull request, push to any other branch  | frontend check + build; backend check, tests, build, migrations against Postgres | none                 |
+| Pull request                            | frontend check + build; backend check, tests, build, migrations against Postgres | none                 |
 | Pull request titled with the `ci` scope, e.g. `feat(ci): ...` | the above, plus a Docker build and smoke test | none                           |
-| Push to `main`                          | tests, build, smoke test, push                             | `main`, `sha-<short sha>`                   |
-| Tag `v1.2.3`                            | tests, build, smoke test, push                             | `1.2.3`, `1.2`, `1`, `latest`, `sha-<short sha>` |
-| Tag `v1.2.3-rc.1`                       | tests, build, smoke test, push                             | `1.2.3-rc.1`, `sha-<short sha>`             |
+| Push to `main`                          | tests in parallel with build + smoke test, then push                            | `main`, `sha-<short sha>`                   |
+| Tag `v1.2.3`                            | same as main                                                                     | `1.2.3`, `1.2`, `1`, `latest`, `sha-<short sha>` |
+| Tag `v1.2.3-rc.1`                       | same as main                                                                     | `1.2.3-rc.1`, `sha-<short sha>`             |
 
 Set `MTR_TAG` in `.env.production` to choose what the server runs: `main` follows every commit on main, `latest` the newest release, and `1.2.3` (or `sha-abc1234`) pins one build. To cut a release, create a tag such as `v1.2.3` (or a GitHub release, which creates the tag).
 
