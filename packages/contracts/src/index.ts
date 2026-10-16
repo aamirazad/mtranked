@@ -22,8 +22,27 @@ export const SyncedPrefs = z
     quickRestart: pref(z.enum(["off", "esc", "tab", "enter"])),
     roomThemes: pref(z.boolean()),
     fontSize: pref(z.number().min(0.5).max(4)),
-    smoothCaret: pref(z.boolean()),
-    liveWpm: pref(z.boolean()),
+    // these two were booleans before they got more choices; the frontend maps old values
+    smoothCaret: pref(z.union([z.boolean(), z.string().max(16)])),
+    liveWpm: pref(z.union([z.boolean(), z.string().max(16)])),
+    // the frontend checks values against its option lists (lib/prefs.svelte.ts)
+    liveAcc: pref(z.string().max(16)),
+    liveBurst: pref(z.string().max(16)),
+    liveProgress: pref(z.string().max(16)),
+    fontFamily: pref(z.string().max(32)),
+    soundOnClick: pref(z.string().max(32)),
+    soundOnError: pref(z.string().max(32)),
+    soundVolume: pref(z.number().min(0).max(1)),
+    tapeMode: pref(z.string().max(16)),
+    showAllLines: pref(z.boolean()),
+    smoothLineScroll: pref(z.boolean()),
+    highlightMode: pref(z.string().max(16)),
+    indicateTypos: pref(z.string().max(16)),
+    blindMode: pref(z.boolean()),
+    hideExtraLetters: pref(z.boolean()),
+    flipColors: pref(z.boolean()),
+    colorfulMode: pref(z.boolean()),
+    layout: pref(z.string().max(32)),
   })
   .partial();
 export type SyncedPrefs = z.infer<typeof SyncedPrefs>;
@@ -112,6 +131,8 @@ export type MatchDetail = {
   status: string;
   text: string;
   seed: string;
+  /** private-room gameplay rules the race was played with (the engine's Rules), needed to replay it */
+  rules?: Record<string, unknown>;
   startedAt: string;
   finishedAt: string;
   players: {

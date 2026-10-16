@@ -1,6 +1,7 @@
 // Text generation, ported from monkeytype's words-generator (punctuation and
 // number rules simplified to the languages we ship).
 import { seededRandom } from "./rng";
+import { stripAccents, type Rules } from "./rules";
 
 export const LANGUAGES = [
   "english",
@@ -57,6 +58,8 @@ export type TextSettings = {
   numbers: boolean;
   language: LanguageId;
   custom?: string;
+  /** gameplay rules (practice and private rooms only) */
+  rules?: Rules;
 };
 
 export const RANKED_SETTINGS: TextSettings = {
@@ -136,6 +139,12 @@ export const wordsForTime = (seconds: number) => Math.max(30, Math.ceil(seconds 
 export type GeneratedText = { text: string; source?: string };
 
 export async function generateText(settings: TextSettings, seed: string): Promise<GeneratedText> {
+  const g = await generateBase(settings, seed);
+  // lazy mode: the text is typed without accents
+  return settings.rules?.lazy ? { ...g, text: stripAccents(g.text) } : g;
+}
+
+async function generateBase(settings: TextSettings, seed: string): Promise<GeneratedText> {
   if (settings.mode === "custom" && settings.custom) {
     return { text: normalizeText(settings.custom).slice(0, 5000) };
   }

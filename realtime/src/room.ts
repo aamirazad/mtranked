@@ -7,13 +7,16 @@ import {
   applyKey,
   calculateWpm,
   caretIndex,
+  checkLiveFail,
   correctChars,
+  normalizeRules,
   createState,
   finalStats,
   generateText,
   raceTimeline,
   randomSeed,
   RANKED_SETTINGS,
+  type FailReason,
   type Keystroke,
   type TypingState,
 } from "@mtr/engine";
@@ -91,6 +94,8 @@ type Racer = {
   finishOrder: number;
   out: boolean;
   forfeit: boolean;
+  /** failed a room rule; also `out` */
+  failed: FailReason | null;
   outAt: number | null;
   lastInputAt: number;
   ghost?: { keys: Keystroke[]; idx: number };
@@ -111,6 +116,8 @@ type Race = {
   finishCount: number;
   ended: boolean;
   ghostOf?: string;
+  /** last whole second the time-based rules (min speed/acc) were checked */
+  ruleSec: number;
 };
 
 export type GhostSource = {
@@ -124,6 +131,16 @@ export const rooms = new Map<string, Room>();
 export const roomByCode = new Map<string, string>();
 /** player id -> room id, for players whose room lives on this node */
 export const playerRoom = new Map<string, string>();
+
+/**
+ * Gameplay rules only apply in private rooms (everyone there shares the
+ * host's). Ranked, casual and ghost races always race without them.
+ */
+export function withRules(mode: Mode, settings: TextSettings): TextSettings {
+  const { rules, ...rest } = settings;
+  const r = mode === "private" ? normalizeRules(rules) : undefined;
+  return r ? { ...rest, rules: r } : rest;
+}
 
 export function roomOf(playerId: string): Room | undefined {
   const id = playerRoom.get(playerId);
@@ -179,7 +196,7 @@ export class Room {
     public mode: Mode,
     settings: TextSettings,
   ) {
-    this.settings = settings;
+    this.settings = withRules(mode, settings);
     rooms.set(this.id, this);
   }
 
@@ -218,7 +235,7 @@ export class Room {
     room.hostId = host.idn.id;
     room.hostSubscriber = host.info.subscriber;
     room.cap = host.info.subscriber ? ROOM_CAP_SUBSCRIBER : ROOM_CAP_FREE;
-    if (settings.mode === "custom" && !settings.custom?.trim()) room.settings = { ...settings, mode: "words" };
+    if (settings.mode === "custom" && !settings.custom?.trim()) room.settings = { ...room.settings, mode: "words" };
     room.addMember(host);
     room.broadcastRoom();
     return room;
@@ -382,6 +399,7 @@ export class Room {
       finishCount: 0,
       ended: false,
       ghostOf: this.ghost?.matchId,
+      ruleSec: 0,
     };
     this.status = "countdown";
     this.lastActivity = now;
@@ -394,7 +412,7 @@ export class Room {
       id,
       info,
       userId,
-      state: createState(text),
+      state: createState(text, this.settings.rules),
       keys: [],
       recv: [],
       lastSeq: -1,
@@ -402,6 +420,7 @@ export class Room {
       finishOrder: 0,
       out: false,
       forfeit: false,
+      failed: null,
       outAt: null,
       lastInputAt: startAt,
     };
@@ -424,7 +443,7 @@ export class Room {
       const t = Math.round(Math.min(Math.max(key.t, lastT, 0), elapsed + 50));
       lastT = t;
       if (key.k.length !== 1) continue;
-      applyKey(r.state, key.k);
+      applyKey(r.state, key.k, t);
       r.keys.push({ k: key.k, t });
       r.recv.push(elapsed);
       if (r.state.finished) {
@@ -432,8 +451,19 @@ export class Room {
         r.finishOrder = ++race.finishCount;
         break;
       }
+      if (r.state.failed) {
+        this.failRacer(r, t);
+        break;
+      }
     }
     if (race.timeLimit && elapsed >= race.timeLimit) this.forceEnd();
+  }
+
+  /** A room rule failed this racer: they're out of this race (a DNF, not a forfeit). */
+  private failRacer(r: Racer, atMs: number) {
+    r.out = true;
+    r.failed = r.state.failed;
+    r.outAt = atMs;
   }
 
   /** Player left mid-race (or lost connection beyond the grace period). */
@@ -484,7 +514,7 @@ export class Room {
       if (r.ghost) {
         const g = r.ghost;
         while (g.idx < g.keys.length && g.keys[g.idx]!.t <= elapsed) {
-          applyKey(r.state, g.keys[g.idx]!.k);
+          applyKey(r.state, g.keys[g.idx]!.k, g.keys[g.idx]!.t);
           r.keys.push(g.keys[g.idx]!);
           g.idx++;
           if (r.state.finished && r.finishMs === null) {
@@ -500,6 +530,16 @@ export class Room {
       else if (!race.timeLimit && now - r.lastInputAt > IDLE_FORFEIT_MS) this.forfeit(r.id);
     }
 
+    // min speed / min accuracy rules: checked once per second, like monkeytype's timer
+    const sec = Math.floor(elapsed / 1000);
+    if (sec > race.ruleSec && (race.settings.rules?.minWpm || race.settings.rules?.minAcc)) {
+      race.ruleSec = sec;
+      for (const r of race.racers.values()) {
+        if (r.ghost || r.out || r.finishMs !== null) continue;
+        if (checkLiveFail(r.state, sec * 1000)) this.failRacer(r, sec * 1000);
+      }
+    }
+
     const players: LivePlayer[] = [];
     for (const r of race.racers.values()) {
       const t = r.finishMs ?? (r.out ? (r.outAt ?? elapsed) : elapsed);
@@ -510,6 +550,7 @@ export class Room {
         done: r.finishMs !== null,
         dc: !r.ghost && !this.members.get(r.id)?.connected,
         out: r.out,
+        ...(r.failed ? { failed: r.failed } : {}),
       });
     }
     this.broadcast({ type: "race.state", raceId: race.id, t: elapsed, players });
@@ -549,8 +590,12 @@ export class Room {
 
     type Row = { r: Racer; result: RaceResultRow; flags: Flag[] };
     const rows: Row[] = [...race.racers.values()].map((r) => {
-      const finished = timed ? !r.forfeit : r.finishMs !== null;
-      const duration = timed ? (r.forfeit ? (r.outAt ?? elapsed) : race.timeLimit) : (r.finishMs ?? (r.out ? (r.outAt ?? elapsed) : elapsed));
+      const finished = timed ? !r.forfeit && !r.failed : r.finishMs !== null;
+      const duration = timed
+        ? r.forfeit || r.failed
+          ? (r.outAt ?? elapsed)
+          : race.timeLimit
+        : (r.finishMs ?? (r.out ? (r.outAt ?? elapsed) : elapsed));
       const st = finalStats(r.state, Math.max(1, duration));
       return {
         r,
@@ -568,8 +613,9 @@ export class Room {
           timeMs: finished ? Math.round(duration) : null,
           finished,
           forfeit: r.forfeit,
+          ...(r.failed ? { failed: r.failed } : {}),
           progress: Math.round((st.prefix / r.state.textLength) * 1000) / 10,
-          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration)),
+          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration), race.settings.rules),
         },
       };
     });
@@ -578,6 +624,7 @@ export class Room {
       const A = a.result;
       const B = b.result;
       if (A.forfeit !== B.forfeit) return A.forfeit ? 1 : -1;
+      if (!!A.failed !== !!B.failed) return A.failed ? 1 : -1;
       if (timed) return B.wpm - A.wpm;
       if (A.finished !== B.finished) return A.finished ? -1 : 1;
       if (A.finished) return A.timeMs! - B.timeMs! || a.r.finishOrder - b.r.finishOrder;
@@ -677,7 +724,7 @@ export class Room {
 
     if (this.mode === "private") {
       const winner = rows[0];
-      if (winner && !winner.result.forfeit) this.scoreboard[winner.r.id] = (this.scoreboard[winner.r.id] ?? 0) + 1;
+      if (winner && !winner.result.forfeit && !winner.result.failed) this.scoreboard[winner.r.id] = (this.scoreboard[winner.r.id] ?? 0) + 1;
       this.racesRun++;
     }
     this.status = "finished";
@@ -721,7 +768,7 @@ export class Room {
       sendTo(playerId, { type: "error", code: "custom_empty", message: "Custom text can't be empty." });
       return;
     }
-    this.settings = settings;
+    this.settings = withRules(this.mode, settings);
     this.lastSettingsSeed = undefined;
     this.broadcastRoom();
   }
