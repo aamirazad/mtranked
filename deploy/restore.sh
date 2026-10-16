@@ -7,7 +7,7 @@
 # dropped and recreated with the dump's contents. Stop the app first so nothing
 # writes during the restore:
 #
-#   docker compose --env-file .env.production -f docker-compose.prod.yml stop api realtime
+#   docker compose --env-file .env.production -f docker-compose.prod.yml stop app
 #
 # The restore runs in a single transaction: if anything fails, nothing changes.
 set -eu
@@ -18,8 +18,8 @@ dump=$1
 cd "$(dirname "$0")/.."
 compose() { docker compose --env-file .env.production -f docker-compose.prod.yml "$@"; }
 
-if [ -n "$(compose ps -q --status running api realtime)" ]; then
-  echo "warning: api/realtime are still running; stop them first (see the top of this script)." >&2
+if [ -n "$(compose ps -q --status running app)" ]; then
+  echo "warning: the app is still running; stop them first (see the top of this script)." >&2
 fi
 echo "This will OVERWRITE the 'mtr' database with $dump."
 printf 'Type "restore" to continue: '

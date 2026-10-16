@@ -1,0 +1,109 @@
+# Tests for every pull request and every push to a branch other than main.
+# Also called by publish.yml so main and release tags are tested before an image is pushed.
+# Pull requests whose conventional-commit title has the `ci` scope, e.g.
+# "feat(ci): ...", also build the Docker image and smoke test it.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches-ignore: [main]
+    tags-ignore: ["**"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # retitling a PR (`edited`) restarts its run, e.g. to pick up the docker job
+  group: ci-${{ github.workflow_ref }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    # body-only edits don't change anything that's tested
+    if: github.event.action != 'edited' || github.event.changes.title
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type check (svelte-check)
+        run: pnpm turbo run check --filter=@mtr/frontend
+      - name: Build
+        run: pnpm turbo run build --filter=@mtr/frontend
+
+  backend:
+    name: Backend
+    if: github.event.action != 'edited' || github.event.changes.title
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mtr
+          POSTGRES_PASSWORD: mtr
+          POSTGRES_DB: mtr
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mtr"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://mtr:mtr@localhost:5432/mtr
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm turbo run check --filter=!@mtr/frontend
+      - name: Unit tests
+        run: pnpm turbo run test --filter=!@mtr/frontend
+      - name: Build
+        run: pnpm turbo run build --filter=!@mtr/frontend
+      - name: Migrations and seed apply to a fresh database
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+          # both are idempotent: a second run must be a no-op, as on every container start
+          pnpm db:migrate
+          pnpm db:seed
+
+  docker:
+    name: Docker image
+    # only on pull requests titled with the ci scope, e.g. "feat(ci): ..." or "fix(ci)!: ..."
+    if: >-
+      github.event_name == 'pull_request' &&
+      (contains(github.event.pull_request.title, '(ci):') || contains(github.event.pull_request.title, '(ci)!:'))
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: mtranked:ci
+          build-args: |
+            VERSION=pr-${{ github.event.pull_request.number }}
+            PUBLIC_SOURCE_URL=${{ vars.PUBLIC_SOURCE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+            PUBLIC_CONTACT_EMAIL=${{ vars.PUBLIC_CONTACT_EMAIL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test
+        run: bash scripts/smoke-test.sh mtranked:ci

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for MT Ranked.
-#   target "server": API + realtime + DB scripts (pick the process with `command:`)
-#   target "web":    Caddy serving the static frontend and proxying /api and /ws
+# Single-image build for MT Ranked: one container runs migrations, then the API,
+# the realtime server and Caddy (static frontend + HTTPS + proxy for /api and /ws).
+# See deploy/start.mjs for how the processes are supervised.
 
 FROM node:22-alpine AS base
 RUN corepack enable
@@ -32,17 +32,35 @@ COPY packages/race-protocol/package.json packages/race-protocol/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
-FROM node:22-alpine AS server
+FROM caddy:2-alpine AS caddy
+
+FROM node:22-alpine AS app
+# Caddy binds 80/443 as the unprivileged node user
+COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
+RUN apk add --no-cache libcap \
+  && setcap cap_net_bind_service=+ep /usr/bin/caddy \
+  && apk del libcap \
+  && mkdir -p /data /config \
+  && chown node:node /data /config
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+  XDG_DATA_HOME=/data \
+  XDG_CONFIG_HOME=/config
 COPY --from=prod-deps /app ./
 COPY --from=build /app/api/dist ./api/dist
 COPY --from=build /app/realtime/dist ./realtime/dist
 COPY --from=build /app/packages/db/dist ./packages/db/dist
 COPY --from=build /app/packages/db/migrations ./packages/db/migrations
-USER node
-CMD ["node", "api/dist/index.js"]
-
-FROM caddy:2-alpine AS web
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/frontend/build /srv
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/start.mjs ./start.mjs
+ARG VERSION=dev
+ENV MTR_VERSION=$VERSION
+USER node
+# caddy certificates and state; mount a volume here so they survive restarts
+VOLUME ["/data", "/config"]
+EXPOSE 80 443 443/udp
+# migrations run before the servers start, so give the first check some time
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO /dev/null http://127.0.0.1:4001/api/health && wget -qO /dev/null http://127.0.0.1:4002/health || exit 1
+CMD ["node", "start.mjs"]

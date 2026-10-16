@@ -101,30 +101,34 @@ Create an `A` record (and `AAAA` if you have IPv6) for your domain pointing at t
 
 ### 3. Deploy
 
+The whole app (migrations, API, realtime server, frontend and Caddy) ships as one image, `ghcr.io/aamirazad/mtranked`, built by GitHub Actions (see [Releases and images](#releases-and-images)). Postgres, Redis and the backup job run next to it as stock images.
+
 ```sh
 ssh you@your-server
 git clone https://github.com/your-name/mt-ranked.git && cd mt-ranked
 cp .env.production.example .env.production
-nano .env.production        # DOMAIN, APP_URL, POSTGRES_PASSWORD, SMTP_URL, MAIL_FROM, PUBLIC_SOURCE_URL
+nano .env.production        # DOMAIN, APP_URL, POSTGRES_PASSWORD, SMTP_URL, MAIL_FROM, MTR_TAG
 mkdir -p backups             # daily database dumps land here (see Backups below)
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+echo "$GHCR_TOKEN" | docker login ghcr.io -u your-github-user --password-stdin   # only while the package is private
+docker compose --env-file .env.production -f docker-compose.prod.yml pull
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
-This builds two images and starts Postgres, Redis, a one-off `migrate` job (migrations plus idempotent seed), the API, the realtime server and Caddy on ports 80/443. Open `https://your-domain`. Caddy obtains and renews the TLS certificate automatically.
+This starts Postgres, Redis, the backup job and the `app` container on ports 80/443. On every start the app applies migrations and the idempotent seed, then runs the API, the realtime server and Caddy. Open `https://your-domain`. Caddy obtains and renews the TLS certificate automatically. If you put the container behind another reverse proxy instead, set `SITE_ADDRESS=:80` so Caddy serves plain HTTP.
 
 Then:
 
 ```sh
 # make yourself a moderator after signing up on the site
-docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate node packages/db/dist/make-moderator.js you@example.com
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app node packages/db/dist/make-moderator.js you@example.com
 ```
 
-To update later: `git pull && docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build`.
+To update later: `docker compose --env-file .env.production -f docker-compose.prod.yml pull && docker compose --env-file .env.production -f docker-compose.prod.yml up -d`. The realtime server lets races in progress finish (up to 150 s) before the old container stops.
 
 Before public launch, wipe the beta (Season 0) by running the season rollover:
 
 ```sh
-docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate node packages/db/dist/season-rollover.js 3
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app node packages/db/dist/season-rollover.js 3
 ```
 
 Run the same command from cron every ~3 months to start each new season (`3` = length in months).
@@ -155,7 +159,7 @@ ls -lh backups/
 **Restore** (this **overwrites** the live database with the dump):
 
 ```sh
-docker compose --env-file .env.production -f docker-compose.prod.yml stop api realtime
+docker compose --env-file .env.production -f docker-compose.prod.yml stop app
 deploy/restore.sh backups/mtr-2026-01-31T030000Z.dump
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
@@ -176,8 +180,8 @@ If you point `DATABASE_URL` at a managed Postgres (Neon, Supabase, RDS), use its
 ### 6. Operations
 
 - **Managed Redis** (optional): set `REDIS_URL` (Upstash/Redis Cloud). The bundled Redis uses an append-only file.
-- **Logs**: `docker compose -f docker-compose.prod.yml logs -f api realtime`.
-- **Health**: `https://your-domain/api/health`. The realtime server exposes `/health` inside the Docker network.
+- **Logs**: `docker compose -f docker-compose.prod.yml logs -f app`.
+- **Health**: `https://your-domain/api/health`. The realtime server exposes `/health` on port 4002 inside the container; Docker's healthcheck polls both.
 - **Replays**: keystroke logs live in Postgres (a few KB per race). Move them to S3/R2 when that table gets large.
 
 ### Alternative: static frontend on Cloudflare Pages
@@ -187,3 +191,21 @@ You can host `frontend/build` on Cloudflare Pages or Vercel (build command `pnpm
 ### Scaling later
 
 Live room state is mirrored to Redis, the matcher runs under a Redis lock, and nodes forward room messages over Redis pub/sub. You can therefore add more `realtime` replicas behind a load balancer with sticky sessions. Rooms run on the node that created them.
+
+### Releases and images
+
+GitHub Actions (`.github/workflows/`) tests every change and publishes the image to `ghcr.io/aamirazad/mtranked`:
+
+| Event                                   | Runs                                                       | Image tags                                  |
+| --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| Pull request, push to any other branch  | frontend check + build; backend check, tests, build, migrations against Postgres | none                 |
+| Pull request titled with the `ci` scope, e.g. `feat(ci): ...` | the above, plus a Docker build and smoke test | none                           |
+| Push to `main`                          | tests, build, smoke test, push                             | `main`, `sha-<short sha>`                   |
+| Tag `v1.2.3`                            | tests, build, smoke test, push                             | `1.2.3`, `1.2`, `1`, `latest`, `sha-<short sha>` |
+| Tag `v1.2.3-rc.1`                       | tests, build, smoke test, push                             | `1.2.3-rc.1`, `sha-<short sha>`             |
+
+Set `MTR_TAG` in `.env.production` to choose what the server runs: `main` follows every commit on main, `latest` the newest release, and `1.2.3` (or `sha-abc1234`) pins one build. To cut a release, create a tag such as `v1.2.3` (or a GitHub release, which creates the tag).
+
+`scripts/smoke-test.sh <image>` boots an image against throwaway Postgres and Redis containers and checks it the same way CI does.
+
+The frontend has its public settings baked in at build time. Set them as repository **variables** (Settings → Secrets and variables → Actions): `PUBLIC_CONTACT_EMAIL`, `PUBLIC_SENTRY_DSN`, and optionally `PUBLIC_SOURCE_URL` (defaults to this repository's URL). Add a `SENTRY_AUTH_TOKEN` repository **secret** to upload frontend source maps to Sentry.
