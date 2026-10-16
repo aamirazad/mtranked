@@ -1,6 +1,6 @@
 // Every WebSocket message exchanged between the frontend and the realtime server.
 import { z } from "zod";
-import { CONFIDENCE, DIFFICULTY, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type FailReason, type TimelinePoint } from "@mtr/engine";
+import { CONFIDENCE, DIFFICULTY, FUNBOX_IDS, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type FailReason, type TimelinePoint } from "@mtr/engine";
 
 export const Mode = z.enum(["ranked", "casual", "private", "ghost"]);
 export type Mode = z.infer<typeof Mode>;
@@ -37,6 +37,8 @@ export const TextSettings = z.object({
   numbers: z.boolean(),
   language: z.enum(LANGUAGES),
   custom: z.string().max(5000).optional(),
+  /** practice and private rooms only: the realtime server strips it from matchmade races */
+  funbox: z.array(z.enum(FUNBOX_IDS)).max(16).optional(),
   rules: RoomRules.optional(),
 });
 export type TextSettings = z.infer<typeof TextSettings>;

@@ -3,7 +3,7 @@
   import { page } from "$app/state";
   import { Pause, Play, RotateCcw } from "@lucide/svelte";
   import type { MatchDetail } from "@mtr/contracts";
-  import { applyKey, calculateWpm, caretIndex, correctChars, createState, type Keystroke, type Rules, type TypingState } from "@mtr/engine";
+  import { applyKey, calculateWpm, caretIndex, correctChars, createState, funboxTypingOptions, type Keystroke, type Rules, type TypingState } from "@mtr/engine";
   import { api, errorMessage } from "#lib/api.ts";
   import TypingArea from "#lib/components/TypingArea.svelte";
 
@@ -35,7 +35,7 @@
           color: p.caretColor === "prism" ? "#e2b714" : p.caretColor,
           caret: p.caretColor,
           keys: p.keystrokes!,
-          state: createState(m.text, m.rules as Rules | undefined),
+          state: createState(m.text, m.rules as Rules | undefined, funboxTypingOptions(m.funbox)),
           i: 0,
         }));
       duration = Math.max(1000, ...tracks.map((x) => x.keys.at(-1)!.t)) + 300;
@@ -51,7 +51,7 @@
     t = Math.max(0, Math.min(duration, to));
     for (const tr of tracks) {
       if (back) {
-        tr.state = createState(match!.text, match!.rules as Rules | undefined);
+        tr.state = createState(match!.text, match!.rules as Rules | undefined, funboxTypingOptions(match!.funbox));
         tr.i = 0;
       }
       while (tr.i < tr.keys.length && tr.keys[tr.i]!.t <= t) {

@@ -13,6 +13,8 @@
   import { CARET_MS, prefs } from "#lib/prefs.svelte.ts";
   import { emulateKey } from "#lib/layouts.ts";
   import { playClick, playError } from "#lib/sound.ts";
+  import FunboxLayer from "#lib/funbox/FunboxLayer.svelte";
+  import { applyGlobalFunbox, funboxClass, funboxLines, mapFunboxKey } from "#lib/funbox/index.ts";
 
   let {
     ts,
@@ -23,8 +25,9 @@
     caretShape = "line",
     showOwnCaret = true,
     onkey,
-    lines = 3,
+    lines: baseLines = 3,
     allowAllLines = true,
+    funbox = [],
   }: {
     ts: TypingState;
     active?: boolean;
@@ -35,9 +38,16 @@
     showOwnCaret?: boolean;
     onkey?: (key: string) => void;
     lines?: number;
+    /** funbox ids (practice/private rooms only) */
+    funbox?: readonly string[];
     /** "show all lines" is skipped for very long texts (time mode) */
     allowAllLines?: boolean;
   } = $props();
+
+  // funbox: page-wide effects are torn down on unmount or when the funbox changes
+  $effect(() => applyGlobalFunbox(funbox));
+  const lines = $derived(funboxLines(funbox, baseLines));
+  let fbHide = $state(false);
 
   let inputs = $state<string[]>([]);
   let wi = $state(0);
@@ -191,6 +201,12 @@
       send(e.ctrlKey || e.altKey || e.metaKey ? WORD_DELETE : BACKSPACE, e.code);
       return;
     }
+    const mapped = mapFunboxKey(funbox, e);
+    if (mapped) {
+      e.preventDefault();
+      send(mapped, e.code);
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     // layout emulation: the physical key types its character on the chosen layout
     const emulated = prefs.layout !== "default" && e.key !== "Dead" ? emulateKey(prefs.layout, e) : null;
@@ -241,7 +257,8 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
-  class="relative select-none"
+  class="relative select-none {funboxClass(funbox)}"
+  class:fb-hide={fbHide}
   style="{allLines ? '' : `height: ${lineH * shownLines}px;`} --typing-size: {prefs.fontSize}rem"
   bind:clientWidth={boxW}
   onclick={focus}
@@ -317,6 +334,11 @@
       {/if}
     </div>
   </div>
+  {#if funbox.length}
+    {#key ts}
+      <FunboxLayer {funbox} word={ts.words[wi]} input={inputs[wi] ?? ""} {wi} words={ts.words.length} active={active && !blurred} bind:hide={fbHide} />
+    {/key}
+  {/if}
   {#if active && !focused && !blurred}
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center text-sub animate-fade">
       click here or press any key to focus

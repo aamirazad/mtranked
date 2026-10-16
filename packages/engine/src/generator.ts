@@ -1,6 +1,15 @@
 // Text generation, ported from monkeytype's words-generator (punctuation and
 // number rules simplified to the languages we ship).
 import { seededRandom } from "./rng";
+import {
+  applyFunboxText,
+  FUNBOXES,
+  funboxForcedOptions,
+  funboxWordSource,
+  POLYGLOT_LANGUAGES,
+  type FunboxId,
+  type WordSource,
+} from "./funbox";
 import { stripAccents, type Rules } from "./rules";
 
 export const LANGUAGES = [
@@ -58,6 +67,8 @@ export type TextSettings = {
   numbers: boolean;
   language: LanguageId;
   custom?: string;
+  /** practice and private rooms only; never set for matchmaking */
+  funbox?: FunboxId[];
   /** gameplay rules (practice and private rooms only) */
   rules?: Rules;
 };
@@ -113,6 +124,7 @@ export function generateWords(
   count: number,
   seed: string,
   opts: { punctuation: boolean; numbers: boolean },
+  source?: WordSource,
 ): string[] {
   const rand = seededRandom(seed);
   const out: string[] = [];
@@ -122,12 +134,12 @@ export function generateWords(
     let tries = 0;
     // avoid the same word twice in a row (and the one before that)
     do {
-      w = pool[Math.floor(rand() * pool.length)]!;
+      w = source ? source.pick(rand, i) : pool[Math.floor(rand() * pool.length)]!;
       tries++;
     } while (tries < 20 && (w === prevRaw || w === out[i - 2]));
     prevRaw = w;
     if (opts.numbers && rand() < 0.1) w = randomNumber(rand);
-    if (opts.punctuation) w = punctuate(rand, out[i - 1], w, i, count);
+    if (opts.punctuation) w = source?.punctuate ? source.punctuate(rand, w) : punctuate(rand, out[i - 1], w, i, count);
     out.push(w);
   }
   return out;
@@ -139,12 +151,19 @@ export const wordsForTime = (seconds: number) => Math.max(30, Math.ceil(seconds 
 export type GeneratedText = { text: string; source?: string };
 
 export async function generateText(settings: TextSettings, seed: string): Promise<GeneratedText> {
-  const g = await generateBase(settings, seed);
+  const t = await generateFunboxText(settings, seed);
   // lazy mode: the text is typed without accents
-  return settings.rules?.lazy ? { ...g, text: stripAccents(g.text) } : g;
+  return settings.rules?.lazy ? { ...t, text: stripAccents(t.text) } : t;
 }
 
-async function generateBase(settings: TextSettings, seed: string): Promise<GeneratedText> {
+async function generateFunboxText(settings: TextSettings, seed: string): Promise<GeneratedText> {
+  const t = await generateBaseText(settings, seed);
+  if (!settings.funbox?.length) return t;
+  const words = applyFunboxText(settings.funbox, t.text.split(" "), seededRandom(`${seed}:funbox`));
+  return { ...t, text: words.join(" ") };
+}
+
+async function generateBaseText(settings: TextSettings, seed: string): Promise<GeneratedText> {
   if (settings.mode === "custom" && settings.custom) {
     return { text: normalizeText(settings.custom).slice(0, 5000) };
   }
@@ -158,7 +177,13 @@ async function generateBase(settings: TextSettings, seed: string): Promise<Gener
   }
   const lang = await loadLanguage(settings.language);
   const count = settings.mode === "time" ? wordsForTime(settings.time) : settings.words;
-  return {
-    text: generateWords(lang.words, count, seed, settings).join(" "),
-  };
+  const fb = settings.funbox;
+  if (!fb?.some((id) => FUNBOXES[id]?.wordsOnly)) {
+    return { text: generateWords(lang.words, count, seed, settings).join(" ") };
+  }
+  const polyglot = fb.includes("polyglot")
+    ? (await Promise.all(POLYGLOT_LANGUAGES.map((l) => loadLanguage(l)))).map((l) => l.words)
+    : undefined;
+  const source = funboxWordSource(fb, lang.words, polyglot);
+  return { text: generateWords(lang.words, count, seed, funboxForcedOptions(fb, settings), source).join(" ") };
 }

@@ -3,6 +3,7 @@
 // monkeytype's defaults: space submits a word even with mistakes, and you may
 // backspace into the previous word only if it was typed incorrectly. Optional
 // rules (see rules.ts) change that the same way on both sides.
+import type { TypingOptions } from "./funbox";
 import { flexBurst, normalizeRules, type FailReason, type Rules } from "./rules";
 
 export const BACKSPACE = "\b";
@@ -23,6 +24,8 @@ export type TypingState = {
   finished: boolean;
   correctKeys: number;
   incorrectKeys: number;
+  /** nospace funboxes: no space key, a word is submitted once it's as long as the target */
+  nospace: boolean;
   rules: Rules;
   /** set once a rule fails the test; no more keys are accepted */
   failed: FailReason | null;
@@ -32,7 +35,7 @@ export type TypingState = {
   lastBurst: number | null;
 };
 
-export function createState(text: string, rules?: Rules): TypingState {
+export function createState(text: string, rules?: Rules, opts: TypingOptions = {}): TypingState {
   const words = text.split(" ");
   const offsets: number[] = [];
   let o = 0;
@@ -49,6 +52,7 @@ export function createState(text: string, rules?: Rules): TypingState {
     finished: false,
     correctKeys: 0,
     incorrectKeys: 0,
+    nospace: !!opts.nospace,
     rules: normalizeRules(rules) ?? {},
     failed: null,
     burstStart: null,
@@ -89,6 +93,8 @@ export function applyKey(s: TypingState, key: string, t?: number): boolean {
     return false;
   }
 
+  // nospace funboxes: words submit themselves, the space key does nothing
+  if (key === " " && s.nospace) return false;
   // strict space (and expert/master) types a leading space as a wrong letter
   const strict = r.strictSpace || r.difficulty !== undefined;
   if (key === " " && (input.length > 0 || !strict)) {
@@ -124,7 +130,7 @@ export function applyKey(s: TypingState, key: string, t?: number): boolean {
   }
 
   if (key.length !== 1) return false;
-  if (input.length >= word.length + MAX_EXTRA) return false;
+  if (input.length >= word.length + (s.nospace ? 0 : MAX_EXTRA)) return false;
   if (word[input.length] === key) s.correctKeys++;
   else {
     s.incorrectKeys++;
@@ -134,6 +140,10 @@ export function applyKey(s: TypingState, key: string, t?: number): boolean {
   }
   s.inputs[s.wi] = input + key;
   if (last && s.inputs[s.wi] === word) s.finished = true;
+  else if (s.nospace && !last && input.length + 1 === word.length) {
+    s.wi++;
+    s.inputs[s.wi] = "";
+  }
   return true;
 }
 
@@ -153,7 +163,7 @@ export function checkLiveFail(s: TypingState, elapsedMs: number): FailReason | n
 export function correctChars(s: TypingState, creditPartial: boolean): number {
   let chars = 0;
   for (let i = 0; i < s.wi; i++) {
-    if (s.inputs[i] === s.words[i]) chars += s.words[i]!.length + 1;
+    if (s.inputs[i] === s.words[i]) chars += s.words[i]!.length + (s.nospace ? 0 : 1);
   }
   const word = s.words[s.wi]!;
   const input = s.inputs[s.wi] ?? "";
@@ -164,7 +174,7 @@ export function correctChars(s: TypingState, creditPartial: boolean): number {
 
 export function rawChars(s: TypingState): number {
   let chars = 0;
-  for (let i = 0; i < s.wi; i++) chars += (s.inputs[i]?.length ?? 0) + 1;
+  for (let i = 0; i < s.wi; i++) chars += (s.inputs[i]?.length ?? 0) + (s.nospace ? 0 : 1);
   return chars + (s.inputs[s.wi]?.length ?? 0);
 }
 
@@ -200,8 +210,8 @@ export function correctPrefix(s: TypingState): number {
   return n + j;
 }
 
-export function replay(text: string, keys: Keystroke[], untilMs = Infinity, rules?: Rules): TypingState {
-  const s = createState(text, rules);
+export function replay(text: string, keys: Keystroke[], untilMs = Infinity, rules?: Rules, opts?: TypingOptions): TypingState {
+  const s = createState(text, rules, opts);
   for (const ks of keys) {
     if (ks.t > untilMs) break;
     applyKey(s, ks.k, ks.t);
@@ -230,8 +240,8 @@ export function finalStats(s: TypingState, durationMs: number): FinalStats {
 export type TimelinePoint = { wpm: number; raw: number; err: number };
 
 /** Per-second speed/mistake samples for the results graph (the last bucket may be partial). */
-export function raceTimeline(text: string, keys: Keystroke[], durationMs: number, rules?: Rules): TimelinePoint[] {
-  const s = createState(text, rules);
+export function raceTimeline(text: string, keys: Keystroke[], durationMs: number, rules?: Rules, opts?: TypingOptions): TimelinePoint[] {
+  const s = createState(text, rules, opts);
   const out: TimelinePoint[] = [];
   const buckets = Math.max(1, Math.ceil(durationMs / 1000));
   let i = 0;

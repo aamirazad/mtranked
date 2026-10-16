@@ -9,6 +9,7 @@
     correctChars,
     createState,
     accuracy,
+    funboxTypingOptions,
     describeRules,
     type Keystroke,
     type TypingState,
@@ -26,6 +27,8 @@
   const race = $derived(game.race!);
   const meId = $derived(game.you?.id);
   const isRacer = $derived(race.players.some((p) => p.id === meId));
+  // funbox only ever applies in private rooms
+  const funbox = $derived(race.mode === "private" ? (race.settings.funbox ?? []) : []);
   /** forfeited (left, idle or disconnected too long) */
   const iAmOut = $derived(!!meId && !!game.live[meId]?.out);
   const eq = $derived(resolveEquipped(session.me?.equipped));
@@ -54,7 +57,7 @@
   $effect(() => {
     const r = race;
     untrack(() => {
-      const state = createState(r.text, r.settings.rules);
+      const state = createState(r.text, r.settings.rules, funboxTypingOptions(r.settings.funbox));
       for (const k of r.resumeKeys ?? []) applyKey(state, k.k, k.t);
       ts = state;
       pending = [];
@@ -232,6 +235,7 @@
       </span>
     {/if}
     {#if !isRacer}<span class="text-sub">spectating — you'll join the next race</span>{/if}
+    {#if funbox.length}<span class="self-center text-sm text-sub" class:ml-auto={!ruleList.length || !!race.deadline}>funbox · <span class="text-main">{funbox.map((id) => id.replaceAll("_", " ")).join(", ")}</span></span>{/if}
   </LiveStats>
 
   <!-- tall enough for the finished card even when the text is short -->
@@ -247,6 +251,7 @@
       caretColor={eq.caretColor}
       caretShape={eq.caretShape}
       showOwnCaret={isRacer}
+      {funbox}
     />
     {#if !started && countdown > 0}
       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
