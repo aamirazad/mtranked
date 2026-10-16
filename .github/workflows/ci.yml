@@ -13,15 +13,16 @@ permissions:
   contents: read
 
 concurrency:
-  # a new push (or retitling the PR) supersedes the run in progress
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # a new push, retitle or base change supersedes the run in progress; edits that
+  # change neither (e.g. the description) get their own group so they can't cancel it
+  group: ci-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'edited' && !github.event.changes.title && !github.event.changes.base && format('-noop-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
   frontend:
     name: Frontend
-    # body-only edits don't change anything that's tested
-    if: github.event.action != 'edited' || github.event.changes.title
+    # edits other than the title or base don't change anything that's tested
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -45,7 +46,7 @@ jobs:
 
   backend:
     name: Backend
-    if: github.event.action != 'edited' || github.event.changes.title
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -92,7 +93,7 @@ jobs:
     # runs alongside the tests rather than after them
     if: >-
       github.event_name == 'pull_request' &&
-      (github.event.action != 'edited' || github.event.changes.title) &&
+      (github.event.action != 'edited' || github.event.changes.title || github.event.changes.base) &&
       (contains(github.event.pull_request.title, '(ci):') || contains(github.event.pull_request.title, '(ci)!:'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
