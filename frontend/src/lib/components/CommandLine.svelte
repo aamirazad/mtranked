@@ -39,7 +39,7 @@
     fontSizeName,
     prefs,
   } from "#lib/prefs.svelte.ts";
-  import { FONTS } from "#lib/fonts.ts";
+  import { FONTS, fontById, fontLabel } from "#lib/fonts.ts";
   import { CLICK_SOUNDS, ERROR_SOUNDS, VOLUMES, playClick, playError } from "#lib/sound.ts";
   import { LAYOUT_IDS, layoutName } from "#lib/layouts.ts";
   import { game } from "#lib/game.svelte.ts";
@@ -108,7 +108,7 @@
       icon: Type,
       options: FONT_SIZES.map((s) => ({ label: fontSizeName(s), active: prefs.fontSize === s, run: () => prefs.set("fontSize", s) })),
     },
-    { id: "font-family", label: "Font family", icon: Type, options: pick(FONTS.map((f) => f.id), prefs.fontFamily, (v) => prefs.set("fontFamily", v), (v) => FONTS.find((f) => f.id === v)!.name) },
+    { id: "font-family", label: "Font family", icon: Type, options: pick(FONTS.map((f) => f.id), prefs.fontFamily, (v) => prefs.set("fontFamily", v), (v) => fontLabel(fontById(v)!)) },
     { id: "smooth-caret", label: "Smooth caret", icon: TextCursor, options: pick(CARET_SPEEDS, prefs.smoothCaret, (v) => prefs.set("smoothCaret", v)) },
     { id: "live-progress", label: "Live progress", icon: Gauge, options: pick(PROGRESS_STYLES, prefs.liveProgress, (v) => prefs.set("liveProgress", v)) },
     { id: "live-wpm", label: "Live speed", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveWpm, (v) => prefs.set("liveWpm", v)) },

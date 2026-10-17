@@ -33,4 +33,6 @@ export const FONTS: FontDef[] = [
 
 export const DEFAULT_FONT = "roboto_mono";
 export const fontById = (id: string) => FONTS.find((f) => f.id === id);
+/** name shown in pickers; the default is marked so searching "default" finds it */
+export const fontLabel = (f: FontDef) => (f.id === DEFAULT_FONT ? `${f.name} (Default)` : f.name);
 export const fontStack = (id: string) => `"${fontById(id)?.name ?? "Roboto Mono"}", "Roboto Mono", ui-monospace, monospace`;

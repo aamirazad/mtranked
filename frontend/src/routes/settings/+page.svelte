@@ -23,7 +23,7 @@
     prefs,
     type PrefKey,
   } from "#lib/prefs.svelte.ts";
-  import { FONTS } from "#lib/fonts.ts";
+  import { FONTS, fontLabel } from "#lib/fonts.ts";
   import { CLICK_SOUNDS, ERROR_SOUNDS, VOLUMES, playClick, playError } from "#lib/sound.ts";
   import { LAYOUT_IDS, layoutName } from "#lib/layouts.ts";
 
@@ -196,7 +196,7 @@
     { id: "sound-error", section: "sound", title: "sound on error", hint: "play a sound when you make a mistake (instead of the click).", options: Object.keys(ERROR_SOUNDS), name: (v: string) => ERROR_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnError, set: (v: string) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)) },
     { id: "sound-volume", section: "sound", title: "sound volume", hint: "how loud typing sounds are.", options: VOLUMES, name: (v: number) => `${v * 100}%`, tags: "audio", value: () => prefs.soundVolume, set: (v: number) => (prefs.set("soundVolume", v), playClick(prefs.soundOnClick === "off" ? "click" : prefs.soundOnClick, v)) },
     { id: "smooth-caret", section: "caret", title: "smooth caret", hint: "glide the caret between letters instead of jumping, and how fast.", options: CARET_SPEEDS, ...pref("smoothCaret") },
-    { id: "font-family", section: "appearance", title: "font family", hint: "the font used across the site and for the words you type.", options: [], kind: "fonts", tags: FONTS.map((f) => f.name).join(" "), ...pref("fontFamily") },
+    { id: "font-family", section: "appearance", title: "font family", hint: "the font used across the site and for the words you type.", options: [], kind: "fonts", tags: FONTS.map(fontLabel).join(" "), ...pref("fontFamily") },
     { id: "font-size", section: "appearance", title: "font size", hint: "size of the words you type.", options: FONT_SIZES, name: fontSizeName, ...pref("fontSize") },
     { id: "tape-mode", section: "appearance", title: "tape mode", hint: "show the words on one scrolling line. letter scrolls every letter, word every word.", options: TAPE_MODES, ...pref("tapeMode") },
     { id: "show-all-lines", section: "appearance", title: "show all lines", hint: "show the whole text instead of three lines (not in time mode).", options: onOff, name: onOffName, ...pref("showAllLines") },
@@ -261,7 +261,7 @@
             class:border-transparent={!on}
             class:text-sub={!on}
             style="font-family: '{f.name}', monospace"
-            onclick={() => prefs.set("fontFamily", f.id)}>{f.name}</button
+            onclick={() => prefs.set("fontFamily", f.id)}>{fontLabel(f)}</button
           >
         {/each}
       </div>
