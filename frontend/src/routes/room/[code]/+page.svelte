@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Check, Copy, Crown, DoorClosed, Eye, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
+  import { Check, Copy, Crown, DoorClosed, Eye, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -245,20 +245,8 @@
       <div class="my-10 h-px bg-sub-alt"></div>
     {/if}
 
-    {#if suggested.length}
-      <div class="mb-8 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border-2 border-main/40 bg-sub-alt px-5 py-4 animate-rise">
-        <Sparkles size={20} class="shrink-0 text-main" />
-        <div class="min-w-0 flex-1">
-          <span class="text-main">{suggestedNames}</span>
-          {suggested.length === 1 ? "is" : "are"} online right now.
-          <span class="text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room in one click?</span>
-        </div>
-        <button class="btn btn-main" onclick={() => invite(suggested)}><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button>
-        <button class="text-sub hover:text-text" aria-label="dismiss" onclick={() => (suggestDismissed = true)}><X size={16} /></button>
-      </div>
-    {/if}
-
     <div class="flex flex-wrap items-start justify-between gap-6">
+      <div class="flex flex-1 flex-wrap items-start justify-between gap-6">
       <div>
         {#if isHost && room.hostSubscriber}
           <input
@@ -297,6 +285,17 @@
             {#if !prefs.roomThemes}<span class="text-xs">(off in your settings)</span>{/if}
           </div>
         {/if}
+      </div>
+      {#if suggested.length}
+        <div class="w-72 rounded-xl border-2 border-main/40 bg-sub-alt p-4 text-sm animate-rise">
+          <div class="flex items-start justify-between gap-2">
+            <div class="text-base"><span class="text-main">{suggestedNames}</span> {suggested.length === 1 ? "is" : "are"} online right now</div>
+            <button class="shrink-0 text-sub hover:text-text" aria-label="dismiss" onclick={() => (suggestDismissed = true)}><X size={16} /></button>
+          </div>
+          <div class="mt-1 text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room?</div>
+          <button class="btn btn-main mt-3 w-full justify-center" onclick={() => invite(suggested)}><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button>
+        </div>
+      {/if}
       </div>
       <div class="flex items-center gap-2">
         {#if isHost}
