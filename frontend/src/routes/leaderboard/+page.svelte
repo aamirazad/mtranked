@@ -185,13 +185,15 @@
   {:else if rows.length === 0}
     <div class="card text-center text-sub">nobody has finished placements{country ? " in this country" : ""} yet. <a class="link" href="/play/ranked">be the first</a>.</div>
   {:else}
-    <table class="w-full text-left">
+    <table class="w-full border-separate border-spacing-0 text-left">
       <thead class="text-sm text-sub">
-        <tr><th class="py-2 font-normal">#</th><th class="font-normal">player</th><th class="font-normal">tier</th><th class="text-right font-normal">rating</th><th class="text-right font-normal">w / l</th></tr>
+        <tr><th class="py-2 pl-3 font-normal">#</th><th class="font-normal">player</th><th class="font-normal">tier</th><th class="text-right font-normal">rating</th><th class="pr-3 text-right font-normal">w / l</th></tr>
       </thead>
       <tbody>
         {#each rows as r (r.id)}
-          <tr class="border-t border-sub-alt transition-colors hover:bg-sub-alt/50" class:text-main={r.id === session.me?.id}>
+          <tr
+            class="[&>td]:border-t [&>td]:border-sub-alt [&:hover>td]:border-transparent [&:hover+tr>td]:border-transparent [&:hover>td]:bg-sub-alt/50 [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:first-child]:pl-3 [&>td:last-child]:rounded-r-lg [&>td:last-child]:pr-3"
+            class:text-main={r.id === session.me?.id}>
             <td class="py-2.5 tabular-nums {r.rank <= 3 ? 'text-main' : 'text-sub'}">{r.rank}</td>
             <td><a href="/u/{r.name}" class="hover:underline">{flag(r.country)} {r.name}</a>{#if r.subscriber && session.supporterSales}<span class="ml-2 text-xs text-main" title="supporter">♥</span>{/if}</td>
             <td><TierBadge rating={r.rating} showRating={false} /></td>
