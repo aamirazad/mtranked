@@ -8,6 +8,7 @@
   import { friends, describeActivity } from "#lib/friends.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
+  import Note from "#lib/components/Note.svelte";
 
   const name = page.params.name ?? "";
   let friendId = $state<string | null>(null);
@@ -31,9 +32,10 @@
 
   // the server refused (they're not racing, the room is locked, ...)
   $effect(() => {
-    const e = game.lastError;
-    if (e?.code === "spectate" && Date.now() - e.at < 3000 && !watch.target) problem = e.message;
+    const e = game.errorFrom("watch");
+    if (e && !watch.target) problem = e;
   });
+  const askRefused = $derived(game.errorFrom("watch-ask"));
 
   const presence = $derived(friendId ? friends.presenceOf(friendId) : null);
   const inRace = $derived(!!watch.race && !watch.result);
@@ -119,11 +121,12 @@
         {#if friendId}
           <div class="mt-4 flex justify-center">
             {#if game.hasAsked(friendId)}
-              <span class="text-sm text-sub">asked to join</span>
+              <span class="text-sm text-sub">asked to join · waiting for a host</span>
             {:else}
-              <button class="btn" onclick={() => game.askToJoin(friendId!)}><DoorOpen size={16} /> ask to join</button>
+              <button class="btn" onclick={() => game.askToJoin(friendId!, "watch-ask")}><DoorOpen size={16} /> ask to join</button>
             {/if}
           </div>
+          <Note note={askRefused ? { text: askRefused, kind: "error" } : null} class="mt-2 block text-center" />
         {/if}
       </div>
     {/if}

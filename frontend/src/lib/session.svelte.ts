@@ -24,4 +24,7 @@ class Session {
   }
 }
 
-export const session = new Session();
+// one instance per page: editing this module reloads the page, and any stale copy
+// the dev server hands out shares the instance instead of making its own
+import.meta.hot?.accept(() => location.reload());
+export const session: Session = import.meta.hot ? (import.meta.hot.data.session ??= new Session()) : new Session();

@@ -8,6 +8,7 @@
   import { DEFAULT_ROOM_SETTINGS } from "@mtr/race-protocol";
   import { ROOM_CODE_ALPHABET } from "@mtr/shared";
   import TierBadge from "#lib/components/TierBadge.svelte";
+  import Note from "#lib/components/Note.svelte";
 
   let season = $state<{ name: string; endsAt: string } | null>(null);
   let code = $state("");
@@ -29,10 +30,14 @@
     game.room = null;
     game.roomClosed = null;
     await game.connect().catch(() => {});
-    game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS });
+    game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS }, "create-room");
   }
   $effect(() => {
     if (creating && game.room?.code) goto(`/room/${game.room.code}`);
+  });
+  const createRefused = $derived(game.errorFrom("create-room"));
+  $effect(() => {
+    if (createRefused) creating = false;
   });
 
   function cleanCode(v: string) {
@@ -93,6 +98,7 @@
       <div class="mt-8 font-logo text-3xl">private room</div>
       <div class="mt-2 text-sm text-sub">race your friends.</div>
       <button class="btn btn-main mt-5 w-full" onclick={createRoom} disabled={creating}>{creating ? "creating…" : "create room"}</button>
+      <Note note={createRefused ? { text: createRefused, kind: "error" } : null} class="mt-2 block" />
       <form class="mt-2 flex gap-2" onsubmit={join}>
         <input
           class="input text-center tracking-[0.3em] uppercase"

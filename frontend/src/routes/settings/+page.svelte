@@ -7,7 +7,8 @@
   import { api, errorMessage, fieldErrors } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
-  import { toasts } from "#lib/toast.svelte.ts";
+  import { Notes } from "#lib/notes.svelte.ts";
+  import Note from "#lib/components/Note.svelte";
   import { COUNTRIES, flag } from "#lib/countries.ts";
   import Caret from "#lib/components/Caret.svelte";
   import {
@@ -35,6 +36,10 @@
   let sessions = $state<Sess[]>([]);
   let billing = $state<{ enabled: boolean; status: string; renewsAt: string | null; subscriber: boolean } | null>(null);
   let nameError = $state<string | null>(null);
+  // feedback shown next to whatever was clicked
+  const notes = new Notes();
+  /** back from checkout */
+  let subscribed = $state(false);
 
   onMount(async () => {
     if (!session.loaded) await session.refresh();
@@ -42,7 +47,9 @@
     displayName = session.me.displayName;
     country = session.me.country ?? "";
     await load();
-    if (page.url.searchParams.get("subscribed")) toasts.show("Thanks for supporting MT Ranked! Perks are active.", "success", 6000);
+    // back from checkout: thank them where they clicked
+    subscribed = !!page.url.searchParams.get("subscribed");
+    if (subscribed) requestAnimationFrame(() => document.getElementById("supporter")?.scrollIntoView({ block: "center" }));
   });
 
   // hover-intent for theme previews: the first preview waits until the pointer rests on a
@@ -77,23 +84,25 @@
     const r = await api.me.update({ body: { displayName, country: country || null } });
     if (r.status === 200) {
       session.set(r.body.user);
-      toasts.show("Profile saved", "success", 1500);
+      notes.set("profile", "saved", "success", 2000);
       void game.reconnect();
     } else nameError = fieldErrors(r).displayName ?? errorMessage(r);
   }
 
   async function equip(c: Cosmetic) {
     if (!unlocked.has(c.id)) return;
+    notes.clear(c.type);
     const r = await api.me.update({ body: { equipped: { [c.type]: c.id } } });
     if (r.status === 200) {
       session.set(r.body.user);
       void game.reconnect();
-    } else toasts.show(errorMessage(r), "error");
+    } else notes.set(c.type, errorMessage(r), "error");
   }
 
   async function resend() {
     const r = await api.auth.resendVerification({});
-    toasts.show(r.status === 200 ? "Verification email sent." : errorMessage(r), r.status === 200 ? "success" : "error");
+    if (r.status === 200) notes.set("verify", "sent! check your inbox", "success");
+    else notes.set("verify", errorMessage(r), "error");
   }
 
   async function revoke(id: string) {
@@ -113,12 +122,12 @@
   async function checkout(interval: "month" | "year") {
     const r = await api.billing.checkout({ body: { interval } });
     if (r.status === 200) location.href = r.body.url;
-    else toasts.show(errorMessage(r), "error");
+    else notes.set("billing", errorMessage(r), "error");
   }
   async function portal() {
     const r = await api.billing.portal({});
     if (r.status === 200) location.href = r.body.url;
-    else toasts.show(errorMessage(r), "error");
+    else notes.set("billing", errorMessage(r), "error");
   }
   async function devToggle() {
     await api.billing.devToggle({});
@@ -361,7 +370,10 @@
           <div>verify your email to unlock ranked</div>
           <div class="text-sm text-sub">we sent a link to {me.email}</div>
         </div>
-        <button class="btn btn-main" onclick={resend}>resend link</button>
+        <div class="flex items-center gap-3">
+          <Note note={notes.get("verify")} />
+          <button class="btn btn-main" onclick={resend}>resend link</button>
+        </div>
       </div>
     {/if}
 
@@ -388,7 +400,10 @@
             {#each COUNTRIES as c (c.code)}<option value={c.code}>{flag(c.code)} {c.name}</option>{/each}
           </select>
         </label>
-        <button class="btn btn-main self-end">save</button>
+        <div class="flex items-center gap-3 self-end">
+          <Note note={notes.get("profile")} />
+          <button class="btn btn-main">save</button>
+        </div>
       </form>
     </section>
 
@@ -434,7 +449,7 @@
       </p>
       {#each groups as g (g.type)}
         <div class="mb-6">
-          <div class="label mb-2">{g.label}</div>
+          <div class="mb-2 flex items-baseline gap-3"><span class="label">{g.label}</span><Note note={notes.get(g.type)} /></div>
           <div class="flex flex-wrap gap-2">
             {#each COSMETICS.filter((c) => c.type === g.type && (me.subscriber || c.unlock.type !== "subscriber")) as c (c.id)}
               {@render tile(c)}
@@ -445,9 +460,10 @@
     </section>
 
     {#if session.supporterSales}
-      <section>
+      <section id="supporter" class="scroll-mt-28">
         <h2 class="label mb-4 text-sm">supporter</h2>
         <div class="card">
+          {#if subscribed}<div class="mb-4 rounded-lg bg-main px-4 py-2 text-sm text-bg animate-rise" role="status">Thanks for supporting MT Ranked! Perks are active.</div>{/if}
           {#if me.earlySupporter}
             <div class="text-main">thank you for being one of our first users ♥</div>
             <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
@@ -483,6 +499,7 @@
               <span class="text-sm text-sub">payments aren't configured on this server.</span>
               {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}>dev: toggle supporter</button>{/if}
             {/if}
+            <Note note={notes.get("billing")} class="self-center" />
           </div>
         </div>
       </section>

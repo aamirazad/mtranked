@@ -74,7 +74,10 @@ class Notifier {
   }
 }
 
-export const notifier = new Notifier();
+// one instance per page: editing this module reloads the page, and any stale copy
+// the dev server hands out shares the instance instead of making its own
+import.meta.hot?.accept(() => location.reload());
+export const notifier: Notifier = import.meta.hot ? (import.meta.hot.data.notifier ??= new Notifier()) : new Notifier();
 
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
