@@ -106,12 +106,4 @@ export const friendsRouter = s.router(contract.friends, {
     if (rows.length) await changed(me, params.id);
     return { status: 200, body: { ok: true } };
   },
-
-  status: async ({ params, req, res }) => {
-    const auth = await getAuth(req, res);
-    if (!auth) return unauth;
-    const [other] = await sql<{ id: string }[]>`select id from users where display_name = ${params.name} and banned_at is null`;
-    if (!other) return { status: 404, body: { message: "No such player." } };
-    return { status: 200, body: { status: await statusWith(auth.user.id, other.id) } };
-  },
 });

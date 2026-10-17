@@ -173,6 +173,14 @@ export type RoomPublic = {
   races: number;
 };
 
+/** What a friend is up to, as their friends see it. */
+export type FriendActivity =
+  | { kind: "queue"; mode: QueueMode }
+  /** a matchmade race (ranked, casual) or a ghost race */
+  | { kind: "match"; mode: Mode }
+  | { kind: "room"; racing: boolean; players: number; cap: number; locked: boolean; name: string | null };
+export type FriendPresence = { online: boolean; activity: FriendActivity | null };
+
 export type RaceStart = {
   raceId: string;
   matchId: string;
@@ -228,7 +236,12 @@ export type ServerMsg =
       /** a rematch can be requested until this server time */
       rematch?: { expiresAt: number };
     }
-  | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string };
+  | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string }
+  /** every friend's presence, sent on connect and whenever the friends list changes */
+  | { type: "friends.presence"; presence: Record<string, FriendPresence> }
+  | { type: "friend.presence"; id: string; presence: FriendPresence }
+  /** a friend request was sent, accepted or removed: refetch the list */
+  | { type: "friends.changed" };
 
 export function parseClientMsg(raw: string): ClientMsg | null {
   try {

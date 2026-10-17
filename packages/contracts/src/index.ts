@@ -197,7 +197,7 @@ export type PlayerHit = { name: string; country: string | null; rating: number; 
 /** Another account on the friends page: a friend, or one side of a pending request. */
 export type FriendRow = { id: string; name: string; level: number; country: string | null; subscriber: boolean; since: string };
 export type FriendsList = { friends: FriendRow[]; incoming: FriendRow[]; outgoing: FriendRow[] };
-/** How the viewer stands with a profile's owner. */
+/** How one player stands with another. */
 export type FriendStatus = "none" | "friends" | "incoming" | "outgoing";
 export const MAX_FRIENDS = 200;
 
@@ -442,12 +442,6 @@ export const contract = c.router(
         pathParams: UserId,
         body: c.noBody(),
         responses: { 200: ok, 401: err },
-      },
-      /** how the signed-in viewer stands with this player (for the profile page) */
-      status: {
-        method: "GET",
-        path: "/friends/status/:name",
-        responses: { 200: c.type<{ status: FriendStatus }>(), 401: err, 404: err },
       },
     },
     practice: {

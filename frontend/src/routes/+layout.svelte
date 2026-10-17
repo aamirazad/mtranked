@@ -3,9 +3,10 @@
   import { onDestroy, onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Crown, Info, Keyboard, Settings, Shield, Swords, UserRound, LogIn, X } from "@lucide/svelte";
+  import { Crown, Info, Keyboard, Settings, Shield, Swords, UserRound, Users, LogIn, X } from "@lucide/svelte";
   import { session } from "#lib/session.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
+  import { friends } from "#lib/friends.svelte.ts";
   import Toasts from "#lib/components/Toasts.svelte";
   import Logo from "#lib/components/Logo.svelte";
   import CommandLine from "#lib/components/CommandLine.svelte";
@@ -31,6 +32,10 @@
   // is revisited (picks up changes made on other devices)
   $effect(() => {
     if (session.me?.id) void prefs.sync();
+  });
+  $effect(() => {
+    if (session.me?.id) void friends.load();
+    else friends.clear();
   });
   const syncPrefs = () => void prefs.sync();
   const onvisible = () => document.visibilityState === "visible" && syncPrefs();
@@ -92,6 +97,19 @@
         </div>
       {/if}
       {#if session.me}
+        <a
+          href="/friends"
+          aria-label="friends"
+          class="tip relative rounded-md p-2 transition-colors hover:text-text"
+          class:text-text={page.url.pathname.startsWith("/friends")}
+        >
+          <Users size={20} />
+          {#if friends.incomingCount}
+            <span class="absolute top-0.5 right-0.5 min-w-4 rounded-full bg-main px-1 text-center text-[10px] leading-4 text-bg">{friends.incomingCount}</span>
+          {:else if friends.online.length}
+            <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-main" title="{friends.online.length} online"></span>
+          {/if}
+        </a>
         <a href="/u/{session.me.displayName}" class="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:text-text">
           <UserRound size={18} />
           <span class="hidden text-sm sm:inline">{session.me.displayName}</span>

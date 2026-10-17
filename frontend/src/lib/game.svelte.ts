@@ -12,6 +12,7 @@ import type {
   ServerMsg,
 } from "@mtr/race-protocol";
 import { api } from "./api";
+import { friends } from "./friends.svelte";
 import { notifier } from "./notify.svelte";
 import { toasts } from "./toast.svelte";
 
@@ -253,6 +254,15 @@ class Game {
         this.result = msg;
         this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;
         if (msg.mode !== "ghost" && msg.mode !== "private") this.queueMode = null;
+        break;
+      case "friends.presence":
+        friends.presence = msg.presence;
+        break;
+      case "friend.presence":
+        friends.presence[msg.id] = msg.presence;
+        break;
+      case "friends.changed":
+        void friends.load();
         break;
       case "rematch.status":
         if (this.rematch?.matchId === msg.matchId) {

@@ -21,6 +21,7 @@ import {
   stopMatcher,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
+import { sendFriendsSnapshot, setOffline, setOnline } from "./friends";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
 
@@ -312,6 +313,7 @@ wss.on("connection", async (ws, req) => {
     // on the way out: redis is closing and the player reconnects to the next process
     if (exiting || conns.get(idn.id) !== conn) return;
     conns.delete(idn.id);
+    setOffline(idn.id);
     const room = roomOf(idn.id);
     if (room) room.disconnect(idn.id);
     else {
@@ -328,6 +330,8 @@ wss.on("connection", async (ws, req) => {
   const rankedOk = !(await rankedBlock(idn));
   if (stale()) return;
   conn.send({ type: "hello", you: info, serverTime: Date.now(), verified: !!idn.user?.email_verified_at, rankedOk });
+  setOnline(idn.id);
+  void sendFriendsSnapshot(conn).catch((e) => reportError("[friends] snapshot failed", e));
 
   // resume whatever this player was doing
   const local = roomOf(idn.id);

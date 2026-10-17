@@ -27,6 +27,7 @@ import {
 } from "@mtr/engine";
 import {
   COUNTDOWN_MS,
+  type FriendActivity,
   HURRY_MS,
   MAX_PING_ALLOWANCE_MS,
   PREPARE_MS,
@@ -62,6 +63,7 @@ import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
 import { recordDecline, requeue, strikeWarning } from "./matchmaker";
 import { offerRematch } from "./rematch";
+import { clearActivity, setActivity } from "./friends";
 import { reportError } from "./sentry";
 
 const IDLE_FORFEIT_MS = 25_000;
@@ -310,6 +312,21 @@ export class Room {
       members: [...this.members.keys()],
     };
     void redis.set(`room:${this.id}`, JSON.stringify(data), "EX", 3600);
+    const act = this.activity();
+    for (const id of this.members.keys()) setActivity(id, act, this.id);
+  }
+
+  /** what friends of the players in here see them doing */
+  private activity(): FriendActivity {
+    if (this.mode !== "private") return { kind: "match", mode: this.mode };
+    return {
+      kind: "room",
+      racing: this.status === "countdown" || this.status === "racing",
+      players: this.members.size,
+      cap: this.cap,
+      locked: this.locked,
+      name: this.name,
+    };
   }
 
   raceStart(): RaceStart | null {
@@ -820,6 +837,7 @@ export class Room {
     this.members.delete(playerId);
     playerRoom.delete(playerId);
     void redis.del(`proom:${playerId}`);
+    clearActivity(playerId, this.id);
     if (reason) {
       sendTo(playerId, { type: "room.closed", code: this.code, reason, rejoin: false });
       if (!m.connected) void holdRoomGone(playerId, { code: this.code, reason, rejoin: false });
@@ -942,6 +960,7 @@ export class Room {
         playerRoom.delete(id);
         void redis.del(`proom:${id}`);
       }
+      clearActivity(id, this.id);
       if (!priv) continue;
       sendTo(id, { type: "room.closed", code: this.code, reason: why, rejoin: false });
       if (!m.connected) void holdRoomGone(id, { code: this.code, reason: why, rejoin: false });
