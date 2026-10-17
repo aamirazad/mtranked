@@ -13,7 +13,6 @@
     funboxTypingOptions,
     generateText,
     randomSeed,
-    LANGUAGES,
     type FailReason,
     type FinalStats,
     type Rules,
@@ -22,6 +21,7 @@
   } from "@mtr/engine";
   import TypingArea from "#lib/components/TypingArea.svelte";
   import FunboxPicker from "#lib/components/FunboxPicker.svelte";
+  import TextOptionsPicker from "#lib/components/TextOptionsPicker.svelte";
   import RulesPicker from "#lib/components/RulesPicker.svelte";
   import LiveStats from "#lib/components/LiveStats.svelte";
   import { session } from "#lib/session.svelte.ts";
@@ -136,9 +136,6 @@
 
 <div class="mx-auto max-w-[1000px]">
   <div class="mb-3 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>
-    <button class="toggle" class:on={settings.punctuation} onclick={() => set("punctuation", !settings.punctuation)}>@ punctuation</button>
-    <button class="toggle" class:on={settings.numbers} onclick={() => set("numbers", !settings.numbers)}># numbers</button>
-    <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
     {#each ["time", "words", "quote"] as const as m (m)}
       <button class="toggle" class:on={settings.mode === m} onclick={() => set("mode", m)}>{m}</button>
     {/each}
@@ -157,9 +154,7 @@
       {/each}
     {/if}
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
-    <select class="cursor-pointer bg-transparent text-sub outline-none hover:text-text" value={settings.language} onchange={(e) => set("language", e.currentTarget.value as TextSettings["language"])}>
-      {#each LANGUAGES as l (l)}<option value={l}>{l.replace("_", " ")}</option>{/each}
-    </select>
+    <TextOptionsPicker punctuation={settings.punctuation} numbers={settings.numbers} language={settings.language} onchange={set} />
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
     <FunboxPicker value={settings.funbox} onchange={(v) => set("funbox", v.length ? v : undefined)} />
   </div>

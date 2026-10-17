@@ -54,7 +54,9 @@
     {/if}
   {:else}
     <button class="toggle flex items-center gap-1" class:on={active.length > 0} onclick={() => (open = !open)} aria-expanded={open}>
-      <PartyPopper size={14} /> funbox{#if active.length}: {active.map((id) => FUNBOXES[id].name).join(", ")}{/if}
+      <PartyPopper size={14} class="shrink-0" />
+      <!-- capped so a long selection doesn't push the settings bar onto a second line -->
+      <span class="max-w-56 truncate">funbox{#if active.length}: {active.map((id) => FUNBOXES[id].name).join(", ")}{/if}</span>
     </button>
     {#if open}
       <div class="absolute top-full left-1/2 z-40 mt-2 w-[min(640px,90vw)] -translate-x-1/2 rounded-xl bg-bg p-4 text-left shadow-2xl ring-2 ring-sub-alt animate-fade">
