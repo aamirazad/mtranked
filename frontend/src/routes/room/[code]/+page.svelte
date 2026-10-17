@@ -167,6 +167,13 @@
     return c && (!c.code || c.code === code) ? c : null;
   });
 
+  function closeRoom() {
+    // only ask when there's someone else to kick out
+    if (room && room.players.length + room.spectators.length > 1 && !confirm("Close this room for everyone?")) return;
+    game.closeRoom();
+    goto("/");
+  }
+
   let creating = $state(false);
   async function newRoom() {
     creating = true;
@@ -302,7 +309,7 @@
           <button class="btn" onclick={() => game.send({ type: "room.lock", locked: !room.locked })} title={room.locked ? "unlock room" : "lock room"}>
             {#if room.locked}<Lock size={16} /> locked{:else}<LockOpen size={16} /> open{/if}
           </button>
-          <button class="btn" onclick={() => confirm("Close this room for everyone?") && game.send({ type: "room.close" })} title="close room">
+          <button class="btn" onclick={closeRoom} title="close room">
             <DoorClosed size={16} /> close room
           </button>
           <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" })}><Play size={16} /> start race</button>

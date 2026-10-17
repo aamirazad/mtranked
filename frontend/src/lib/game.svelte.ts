@@ -101,6 +101,8 @@ class Game {
   roomLive = $state(false);
   /** why we last lost our private room (closed, kicked, away too long); cleared by the next room */
   roomClosed = $state<RoomClosed | null>(null);
+  /** the room we closed ourselves, so its closing notice isn't shown back to us */
+  private closedByMe: string | null = null;
   /** open casual rematch offer for the last result */
   rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
@@ -305,8 +307,13 @@ class Game {
         break;
       case "room.closed":
         this.dropRoom();
+        if (msg.code && msg.code === this.closedByMe) {
+          this.closedByMe = null;
+          break;
+        }
         this.roomClosed = { code: msg.code, reason: msg.reason, rejoin: !!msg.rejoin };
-        toasts.show(msg.reason, "info", 6000);
+        // the room page already says why in place
+        if (!msg.code || location.pathname.toUpperCase() !== `/ROOM/${msg.code.toUpperCase()}`) toasts.show(msg.reason, "info", 6000);
         break;
       case "race.countdown":
       case "race.resume":
@@ -404,6 +411,14 @@ class Game {
     const code = new Promise<string>((resolve, reject) => (this.created = { resolve, reject }));
     this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite });
     return code;
+  }
+  /** Close our room for everyone; we don't need telling it closed. */
+  closeRoom() {
+    if (!this.room) return;
+    this.closedByMe = this.room.code;
+    this.send({ type: "room.close" });
+    this.dropRoom();
+    this.clearRace();
   }
   /** invites still worth showing */
   get openInvites() {
