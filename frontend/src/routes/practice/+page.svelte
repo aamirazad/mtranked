@@ -10,9 +10,9 @@
     describeRules,
     createState,
     finalStats,
+    funboxTypingOptions,
     generateText,
     randomSeed,
-    LANGUAGES,
     type FailReason,
     type FinalStats,
     type Rules,
@@ -20,6 +20,8 @@
     type TypingState,
   } from "@mtr/engine";
   import TypingArea from "#lib/components/TypingArea.svelte";
+  import FunboxPicker from "#lib/components/FunboxPicker.svelte";
+  import TextOptionsPicker from "#lib/components/TextOptionsPicker.svelte";
   import RulesPicker from "#lib/components/RulesPicker.svelte";
   import LiveStats from "#lib/components/LiveStats.svelte";
   import { session } from "#lib/session.svelte.ts";
@@ -58,7 +60,7 @@
     result = null;
     startedAt = null;
     ruleSec = 0;
-    ts = createState(t.text, settings.rules);
+    ts = createState(t.text, settings.rules, funboxTypingOptions(settings.funbox));
   }
   void restart();
   onDestroy(() => clearInterval(timer));
@@ -117,9 +119,11 @@
   }
 
   const RESTART_KEYS: Record<QuickRestart, string | null> = { off: null, esc: "Escape", tab: "Tab", enter: "Enter" };
+  // the "no quit" funbox: no restarting a test once it's under way
+  const noQuit = $derived(!!settings.funbox?.includes("no_quit") && startedAt !== null && !result);
 
   function onwindowkey(e: KeyboardEvent) {
-    if (commandLine.open || e.key !== RESTART_KEYS[prefs.quickRestart]) return;
+    if (commandLine.open || noQuit || e.key !== RESTART_KEYS[prefs.quickRestart]) return;
     // let enter still press a focused button
     if (e.key === "Enter" && (e.target as HTMLElement | null)?.closest("button, a, select")) return;
     e.preventDefault();
@@ -132,9 +136,6 @@
 
 <div class="mx-auto max-w-[1000px]">
   <div class="mb-3 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>
-    <button class="toggle" class:on={settings.punctuation} onclick={() => set("punctuation", !settings.punctuation)}>@ punctuation</button>
-    <button class="toggle" class:on={settings.numbers} onclick={() => set("numbers", !settings.numbers)}># numbers</button>
-    <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
     {#each ["time", "words", "quote"] as const as m (m)}
       <button class="toggle" class:on={settings.mode === m} onclick={() => set("mode", m)}>{m}</button>
     {/each}
@@ -153,9 +154,9 @@
       {/each}
     {/if}
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
-    <select class="cursor-pointer bg-transparent text-sub outline-none hover:text-text" value={settings.language} onchange={(e) => set("language", e.currentTarget.value as TextSettings["language"])}>
-      {#each LANGUAGES as l (l)}<option value={l}>{l.replace("_", " ")}</option>{/each}
-    </select>
+    <TextOptionsPicker punctuation={settings.punctuation} numbers={settings.numbers} language={settings.language} onchange={set} />
+    <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
+    <FunboxPicker value={settings.funbox} onchange={(v) => set("funbox", v.length ? v : undefined)} />
   </div>
   <div class="mx-auto mb-8 max-w-2xl text-center transition-opacity" class:opacity-0={startedAt !== null && !result}>
     <RulesPicker rules={settings.rules} onchange={(r: Rules | undefined) => set("rules", r)} note="your own practice rules. ranked and casual always race without them." />
@@ -166,9 +167,17 @@
       <LiveStats show={startedAt !== null} {counter} {progress} wpm={liveWpm} acc={liveAcc} burst={liveBurst}>
         {#if ruleList.length}<span class="ml-auto self-center text-xs text-sub">{ruleList.join(" · ")}</span>{/if}
       </LiveStats>
-      <TypingArea bind:this={area} {ts} {onkey} caretColor={eq.caretColor} caretShape={eq.caretShape} allowAllLines={settings.mode !== "time"} />
+      <TypingArea
+        bind:this={area}
+        {ts}
+        {onkey}
+        caretColor={eq.caretColor}
+        caretShape={eq.caretShape}
+        allowAllLines={settings.mode !== "time"}
+        funbox={settings.funbox}
+      />
       <div class="mt-8 flex justify-center">
-        <button class="btn btn-ghost" onclick={restart} title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}><RotateCcw size={18} /></button>
+        <button class="btn btn-ghost" onclick={restart} disabled={noQuit} title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}><RotateCcw size={18} /></button>
       </div>
     </div>
   {:else}

@@ -12,6 +12,7 @@
   import { prefs } from "#lib/prefs.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
+  import FunboxPicker from "#lib/components/FunboxPicker.svelte";
   import RulesPicker from "#lib/components/RulesPicker.svelte";
 
   // fixed per instance: the layout remounts this page when the code changes
@@ -337,6 +338,7 @@
           {/if}
         </fieldset>
         <div class="mt-3"><RulesPicker rules={room.settings.rules} onchange={(r) => update("rules", r)} disabled={!isHost} note="applies to everyone in this room" /></div>
+        <div class="mt-3 text-sm"><FunboxPicker value={room.settings.funbox} readonly={!isHost} onchange={(v) => update("funbox", v.length ? v : undefined)} /></div>
         {#if !isHost}<div class="mt-4 text-xs text-sub">the host picks the text</div>{/if}
       </div>
     </div>

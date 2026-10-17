@@ -131,6 +131,8 @@ export type MatchDetail = {
   status: string;
   text: string;
   seed: string;
+  /** funboxes the race was played with (private rooms), needed to replay nospace-style funboxes */
+  funbox?: string[];
   /** private-room gameplay rules the race was played with (the engine's Rules), needed to replay it */
   rules?: Record<string, unknown>;
   startedAt: string;

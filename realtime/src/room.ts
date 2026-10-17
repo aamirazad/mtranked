@@ -12,10 +12,12 @@ import {
   normalizeRules,
   createState,
   finalStats,
+  funboxTypingOptions,
   generateText,
   raceTimeline,
   randomSeed,
   RANKED_SETTINGS,
+  withFunbox,
   type FailReason,
   type Keystroke,
   type TypingState,
@@ -196,7 +198,8 @@ export class Room {
     public mode: Mode,
     settings: TextSettings,
   ) {
-    this.settings = withRules(mode, settings);
+    // funbox and rules are for private rooms only, never matchmaking
+    this.settings = withRules(mode, withFunbox(settings, mode === "private"));
     rooms.set(this.id, this);
   }
 
@@ -412,7 +415,7 @@ export class Room {
       id,
       info,
       userId,
-      state: createState(text, this.settings.rules),
+      state: createState(text, this.settings.rules, funboxTypingOptions(this.settings.funbox)),
       keys: [],
       recv: [],
       lastSeq: -1,
@@ -615,7 +618,7 @@ export class Room {
           forfeit: r.forfeit,
           ...(r.failed ? { failed: r.failed } : {}),
           progress: Math.round((st.prefix / r.state.textLength) * 1000) / 10,
-          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration), race.settings.rules),
+          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration), race.settings.rules, funboxTypingOptions(race.settings.funbox)),
         },
       };
     });
@@ -768,7 +771,7 @@ export class Room {
       sendTo(playerId, { type: "error", code: "custom_empty", message: "Custom text can't be empty." });
       return;
     }
-    this.settings = withRules(this.mode, settings);
+    this.settings = withRules(this.mode, withFunbox(settings, this.mode === "private"));
     this.lastSettingsSeed = undefined;
     this.broadcastRoom();
   }

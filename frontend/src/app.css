@@ -166,7 +166,8 @@ html {
 
 /* hover/focus tooltip, monkeytype-style: <a class="tip" aria-label="play">.
    reads the label straight from aria-label so screen readers and the
-   popover never drift apart */
+   popover never drift apart; data-tip overrides it where the element's
+   own text should stay its accessible name */
 @layer components {
   .tip { position: relative; }
   .tip::before,
@@ -208,5 +209,15 @@ html {
     opacity: 1;
     transform: translate(-50%, 0);
     transition-delay: 0.15s;
+  }
+  /* data-tip for elements whose accessible name should stay their text */
+  .tip[data-tip]::after { content: attr(data-tip); }
+  /* longer labels: wrap inside a fixed-width bubble */
+  .tip-wrap::after {
+    width: max-content;
+    max-width: 16rem;
+    white-space: normal;
+    line-height: 1.3;
+    text-align: center;
   }
 }
