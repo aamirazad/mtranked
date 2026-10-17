@@ -49,6 +49,13 @@
   const queuedAway = $derived(!!game.queueMode && !game.match && page.url.pathname !== `/play/${game.queueMode}`);
   const waited = $derived((void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0));
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  // a host accepted our request to join their room
+  $effect(() => {
+    const code = game.admitted;
+    if (!code) return;
+    game.admitted = null;
+    if (page.url.pathname !== `/room/${code}`) goto(`/room/${code}`);
+  });
   $effect(() => {
     const m = game.match;
     if (m && (m.mode === "ranked" || m.mode === "casual") && page.url.pathname !== `/play/${m.mode}`) goto(`/play/${m.mode}`);

@@ -20,8 +20,12 @@
       <div class="flex items-start gap-3">
         <Mail size={18} class="mt-0.5 shrink-0 text-main" />
         <div class="min-w-0 flex-1">
-          <div><span class="text-main">{inv.from.name}</span> invited you to {inv.roomName ? `“${inv.roomName}”` : "their room"}</div>
-          <div class="text-xs text-sub">{inv.players} player{inv.players === 1 ? "" : "s"} in the room</div>
+          {#if inv.admitted}
+            <div><span class="text-main">{inv.from.name}</span> let you into their room</div>
+          {:else}
+            <div><span class="text-main">{inv.from.name}</span> invited you to {inv.roomName ? `“${inv.roomName}”` : "their room"}</div>
+            <div class="text-xs text-sub">{inv.players} player{inv.players === 1 ? "" : "s"} in the room</div>
+          {/if}
           <div class="mt-3 flex gap-2">
             <button class="btn btn-main py-1 text-sm" onclick={() => join(inv.code)}>join</button>
             <button class="btn btn-ghost py-1 text-sm" onclick={() => game.dismissInvite(inv.code)}>not now</button>

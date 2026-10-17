@@ -25,7 +25,8 @@ export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type
 export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
 export type RoomClosed = { code?: string; reason: string; rejoin: boolean };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
-export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number };
+/** `admitted`: a host accepted our request to join, rather than us being invited */
+export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number; admitted?: boolean };
 
 class Game {
   status = $state<"offline" | "connecting" | "online">("offline");
@@ -52,6 +53,10 @@ class Game {
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
   /** friends' invites to their rooms, newest last */
   invites = $state<RoomInvite[]>([]);
+  /** friends whose rooms we asked to join, and when */
+  asked = $state<Record<string, number>>({});
+  /** a host let us into this room; the layout takes us there */
+  admitted = $state<string | null>(null);
   /** friends who were around when we created this room, to offer inviting them all */
   suggest = $state<{ code: string; friends: string[] } | null>(null);
   rtt = $state(0);
@@ -278,6 +283,25 @@ class Game {
         notifier.alert(`${inv.from.name} invited you to race`, "Click to come back and join their room.", "room-invite");
         break;
       }
+      case "room.requested":
+        this.asked[msg.playerId] = Date.now();
+        toasts.show("Asked to join. You'll be let in as soon as a host accepts.", "info", 5000);
+        break;
+      case "room.admit":
+        delete this.asked[msg.playerId];
+        // mid-race or in a ready check: keep it as an invite for later instead of pulling us out
+        if (this.match || (this.race && !this.result)) {
+          const from = { id: msg.playerId, name: msg.by || "A host" };
+          this.invites = [...this.invites, { code: msg.code, from, roomName: null, players: 0, at: Date.now(), admitted: true }];
+        } else {
+          if (msg.by) toasts.show(`${msg.by} let you in.`, "success", 4000);
+          this.admitted = msg.code;
+        }
+        break;
+      case "room.declined":
+        delete this.asked[msg.playerId];
+        toasts.show(msg.message, "info", 6000);
+        break;
       case "room.suggest":
         this.suggest = { code: msg.code, friends: msg.friends };
         break;
@@ -320,6 +344,15 @@ class Game {
   get openInvites() {
     const now = Date.now();
     return this.invites.filter((i) => now - i.at < INVITE_MS && i.code !== this.room?.code);
+  }
+  /** Ask the hosts of the room this friend is in to let us in. */
+  askToJoin(friendId: string) {
+    this.send({ type: "room.request", playerId: friendId });
+  }
+  /** we asked to join this friend's room and haven't heard back */
+  hasAsked(friendId: string) {
+    const at = this.asked[friendId];
+    return !!at && Date.now() - at < INVITE_MS;
   }
   dismissInvite(code: string) {
     this.invites = this.invites.filter((i) => i.code !== code);

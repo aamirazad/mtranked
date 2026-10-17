@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { Check, Search, Swords, UserMinus, UserPlus, X } from "@lucide/svelte";
+  import { Check, DoorOpen, Search, Swords, UserMinus, UserPlus, X } from "@lucide/svelte";
   import type { PlayerHit } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
@@ -166,6 +166,15 @@
                 <div class="text-xs text-sub">{describeActivity(f.presence)}</div>
               </div>
               <span class="ml-auto flex items-center gap-2">
+                {#if f.presence.activity?.kind === "room"}
+                  {#if game.hasAsked(f.id)}
+                    <span class="text-xs text-sub">asked to join</span>
+                  {:else}
+                    <button class="btn py-1 text-sm" title="ask the room's hosts to let you in" onclick={() => game.askToJoin(f.id)}>
+                      <DoorOpen size={14} /> ask to join
+                    </button>
+                  {/if}
+                {/if}
                 {#if f.presence.online}
                   <button class="btn btn-main py-1 text-sm" title="open a private room and invite them" disabled={!!starting} onclick={() => race(f.id)}>
                     <Swords size={14} /> {starting === f.id ? "opening…" : "race"}

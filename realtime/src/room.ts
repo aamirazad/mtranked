@@ -128,6 +128,8 @@ type Race = {
   ruleSec: number;
 };
 
+export type JoinRequest = { id: string; name: string; level: number; via: string };
+
 export type GhostSource = {
   matchId: string;
   text: string;
@@ -190,6 +192,8 @@ export class Room {
   private kicked = new Set<string>();
   /** friends invited in (by a host: past the lock too), by player id */
   private invites = new Map<string, { byHost: boolean; at: number }>();
+  /** players asking to join, by player id; `via` is the friend in here they asked */
+  private requests = new Map<string, JoinRequest & { at: number }>();
   /** a start is in flight (text generation is async) */
   private starting = false;
 
@@ -293,6 +297,9 @@ export class Room {
       settings: this.settings,
       players: [...this.members.values()].map((m) => m.info),
       invited: [...this.invites.keys()].filter((id) => this.invitedOk(id)),
+      requests: [...this.requests.values()]
+        .filter((r) => Date.now() - r.at < INVITE_MS)
+        .map((r) => ({ id: r.id, name: r.name, level: r.level })),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
       scoreboard: this.scoreboard,
       races: this.racesRun,
@@ -827,6 +834,7 @@ export class Room {
     if (this.locked && !invite?.byHost) return "This room is locked.";
     if (this.members.size >= this.cap) return `This room is full (${this.cap} players).`;
     this.invites.delete(m.idn.id);
+    this.requests.delete(m.idn.id);
     this.addMember(m);
     this.lastActivity = Date.now();
     this.broadcastRoom();
@@ -917,6 +925,36 @@ export class Room {
       roomName: this.name,
       players: this.members.size,
     });
+    this.broadcastRoom();
+  }
+
+  /** A friend of someone in here asks to be let in; the hosts decide. */
+  onJoinRequest(req: JoinRequest) {
+    const no = (message: string) => sendTo(req.id, { type: "error", code: "room_request", message });
+    if (this.mode !== "private" || this.closed) return no("They're not in a private room right now.");
+    if (this.members.has(req.id)) return no("You're already in that room.");
+    if (this.kicked.has(req.id)) return no("You were removed from that room by the host.");
+    if (this.invitedOk(req.id) && (!this.locked || this.invites.get(req.id)!.byHost)) {
+      // already welcome: no need to bother the hosts
+      return sendTo(req.id, { type: "room.admit", code: this.code!, playerId: req.via, by: "" });
+    }
+    if (this.members.size >= this.cap) return no(`That room is full (${this.cap} players).`);
+    if (!this.requests.has(req.id) && this.requests.size >= 20) return no("That room has a lot of requests waiting. Try again in a bit.");
+    this.requests.set(req.id, { ...req, at: Date.now() });
+    sendTo(req.id, { type: "room.requested", playerId: req.via });
+    this.broadcastRoom();
+  }
+
+  onAnswer(playerId: string, target: string, accept: boolean) {
+    const req = this.requests.get(target);
+    if (!this.isHost(playerId) || !req) return;
+    this.requests.delete(target);
+    if (accept) {
+      this.invites.set(target, { byHost: true, at: Date.now() });
+      sendTo(target, { type: "room.admit", code: this.code!, playerId: req.via, by: this.members.get(playerId)!.info.name });
+    } else {
+      sendTo(target, { type: "room.declined", playerId: req.via, message: "A host turned down your request to join." });
+    }
     this.broadcastRoom();
   }
 

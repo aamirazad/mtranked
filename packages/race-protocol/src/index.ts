@@ -83,6 +83,10 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("decline"), matchId: z.string() }),
   /** `invite`: friends to invite straight away (the "race a friend" button) */
   z.object({ type: z.literal("room.create"), settings: TextSettings, invite: z.array(z.string().max(64)).max(16).optional() }),
+  /** ask to be let into the private room this friend is in */
+  z.object({ type: z.literal("room.request"), playerId: z.string().max(64) }),
+  /** a host lets a player who asked in, or turns them down */
+  z.object({ type: z.literal("room.answer"), playerId: z.string().max(64), accept: z.boolean() }),
   /** invite friends to the room we're in */
   z.object({ type: z.literal("room.invite"), playerIds: z.array(z.string().max(64)).min(1).max(16) }),
   z.object({ type: z.literal("room.join"), code: z.string().min(4).max(8) }),
@@ -173,6 +177,8 @@ export type RoomPublic = {
   players: PlayerPublic[];
   /** friends someone in the room has invited who haven't joined yet */
   invited: string[];
+  /** players who asked to join, waiting for a host to answer */
+  requests: { id: string; name: string; level: number }[];
   status: "waiting" | "countdown" | "racing" | "finished";
   scoreboard: Record<string, number>;
   races: number;
@@ -244,6 +250,11 @@ export type ServerMsg =
   | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string }
   /** a friend invited us to their private room */
   | { type: "room.invite"; code: string; from: { id: string; name: string }; roomName: string | null; players: number }
+  /** our request to join was passed to the room's hosts */
+  | { type: "room.requested"; playerId: string }
+  /** a host let us in: head to the room */
+  | { type: "room.admit"; code: string; playerId: string; by: string }
+  | { type: "room.declined"; playerId: string; message: string }
   /** we just created a room and these friends are online: offer to invite them all */
   | { type: "room.suggest"; code: string; friends: string[] }
   /** every friend's presence, sent on connect and whenever the friends list changes */

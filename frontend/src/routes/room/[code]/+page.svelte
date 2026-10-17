@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
+  import { Check, Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -100,6 +100,14 @@
   function invite(ids: string[]) {
     if (ids.length) game.send({ type: "room.invite", playerIds: ids });
   }
+
+  // a heads-up for hosts when someone new asks to join (the card can be below the results)
+  let seenRequests = new Set<string>();
+  $effect(() => {
+    const reqs = room?.requests ?? [];
+    for (const r of reqs) if (!seenRequests.has(r.id) && isHost && !inRace) toasts.show(`${r.name} is asking to join the room.`, "info", 5000);
+    seenRequests = new Set(reqs.map((r) => r.id));
+  });
 
   // made this room just now with friends around: offer to bring them all in at once
   let suggestDismissed = $state(false);
@@ -306,6 +314,23 @@
 
     <div class="mt-10 grid items-start gap-6 md:grid-cols-[1fr_1.2fr]">
       <div class="space-y-6">
+      {#if isHost && room.requests.length}
+        <div class="card border-2 border-main/40 animate-rise">
+          <div class="label mb-3">asking to join</div>
+          <ul class="space-y-1">
+            {#each room.requests as r (r.id)}
+              <li class="flex items-center gap-2 rounded-md px-2 py-1.5">
+                <span class="truncate">{r.name}</span>
+                <span class="text-xs text-sub">lv {r.level}</span>
+                <span class="ml-auto flex gap-2">
+                  <button class="btn btn-main py-1 text-sm" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: true })}><Check size={14} /> let in</button>
+                  <button class="btn btn-ghost py-1 text-sm" aria-label="decline" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: false })}><X size={14} /></button>
+                </span>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
       <div class="card">
         <div class="mb-3 flex items-center justify-between">
           <span class="label">players {room.players.length}/{room.cap}</span>

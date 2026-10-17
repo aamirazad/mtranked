@@ -8,7 +8,7 @@ import { env } from "./env";
 import { NODE_ID, nodeAlive, redis, sub } from "./redis";
 import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded, type RoomGone } from "./hub";
 import { checkSharedIp, currentRating, publicInfo, rankedBlock, redeemTicket, type Identity } from "./players";
-import { Room, roomByCode, roomOf, rooms, type Member } from "./room";
+import { Room, roomByCode, roomOf, rooms, type JoinRequest, type Member } from "./room";
 import {
   dequeue,
   enqueue,
@@ -21,7 +21,7 @@ import {
   stopMatcher,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
-import { friendsOf, presenceOf, sendFriendsSnapshot, setOffline, setOnline } from "./friends";
+import { friendsOf, friendsWith, presenceOf, sendFriendsSnapshot, setOffline, setOnline } from "./friends";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
 
@@ -34,6 +34,7 @@ const RESTARTING = "The server is restarting for an update. Try again in a momen
 const STARTS = new Set<ClientMsg["type"]>(["queue.join", "ghost.accept", "rematch.request", "room.create", "room.join", "room.start"]);
 
 const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
+const NOT_IN_ROOM = "They're not in a private room right now.";
 
 const member = (idn: Identity, info: PlayerPublic): Member => ({ idn, info, connected: true, dcAt: null, ready: false });
 
@@ -56,6 +57,7 @@ type RoomMsg = Extract<
       | "room.theme"
       | "room.hurry"
       | "room.invite"
+      | "room.answer"
       | "input.batch"
       | "race.leave";
   }
@@ -102,7 +104,17 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onHurry(id);
     case "room.invite":
       return void room.onInvite(id, msg.playerIds);
+    case "room.answer":
+      return room.onAnswer(id, msg.playerId, msg.accept);
   }
+}
+
+/** The live node owning the room this player is in, if it's not this one. */
+async function roomNodeOf(playerId: string): Promise<string | null> {
+  const roomId = await redis.get(`proom:${playerId}`);
+  const raw = roomId ? await redis.get(`room:${roomId}`) : null;
+  const node = raw ? (JSON.parse(raw).node as string) : null;
+  return node && node !== NODE_ID && (await nodeAlive(node)) ? node : null;
 }
 
 /** Run a room message locally, or forward it to the node that owns the room. */
@@ -125,6 +137,12 @@ setForwardHandler((f: Forwarded) => {
     const target = roomId ? rooms.get(roomId) : undefined;
     const problem = target ? target.join(member(msg.idn as Identity, msg.info as PlayerPublic)) : "Room not found.";
     if (problem) err(f.from, "room_join", problem);
+    return;
+  }
+  if (msg.type === "_request") {
+    const target = roomOf(msg.target as string);
+    if (target) target.onJoinRequest(msg.req as JoinRequest);
+    else err(f.from, "room_request", NOT_IN_ROOM);
     return;
   }
   if (!room) return;
@@ -240,6 +258,18 @@ async function handle(conn: Conn, msg: ClientMsg) {
       return;
     }
 
+    case "room.request": {
+      if (conn.idn.guest) return err(id, "room_request", "Sign in to ask friends to let you in.");
+      if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "room_request", "You can only ask to join a friend's room.");
+      const req: JoinRequest = { id, name: conn.info.name, level: conn.info.level, via: msg.playerId };
+      const local = roomOf(msg.playerId);
+      if (local) return local.onJoinRequest(req);
+      const node = await roomNodeOf(msg.playerId);
+      if (!node) return err(id, "room_request", NOT_IN_ROOM);
+      await forward(node, { from: id, rtt: conn.rtt(), msg: { type: "_request", target: msg.playerId, req } });
+      return;
+    }
+
     default:
       return routeRoomMsg(conn, msg);
   }
@@ -297,7 +327,7 @@ function bucket(burst: number, rate: number) {
 }
 
 /** Messages that hit the DB or redis get a much tighter budget. */
-const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request"]);
+const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request", "room.request", "room.invite"]);
 
 wss.on("connection", async (ws, req) => {
   // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
