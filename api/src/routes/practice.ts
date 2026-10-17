@@ -92,7 +92,7 @@ export const practiceRouter = s.router(contract.practice, {
 
     await sql`insert into practice_results (user_id, text_settings, seed, wpm, raw, accuracy, consistency, chars, duration_ms)
       values (${auth.user.id}, ${sql.json(settings as Record<string, unknown> as never)}, ${body.seed}, ${stats.wpm}, ${stats.raw},
-        ${stats.acc}, ${cons}, ${sql.array(chars)}, ${Math.round(durationMs)})`;
+        ${stats.acc}, ${cons}, ${sql.array(chars, 23)}, ${Math.round(durationMs)})`;
 
     return {
       status: 200,
