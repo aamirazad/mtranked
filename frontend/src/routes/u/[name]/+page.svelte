@@ -19,6 +19,11 @@
   let profile = $state<Profile | null>(null);
   let stats = $state<ProfileStats | null>(null);
   let missing = $state(false);
+  let addError = $state<string | null>(null);
+  async function addFriend() {
+    const r = await friends.add(profile!.name);
+    addError = r.ok ? null : r.text;
+  }
   let kind = $state<StatKind | null>(null);
 
   $effect(() => {
@@ -134,7 +139,8 @@
               {/if}
               {#if profile.subscriber && session.supporterSales}<span class="mt-1 inline-block rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
               {#if friendStatus === "none"}
-                <button class="mt-2 flex items-center gap-1.5 text-sm text-sub hover:text-main" onclick={() => friends.add(profile!.name)}><UserPlus size={14} /> add friend</button>
+                <button class="mt-2 flex items-center gap-1.5 text-sm text-sub hover:text-main" onclick={addFriend}><UserPlus size={14} /> add friend</button>
+                {#if addError}<div class="mt-1 text-xs text-error">{addError}</div>{/if}
               {:else if friendStatus === "incoming"}
                 <button class="mt-2 flex items-center gap-1.5 text-sm text-main hover:text-text" onclick={() => friends.accept(profile!)}><Check size={14} /> accept friend request</button>
               {:else if friendStatus === "outgoing"}

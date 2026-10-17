@@ -23,6 +23,9 @@
   let open = $state(false);
   let active = $state(-1);
   let adding = $state(false);
+  // the result of the last add, shown under the box
+  let note = $state<{ text: string; kind: "info" | "error" | "success" } | null>(null);
+  let noteTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
     const term = q.trim();
     if (term.length < MIN_SUGGEST) {
@@ -45,8 +48,12 @@
     if (!name || adding) return;
     adding = true;
     open = false;
-    if (await friends.add(name)) q = "";
+    const r = await friends.add(name);
+    if (r.ok) q = "";
     adding = false;
+    note = r;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => (note = null), 5000);
   }
   function onsearchkey(e: KeyboardEvent) {
     if (e.key === "ArrowDown" && hits.length) active = (active + 1) % hits.length;
@@ -102,7 +109,10 @@
         spellcheck="false"
         maxlength="20"
         bind:value={q}
-        oninput={() => (open = true)}
+        oninput={() => {
+          open = true;
+          note = null;
+        }}
         onfocus={() => (open = true)}
         onblur={() => (open = false)}
         onkeydown={onsearchkey}
@@ -110,6 +120,11 @@
       <button class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-sub hover:text-main" title="send friend request" disabled={!q.trim() || adding} onclick={() => add(q)}>
         <UserPlus size={16} />
       </button>
+      {#if note && !(open && hits.length)}
+        <div role="status" class="absolute z-20 mt-1 w-full rounded-lg bg-sub-alt px-3 py-1.5 text-sm shadow-lg animate-fade {note.kind === 'error' ? 'text-error' : note.kind === 'success' ? 'text-main' : 'text-text'}">
+          {note.text}
+        </div>
+      {/if}
       {#if open && q.trim().length >= MIN_SUGGEST && hits.length}
         <div id="friend-hits" role="listbox" class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg">
           {#each hits as h, i (h.name)}

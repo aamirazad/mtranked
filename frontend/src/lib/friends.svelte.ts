@@ -54,20 +54,16 @@ class Friends {
     this.presence = {};
   }
 
-  async add(name: string): Promise<boolean> {
+  /** send a request; the caller shows the returned note next to whatever was clicked */
+  async add(name: string): Promise<{ ok: boolean; text: string; kind: "info" | "error" | "success" }> {
     const r = await api.friends.request({ body: { name } });
-    if (r.status !== 200) {
-      toasts.show(errorMessage(r), "error");
-      return false;
-    }
+    if (r.status !== 200) return { ok: false, text: errorMessage(r), kind: "error" };
+    await this.load();
     const { status, already } = r.body;
     if (already) {
-      toasts.show(status === "friends" ? `You're already friends with ${name}.` : `You already sent ${name} a friend request.`, "info");
-    } else {
-      toasts.show(status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.`, "success");
+      return { ok: true, kind: "info", text: status === "friends" ? `You're already friends with ${name}.` : `You already sent ${name} a friend request.` };
     }
-    await this.load();
-    return true;
+    return { ok: true, kind: "success", text: status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.` };
   }
 
   async accept(f: Pick<FriendRow, "id">) {
