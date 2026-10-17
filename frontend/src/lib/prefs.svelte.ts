@@ -271,7 +271,8 @@ class Prefs {
   }
 }
 
-export const prefs = new Prefs();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const prefs: Prefs = import.meta.hot ? (import.meta.hot.data.prefs ??= new Prefs()) : new Prefs();
 
 /** Paint the site in a theme. Only the user's own theme is ever persisted (see Prefs.save). */
 export function applyTheme(id: string) {

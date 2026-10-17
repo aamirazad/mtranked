@@ -78,4 +78,5 @@ class Friends {
   }
 }
 
-export const friends = new Friends();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const friends: Friends = import.meta.hot ? (import.meta.hot.data.friends ??= new Friends()) : new Friends();

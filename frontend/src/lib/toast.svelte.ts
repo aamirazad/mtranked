@@ -13,4 +13,5 @@ class Toasts {
   }
 }
 
-export const toasts = new Toasts();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const toasts: Toasts = import.meta.hot ? (import.meta.hot.data.toasts ??= new Toasts()) : new Toasts();

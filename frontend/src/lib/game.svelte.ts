@@ -479,4 +479,5 @@ class Game {
   }
 }
 
-export const game = new Game();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const game: Game = import.meta.hot ? (import.meta.hot.data.game ??= new Game()) : new Game();

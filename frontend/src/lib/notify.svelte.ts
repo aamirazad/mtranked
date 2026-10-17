@@ -74,7 +74,8 @@ class Notifier {
   }
 }
 
-export const notifier = new Notifier();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const notifier: Notifier = import.meta.hot ? (import.meta.hot.data.notifier ??= new Notifier()) : new Notifier();
 
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {

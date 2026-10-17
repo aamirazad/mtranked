@@ -24,4 +24,5 @@ class Session {
   }
 }
 
-export const session = new Session();
+// one instance per page even if the dev server hands out a stale copy of this module
+export const session: Session = import.meta.hot ? (import.meta.hot.data.session ??= new Session()) : new Session();
