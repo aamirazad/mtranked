@@ -172,8 +172,12 @@
 {:else}
   <div class="flex flex-col items-center pt-10 animate-fade">
     <div class="relative flex h-56 w-56 items-center justify-center">
-      <div class="pulse absolute inset-0 rounded-full border-2 border-main/30"></div>
-      <div class="pulse absolute inset-6 rounded-full border-2 border-main/20 [animation-delay:0.6s]"></div>
+      <!-- svg rings animate their radius instead of scaling bordered divs, which made
+           chromium flash tile seams as a crosshair through the middle -->
+      <svg class="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 224 224" fill="none" aria-hidden="true">
+        <circle class="pulse stroke-main/30" cx="112" cy="112" r="111" stroke-width="2" />
+        <circle class="pulse inner stroke-main/20" cx="112" cy="112" r="87" stroke-width="2" />
+      </svg>
       <div class="text-center">
         <div class="text-5xl text-main tabular-nums">{fmt(waited)}</div>
         <div class="mt-1 text-sm text-sub">{game.queue ? "searching" : game.status === "online" ? "joining queue" : "connecting"}</div>
@@ -240,13 +244,26 @@
   .pulse {
     animation: pulse 2.4s ease-out infinite;
   }
+  .pulse.inner {
+    animation-name: pulse-inner;
+  }
   @keyframes pulse {
     0% {
-      transform: scale(0.85);
+      r: 94px;
       opacity: 1;
     }
     100% {
-      transform: scale(1.25);
+      r: 139px;
+      opacity: 0;
+    }
+  }
+  @keyframes pulse-inner {
+    0% {
+      r: 74px;
+      opacity: 1;
+    }
+    100% {
+      r: 109px;
       opacity: 0;
     }
   }
