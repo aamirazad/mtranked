@@ -322,14 +322,14 @@
         {#each shownThemes as t (t.id)}
           {@const on = prefs.theme === t.id}
           <button
-            class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm"
+            class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm {t.note ? 'col-span-2' : ''}"
             style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
             onmouseenter={() => hoverTheme(t.id)}
             onfocus={() => (prefs.preview = t.id)}
             onblur={endPreview}
             onclick={() => prefs.set("theme", t.id)}
           >
-            <span class="truncate">{t.name}</span>
+            <span class="truncate">{t.name}{#if t.note}<span class="opacity-60">&nbsp;· {t.note}</span>{/if}</span>
             <span class="flex shrink-0 gap-1">
               {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"></span>{/each}
             </span>

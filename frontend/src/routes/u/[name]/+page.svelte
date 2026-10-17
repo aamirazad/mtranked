@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dimBanner } from "#lib/banner.ts";
   import { page } from "$app/state";
   import { Flame, Trophy, TrendingDown, TrendingUp } from "@lucide/svelte";
   import type { PersonalBest, Profile, ProfileStats, StatKind } from "@mtr/contracts";
@@ -87,8 +88,11 @@
   <div class="pt-16 text-center text-sub">loading…</div>
 {:else}
   <div class="mx-auto flex max-w-[1100px] flex-col gap-6 animate-fade">
-    <!-- banner -->
-    <section class="banner overflow-hidden rounded-2xl p-3 sm:p-4" style="background: {profile.banner}">
+    <!-- banner, dimmed toward the theme background so it frames the panel instead of shouting -->
+    <section
+      class="banner overflow-hidden rounded-2xl p-3 sm:p-4"
+      style="background: {dimBanner(profile.banner, 50)}"
+    >
       <div class="banner-panel grid items-center gap-6 !px-5 !py-5 md:grid-cols-[minmax(0,auto)_1px_minmax(0,1fr)]">
         <div class="flex min-w-0 flex-col gap-4">
           <div class="flex min-w-0 items-center gap-4">

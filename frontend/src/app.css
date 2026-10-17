@@ -35,19 +35,19 @@
 @font-face { font-family: "Coming Soon"; src: url("/fonts/ComingSoon-Regular.woff2") format("woff2"); font-display: swap; }
 @font-face { font-family: "Itim"; src: url("/fonts/Itim-Regular.woff2") format("woff2"); font-display: swap; }
 
-/* serika dark, monkeytype's default theme */
+/* mt ranked, the default theme (serika dark, monkeytype's default, is in the theme list) */
 @theme {
-  --color-bg: #323437;
-  --color-main: #e2b714;
-  --color-caret: #e2b714;
-  --color-sub: #646669;
-  --color-sub-alt: #2c2e31;
-  --color-text: #d1d0c5;
-  --color-error: #ca4754;
-  --color-error-extra: #7e2a33;
+  --color-bg: #141414;
+  --color-main: #f8c630;
+  --color-caret: #f8c630;
+  --color-sub: #6e6e6e;
+  --color-sub-alt: #1f1f1f;
+  --color-text: #ededed;
+  --color-error: #e5484d;
+  --color-error-extra: #8a2a2e;
   --color-win: #5ce0a0;
   --font-mono: "Roboto Mono", ui-monospace, monospace;
-  --font-logo: "Lexend Deca", "Roboto Mono", sans-serif;
+  --font-logo: "Montserrat", "Lexend Deca", sans-serif;
   --animate-pop: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
   --animate-fade: fade 0.2s ease-out;
   --animate-rise: rise 0.35s ease-out;
@@ -76,8 +76,18 @@
 @property --color-text { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --color-error { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --color-error-extra { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --tile-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --tile-fg { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --edge-hover { syntax: "<color>"; inherits: true; initial-value: transparent; }
+/* theme look defaults, matching mt ranked (see themeVars in lib/prefs.svelte.ts) */
+:root {
+  --tile-bg: var(--color-main);
+  --tile-fg: var(--color-bg);
+  --tile-pad: 0.8rem;
+  --edge-hover: rgb(248 198 48 / 0.25);
+}
 html {
-  transition-property: --color-bg, --color-main, --color-caret, --color-sub, --color-sub-alt, --color-text, --color-error, --color-error-extra;
+  transition-property: --color-bg, --color-main, --color-caret, --color-sub, --color-sub-alt, --color-text, --color-error, --color-error-extra, --tile-bg, --tile-fg, --edge-hover;
   transition-duration: 0.25s;
   transition-timing-function: ease-out;
 }
@@ -114,6 +124,13 @@ html {
     @apply w-full rounded-lg border-0 bg-sub-alt px-3 py-2 text-text outline-none placeholder:text-sub focus:ring-2 focus:ring-main/40;
   }
   .card { @apply rounded-xl bg-sub-alt p-5; }
+  /* a feature icon: a filled rounded tile in themes with a look, a bare main-coloured icon otherwise */
+  .icon-tile {
+    @apply inline-flex shrink-0 items-center justify-center rounded-xl;
+    padding: var(--tile-pad);
+    background: var(--tile-bg);
+    color: var(--tile-fg);
+  }
   .label { @apply text-xs tracking-wide text-sub; }
   .link { @apply text-main hover:text-text transition-colors; }
   .toggle { @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text; }
@@ -128,11 +145,11 @@ html {
   }
   .banner .text-sub,
   .banner .label { color: rgb(255 255 255 / 0.8); }
-  /* frosted glass plate for text that sits on a banner: a dark tint plus blur
-     calms the gradient underneath, a hairline edge and top highlight sell the glass */
+  /* frosted glass plate for text that sits on a banner: a heavy tint plus blur
+     leaves only a hint of the gradient underneath, a hairline edge and top highlight sell the glass */
   .banner-panel {
     @apply rounded-xl px-6 py-5 backdrop-blur-md;
-    background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+    background: color-mix(in srgb, var(--color-bg) 82%, transparent);
     box-shadow:
       inset 0 0 0 1px rgb(255 255 255 / 0.1),
       inset 0 1px 0 rgb(255 255 255 / 0.12),

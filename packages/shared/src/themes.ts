@@ -1,9 +1,13 @@
 // Site colour themes. Each one fills the same CSS variables the default
-// (serika dark) defines in app.css, so every page re-colours at once.
+// (mt ranked) defines in app.css, so every page re-colours at once.
 export type Theme = {
   id: string;
   name: string;
+  /** shown next to the name in theme pickers */
+  note?: string;
   light?: boolean;
+  /** more than colours: heading font and filled icon tiles. themes without it keep the monkeytype look */
+  look?: { font: string; tiles: boolean };
   bg: string;
   main: string;
   caret: string;
@@ -14,9 +18,12 @@ export type Theme = {
   errorExtra: string;
 };
 
-export const DEFAULT_THEME = "serika_dark";
+export const DEFAULT_THEME = "mt_ranked";
 
+// the site's own theme and monkeytype's lead the list, the rest are alphabetical
 export const THEMES: Theme[] = [
+  { id: "mt_ranked", name: "mt ranked", look: { font: "Montserrat", tiles: true }, bg: "#141414", main: "#f8c630", caret: "#f8c630", sub: "#6e6e6e", subAlt: "#1f1f1f", text: "#ededed", error: "#e5484d", errorExtra: "#8a2a2e" },
+  { id: "serika_dark", name: "serika dark", note: "monkeytype.com's default look", bg: "#323437", main: "#e2b714", caret: "#e2b714", sub: "#646669", subAlt: "#2c2e31", text: "#d1d0c5", error: "#ca4754", errorExtra: "#7e2a33" },
   { id: "8008", name: "8008", bg: "#333a45", main: "#f44c7f", caret: "#f44c7f", sub: "#939eae", subAlt: "#2e343d", text: "#e9ecf0", error: "#da3333", errorExtra: "#791717" },
   { id: "botanical", name: "botanical", bg: "#7b9c98", main: "#eaf1f3", caret: "#abc6c4", sub: "#495755", subAlt: "#6f8f8b", text: "#eaf1f3", error: "#f6c9b4", errorExtra: "#f59a71" },
   { id: "carbon", name: "carbon", bg: "#313131", main: "#f66e0d", caret: "#f66e0d", sub: "#616161", subAlt: "#2b2b2b", text: "#f5e6c8", error: "#e72d2d", errorExtra: "#7e2a33" },
@@ -35,7 +42,6 @@ export const THEMES: Theme[] = [
   { id: "rose_pine", name: "rose pine", bg: "#1f1d27", main: "#9ccfd8", caret: "#f6c177", sub: "#6e6a86", subAlt: "#26233a", text: "#e0def4", error: "#eb6f92", errorExtra: "#ebbcba" },
   { id: "rose_pine_dawn", name: "rose pine dawn", light: true, bg: "#fffaf3", main: "#56949f", caret: "#ea9d34", sub: "#9893a5", subAlt: "#f2e9de", text: "#286983", error: "#b4637a", errorExtra: "#d7827e" },
   { id: "serika", name: "serika", light: true, bg: "#e1e1e3", main: "#e2b714", caret: "#e2b714", sub: "#aaaeb3", subAlt: "#d1d3d8", text: "#323437", error: "#da3333", errorExtra: "#791717" },
-  { id: "serika_dark", name: "serika dark", bg: "#323437", main: "#e2b714", caret: "#e2b714", sub: "#646669", subAlt: "#2c2e31", text: "#d1d0c5", error: "#ca4754", errorExtra: "#7e2a33" },
   { id: "solarized_light", name: "solarized light", light: true, bg: "#fdf6e3", main: "#859900", caret: "#dc322f", sub: "#93a1a1", subAlt: "#eee8d5", text: "#002b36", error: "#d33682", errorExtra: "#9b225c" },
   { id: "tokyo_night", name: "tokyo night", bg: "#1a1b26", main: "#7aa2f7", caret: "#c0caf5", sub: "#565f89", subAlt: "#16161e", text: "#c0caf5", error: "#f7768e", errorExtra: "#db4b4b" },
 ];

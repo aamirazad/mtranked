@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dimBanner } from "#lib/banner.ts";
   import { onDestroy } from "svelte";
   import type { MatchFound } from "#lib/game.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
@@ -49,7 +50,7 @@
             class="banner flex flex-col items-center gap-2 rounded-xl bg-bg px-4 py-5 text-center outline-2 -outline-offset-2 transition-[outline-color]"
             class:outline-win={match.ready.includes(p.id)}
             class:outline-transparent={!match.ready.includes(p.id)}
-            style={p.banner ? `background: ${p.banner}` : undefined}
+            style={p.banner ? `background: ${dimBanner(p.banner, 72)}` : undefined}
           >
             <div class="text-xl" class:text-main={p.id === meId}>{p.name}</div>
             {#if p.rating !== undefined && match.mode === "ranked"}
