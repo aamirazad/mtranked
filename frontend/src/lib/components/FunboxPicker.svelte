@@ -47,7 +47,7 @@
     <span class="flex items-center gap-1 text-sub"><PartyPopper size={14} /> funbox</span>
     {#if active.length}
       {#each active as id (id)}
-        <span class="tip rounded-md bg-bg/50 px-2 py-0.5 text-main" aria-label={FUNBOXES[id].description}>{FUNBOXES[id].name}</span>
+        <span class="tip tip-wrap rounded-md bg-bg/50 px-2 py-0.5 text-main" data-tip={FUNBOXES[id].description}>{FUNBOXES[id].name}</span>
       {/each}
     {:else}
       <span class="text-sub">none</span>
@@ -70,8 +70,8 @@
               {@const on = active.includes(f.id)}
               {@const ok = on || checkFunboxCompatibility(active, f.id)}
               <button
-                class="rounded-md px-2 py-1.5 text-left text-sm transition-colors {on ? 'bg-main text-bg' : ok ? 'bg-sub-alt text-text hover:bg-text hover:text-bg' : 'bg-sub-alt/40 text-sub/50'}"
-                title={ok ? f.description : `${f.description} (conflicts with the current selection)`}
+                class="tip tip-wrap rounded-md px-2 py-1.5 text-left text-sm transition-colors {on ? 'bg-main text-bg' : ok ? 'bg-sub-alt text-text hover:bg-text hover:text-bg' : 'bg-sub-alt/40 text-sub/50'}"
+                data-tip={ok ? f.description : `${f.description} (conflicts with the current selection)`}
                 disabled={!ok}
                 onclick={() => toggle(f.id)}>{f.name}</button
               >
