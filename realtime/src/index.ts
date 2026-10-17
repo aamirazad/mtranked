@@ -21,7 +21,7 @@ import {
   stopMatcher,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
-import { sendFriendsSnapshot, setOffline, setOnline } from "./friends";
+import { friendsOf, presenceOf, sendFriendsSnapshot, setOffline, setOnline } from "./friends";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
 
@@ -55,6 +55,7 @@ type RoomMsg = Extract<
       | "room.rename"
       | "room.theme"
       | "room.hurry"
+      | "room.invite"
       | "input.batch"
       | "race.leave";
   }
@@ -99,6 +100,8 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onTheme(id, msg.theme);
     case "room.hurry":
       return room.onHurry(id);
+    case "room.invite":
+      return void room.onInvite(id, msg.playerIds);
   }
 }
 
@@ -129,6 +132,15 @@ setForwardHandler((f: Forwarded) => {
   if (msg.type === "_rc") return room.reconnect(f.from);
   applyRoomMsg(room, f.from, msg as RoomMsg);
 });
+
+/** A new room: offer to invite every friend who's around (anyone not in a ranked or casual match). */
+async function suggestFriends(conn: Conn, room: Room, skip: string[]) {
+  if (conn.idn.guest || !room.code) return;
+  const ids = (await friendsOf(conn.id)).filter((f) => !skip.includes(f));
+  const presence = await presenceOf(ids);
+  const around = ids.filter((f) => presence[f]!.online && presence[f]!.activity?.kind !== "match");
+  if (around.length) conn.send({ type: "room.suggest", code: room.code, friends: around });
+}
 
 async function handle(conn: Conn, msg: ClientMsg) {
   const id = conn.id;
@@ -190,7 +202,9 @@ async function handle(conn: Conn, msg: ClientMsg) {
       }
       await dequeue(id, LEFT_FOR_ROOM);
       conn.info = await publicInfo(conn.idn);
-      Room.createPrivate(member(conn.idn, conn.info), { ...DEFAULT_ROOM_SETTINGS, ...msg.settings });
+      const room = Room.createPrivate(member(conn.idn, conn.info), { ...DEFAULT_ROOM_SETTINGS, ...msg.settings });
+      if (msg.invite?.length) await room.onInvite(id, msg.invite);
+      await suggestFriends(conn, room, msg.invite ?? []);
       return;
     }
 

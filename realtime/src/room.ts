@@ -29,6 +29,7 @@ import {
   COUNTDOWN_MS,
   type FriendActivity,
   HURRY_MS,
+  INVITE_MS,
   MAX_PING_ALLOWANCE_MS,
   PREPARE_MS,
   RACE_CAP_MS,
@@ -63,7 +64,7 @@ import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
 import { recordDecline, requeue, strikeWarning } from "./matchmaker";
 import { offerRematch } from "./rematch";
-import { clearActivity, setActivity } from "./friends";
+import { clearActivity, friendsWith, setActivity } from "./friends";
 import { reportError } from "./sentry";
 
 const IDLE_FORFEIT_MS = 25_000;
@@ -185,8 +186,10 @@ export class Room {
   race: Race | null = null;
   ghost?: GhostSource;
   private lastSettingsSeed?: { seed: string; text: string; source?: string };
-  /** players the host kicked; they can't come back */
+  /** players the host kicked; they can't come back unless a host invites them */
   private kicked = new Set<string>();
+  /** friends invited in (by a host: past the lock too), by player id */
+  private invites = new Map<string, { byHost: boolean; at: number }>();
   /** a start is in flight (text generation is async) */
   private starting = false;
 
@@ -289,6 +292,7 @@ export class Room {
       theme: this.theme,
       settings: this.settings,
       players: [...this.members.values()].map((m) => m.info),
+      invited: [...this.invites.keys()].filter((id) => this.invitedOk(id)),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
       scoreboard: this.scoreboard,
       races: this.racesRun,
@@ -818,9 +822,11 @@ export class Room {
       this.reconnect(m.idn.id);
       return null;
     }
+    const invite = this.invitedOk(m.idn.id) ? this.invites.get(m.idn.id) : undefined;
     if (this.kicked.has(m.idn.id)) return "You were removed from this room by the host.";
-    if (this.locked) return "This room is locked.";
+    if (this.locked && !invite?.byHost) return "This room is locked.";
     if (this.members.size >= this.cap) return `This room is full (${this.cap} players).`;
+    this.invites.delete(m.idn.id);
     this.addMember(m);
     this.lastActivity = Date.now();
     this.broadcastRoom();
@@ -877,6 +883,40 @@ export class Room {
     }
     this.hosts.delete(target);
     this.refreshHostPerks();
+    this.broadcastRoom();
+  }
+
+  private invitedOk(id: string) {
+    const inv = this.invites.get(id);
+    return !!inv && Date.now() - inv.at < INVITE_MS;
+  }
+
+  /** Invite some of the player's friends in. Invites from a host get past the lock (and a kick). */
+  async onInvite(playerId: string, ids: string[]) {
+    const from = this.members.get(playerId);
+    if (this.mode !== "private" || !from || this.closed) return;
+    const wanted = [...new Set(ids)].filter((id) => id !== playerId && !this.members.has(id));
+    const ok = await friendsWith(playerId, wanted);
+    if (this.closed || !ok.size) return;
+    const byHost = this.isHost(playerId);
+    const now = Date.now();
+    const sent: string[] = [];
+    for (const id of ok) {
+      const prev = this.invites.get(id);
+      // don't let a room nag someone: one invite per player every 30s
+      if (prev && now - prev.at < 30_000 && (prev.byHost || !byHost)) continue;
+      if (byHost) this.kicked.delete(id);
+      this.invites.set(id, { byHost: byHost || !!prev?.byHost, at: now });
+      sent.push(id);
+    }
+    if (!sent.length) return;
+    deliver(sent, {
+      type: "room.invite",
+      code: this.code!,
+      from: { id: playerId, name: from.info.name },
+      roomName: this.name,
+      players: this.members.size,
+    });
     this.broadcastRoom();
   }
 

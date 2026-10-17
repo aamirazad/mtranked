@@ -2,12 +2,13 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, ShieldMinus, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
+  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
   import { game } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { friends, describeActivity } from "#lib/friends.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
   import { prefs } from "#lib/prefs.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
@@ -93,6 +94,26 @@
   const board = $derived(
     room ? [...room.players].map((p) => ({ p, wins: room.scoreboard[p.id] ?? 0 })).sort((a, b) => b.wins - a.wins) : [],
   );
+
+  // friends who aren't in here yet; any player can invite their own
+  const invitable = $derived(room ? friends.online.filter((f) => !room.players.some((p) => p.id === f.id)) : []);
+  function invite(ids: string[]) {
+    if (ids.length) game.send({ type: "room.invite", playerIds: ids });
+  }
+
+  // made this room just now with friends around: offer to bring them all in at once
+  let suggestDismissed = $state(false);
+  const suggested = $derived(
+    room && !suggestDismissed && game.suggest?.code === code
+      ? game.suggest.friends.filter((id) => friends.presenceOf(id).online && !room.players.some((p) => p.id === id) && !room.invited.includes(id))
+      : [],
+  );
+  const suggestedNames = $derived.by(() => {
+    const names = suggested.map((id) => friends.nameOf(id) ?? "a friend");
+    if (names.length <= 1) return names.join("");
+    if (names.length > 4) return `${names.slice(0, 3).join(", ")} and ${names.length - 3} more friends`;
+    return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  });
 
   function copy(text: string, what: string) {
     void navigator.clipboard.writeText(text);
@@ -216,6 +237,19 @@
       <div class="my-10 h-px bg-sub-alt"></div>
     {/if}
 
+    {#if suggested.length}
+      <div class="mb-8 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border-2 border-main/40 bg-sub-alt px-5 py-4 animate-rise">
+        <Sparkles size={20} class="shrink-0 text-main" />
+        <div class="min-w-0 flex-1">
+          <span class="text-main">{suggestedNames}</span>
+          {suggested.length === 1 ? "is" : "are"} online right now.
+          <span class="text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room in one click?</span>
+        </div>
+        <button class="btn btn-main" onclick={() => invite(suggested)}><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button>
+        <button class="text-sub hover:text-text" aria-label="dismiss" onclick={() => (suggestDismissed = true)}><X size={16} /></button>
+      </div>
+    {/if}
+
     <div class="flex flex-wrap items-start justify-between gap-6">
       <div>
         {#if isHost && room.hostSubscriber}
@@ -270,7 +304,8 @@
       </div>
     </div>
 
-    <div class="mt-10 grid gap-6 md:grid-cols-[1fr_1.2fr]">
+    <div class="mt-10 grid items-start gap-6 md:grid-cols-[1fr_1.2fr]">
+      <div class="space-y-6">
       <div class="card">
         <div class="mb-3 flex items-center justify-between">
           <span class="label">players {room.players.length}/{room.cap}</span>
@@ -306,6 +341,33 @@
         {#if !room.hostSubscriber && room.players.length >= room.cap}
           <div class="mt-4 text-xs text-sub">room is full.{#if session.supporterSales} supporter hosts get rooms of up to 16.{/if}</div>
         {/if}
+      </div>
+
+      {#if invitable.length}
+        <div class="card">
+          <div class="mb-3 flex items-center justify-between">
+            <span class="label">friends online</span>
+            {#if invitable.some((f) => !room.invited.includes(f.id))}
+              <button class="text-xs text-sub hover:text-main" onclick={() => invite(invitable.filter((f) => !room.invited.includes(f.id)).map((f) => f.id))}>invite all</button>
+            {/if}
+          </div>
+          <ul class="space-y-1">
+            {#each invitable as f (f.id)}
+              <li class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
+                <div class="min-w-0">
+                  <div class="truncate">{f.name}</div>
+                  <div class="truncate text-xs text-sub">{describeActivity(f.presence)}</div>
+                </div>
+                {#if room.invited.includes(f.id)}
+                  <span class="ml-auto text-xs text-sub">invited</span>
+                {:else}
+                  <button class="ml-auto flex items-center gap-1 text-sm text-sub hover:text-main" onclick={() => invite([f.id])}><Send size={14} /> invite</button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
       </div>
 
       <div class="card">

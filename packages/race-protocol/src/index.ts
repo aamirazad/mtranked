@@ -81,7 +81,10 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ghost.accept") }),
   z.object({ type: z.literal("ready"), matchId: z.string() }),
   z.object({ type: z.literal("decline"), matchId: z.string() }),
-  z.object({ type: z.literal("room.create"), settings: TextSettings }),
+  /** `invite`: friends to invite straight away (the "race a friend" button) */
+  z.object({ type: z.literal("room.create"), settings: TextSettings, invite: z.array(z.string().max(64)).max(16).optional() }),
+  /** invite friends to the room we're in */
+  z.object({ type: z.literal("room.invite"), playerIds: z.array(z.string().max(64)).min(1).max(16) }),
   z.object({ type: z.literal("room.join"), code: z.string().min(4).max(8) }),
   z.object({ type: z.literal("room.leave") }),
   z.object({ type: z.literal("room.settings"), settings: TextSettings }),
@@ -168,6 +171,8 @@ export type RoomPublic = {
   theme: string | null;
   settings: TextSettings;
   players: PlayerPublic[];
+  /** friends someone in the room has invited who haven't joined yet */
+  invited: string[];
   status: "waiting" | "countdown" | "racing" | "finished";
   scoreboard: Record<string, number>;
   races: number;
@@ -237,6 +242,10 @@ export type ServerMsg =
       rematch?: { expiresAt: number };
     }
   | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string }
+  /** a friend invited us to their private room */
+  | { type: "room.invite"; code: string; from: { id: string; name: string }; roomName: string | null; players: number }
+  /** we just created a room and these friends are online: offer to invite them all */
+  | { type: "room.suggest"; code: string; friends: string[] }
   /** every friend's presence, sent on connect and whenever the friends list changes */
   | { type: "friends.presence"; presence: Record<string, FriendPresence> }
   | { type: "friend.presence"; id: string; presence: FriendPresence }
@@ -263,3 +272,5 @@ export const RACE_CAP_MS = 120_000;
 export const MAX_PING_ALLOWANCE_MS = 150;
 export const REMATCH_MS = 30_000;
 export const HURRY_MS = 15_000;
+/** how long a room invite (or an accepted request to join) stays valid */
+export const INVITE_MS = 10 * 60_000;

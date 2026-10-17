@@ -1,15 +1,18 @@
 // Realtime connection + all live game state. Pages render from this store;
 // the server is authoritative for everything except local typing feedback.
-import type {
-  ClientMsg,
-  LivePlayer,
-  Mode,
-  PlayerPublic,
-  QueueMode,
-  RaceResultRow,
-  RaceStart,
-  RoomPublic,
-  ServerMsg,
+import {
+  DEFAULT_ROOM_SETTINGS,
+  INVITE_MS,
+  type TextSettings,
+  type ClientMsg,
+  type LivePlayer,
+  type Mode,
+  type PlayerPublic,
+  type QueueMode,
+  type RaceResultRow,
+  type RaceStart,
+  type RoomPublic,
+  type ServerMsg,
 } from "@mtr/race-protocol";
 import { api } from "./api";
 import { friends } from "./friends.svelte";
@@ -22,6 +25,7 @@ export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type
 export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
 export type RoomClosed = { code?: string; reason: string; rejoin: boolean };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
+export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number };
 
 class Game {
   status = $state<"offline" | "connecting" | "online">("offline");
@@ -46,6 +50,10 @@ class Game {
   /** open casual rematch offer for the last result */
   rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
+  /** friends' invites to their rooms, newest last */
+  invites = $state<RoomInvite[]>([]);
+  /** friends who were around when we created this room, to offer inviting them all */
+  suggest = $state<{ code: string; friends: string[] } | null>(null);
   rtt = $state(0);
 
   /** server clock minus local clock, in ms */
@@ -58,6 +66,8 @@ class Game {
   private pending: ClientMsg[] = [];
   private guestName: string | undefined;
   private connecting: Promise<void> | null = null;
+  /** a room.create waiting for its room */
+  private created: { resolve: (code: string) => void; reject: (e: Error) => void } | null = null;
 
   serverNow() {
     return Date.now() + this.offset;
@@ -179,6 +189,8 @@ class Game {
       }
       case "error":
         this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
+        this.created?.reject(new Error(msg.message));
+        this.created = null;
         // queue refusals are shown in place by the play page
         if (msg.code === "queue_timeout" || msg.code === "ranked_blocked" || msg.code === "suspended") {
           this.queue = null;
@@ -222,7 +234,12 @@ class Game {
         if (!msg.requeued) this.queueMode = null;
         break;
       case "room.state":
+        if (this.created && msg.room.code !== this.room?.code) {
+          this.created.resolve(msg.room.code);
+          this.created = null;
+        }
         this.room = msg.room;
+        this.invites = this.invites.filter((i) => i.code !== msg.room.code);
         this.roomLive = true;
         this.roomClosed = null;
         break;
@@ -255,6 +272,15 @@ class Game {
         this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;
         if (msg.mode !== "ghost" && msg.mode !== "private") this.queueMode = null;
         break;
+      case "room.invite": {
+        const { type: _, ...inv } = msg;
+        this.invites = [...this.invites.filter((i) => i.from.id !== inv.from.id), { ...inv, at: Date.now() }];
+        notifier.alert(`${inv.from.name} invited you to race`, "Click to come back and join their room.", "room-invite");
+        break;
+      }
+      case "room.suggest":
+        this.suggest = { code: msg.code, friends: msg.friends };
+        break;
       case "friends.presence":
         friends.presence = msg.presence;
         break;
@@ -280,6 +306,24 @@ class Game {
   }
 
   // ------------------------------------------------------------ actions
+  /** Create a private room (inviting `invite` straight away); resolves with its code. */
+  async createRoom(opts: { invite?: string[]; settings?: TextSettings } = {}): Promise<string> {
+    this.room = null;
+    this.roomClosed = null;
+    await this.connect().catch(() => {});
+    this.created?.reject(new Error("superseded"));
+    const code = new Promise<string>((resolve, reject) => (this.created = { resolve, reject }));
+    this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite });
+    return code;
+  }
+  /** invites still worth showing */
+  get openInvites() {
+    const now = Date.now();
+    return this.invites.filter((i) => now - i.at < INVITE_MS && i.code !== this.room?.code);
+  }
+  dismissInvite(code: string) {
+    this.invites = this.invites.filter((i) => i.code !== code);
+  }
   joinQueue(mode: QueueMode) {
     this.dropRematch();
     this.result = null;

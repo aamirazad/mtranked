@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { Check, Search, UserMinus, UserPlus, X } from "@lucide/svelte";
+  import { Check, Search, Swords, UserMinus, UserPlus, X } from "@lucide/svelte";
   import type { PlayerHit } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { game } from "#lib/game.svelte.ts";
   import { friends, describeActivity } from "#lib/friends.svelte.ts";
   import { flag } from "#lib/countries.ts";
 
@@ -56,6 +57,20 @@
 
   function unfriend(f: { id: string; name: string }) {
     if (confirm(`Remove ${f.name} from your friends?`)) void friends.remove(f);
+  }
+
+  // "race": a new private room with them invited
+  let starting = $state<string | null>(null);
+  async function race(id: string) {
+    starting = id;
+    try {
+      const code = await game.createRoom({ invite: [id] });
+      await goto(`/room/${code}`);
+    } catch {
+      // the server said why (already in a match, ...)
+    } finally {
+      starting = null;
+    }
   }
 
   const list = $derived(friends.list);
@@ -151,6 +166,11 @@
                 <div class="text-xs text-sub">{describeActivity(f.presence)}</div>
               </div>
               <span class="ml-auto flex items-center gap-2">
+                {#if f.presence.online}
+                  <button class="btn btn-main py-1 text-sm" title="open a private room and invite them" disabled={!!starting} onclick={() => race(f.id)}>
+                    <Swords size={14} /> {starting === f.id ? "opening…" : "race"}
+                  </button>
+                {/if}
                 <button class="rounded p-1.5 text-sub opacity-0 transition-opacity group-hover:opacity-100 hover:text-error focus:opacity-100" title="remove friend" onclick={() => unfriend(f)}>
                   <UserMinus size={16} />
                 </button>

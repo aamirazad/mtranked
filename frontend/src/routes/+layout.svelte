@@ -8,6 +8,7 @@
   import { game } from "#lib/game.svelte.ts";
   import { friends } from "#lib/friends.svelte.ts";
   import Toasts from "#lib/components/Toasts.svelte";
+  import Invites from "#lib/components/Invites.svelte";
   import Logo from "#lib/components/Logo.svelte";
   import CommandLine from "#lib/components/CommandLine.svelte";
   import { applyTheme, prefs } from "#lib/prefs.svelte.ts";
@@ -144,4 +145,5 @@
 <svelte:document onvisibilitychange={onvisible} />
 
 <Toasts />
+<Invites />
 <CommandLine />

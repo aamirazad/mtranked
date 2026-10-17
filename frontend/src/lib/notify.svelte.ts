@@ -53,6 +53,20 @@ class Notifier {
     }
   }
 
+  /** Something for us while the tab is in the background (e.g. a friend's invite). */
+  alert(title: string, body: string, tag: string) {
+    if (!supported() || Notification.permission !== "granted" || !document.hidden) return;
+    try {
+      const n = new Notification(title, { body, icon: "/favicon.svg", tag });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    } catch {
+      // see matchFound
+    }
+  }
+
   /** the ready check is over (or we're back on the tab), so the notification is stale */
   clear() {
     this.current?.close();
