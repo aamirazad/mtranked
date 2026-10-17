@@ -82,9 +82,18 @@ setInterval(() => {
   );
 }, 5000).unref();
 
+/** Other pub/sub channels this node listens on (e.g. friend list changes from the API). */
+const channels = new Map<string, (data: unknown) => void>();
+export async function listen(channel: string, fn: (data: unknown) => void) {
+  channels.set(channel, fn);
+  await sub.subscribe(channel);
+}
+
 await sub.subscribe(DELIVER, nodeChannel(NODE_ID));
 sub.on("message", (channel, raw) => {
   const data = JSON.parse(raw);
+  const handler = channels.get(channel);
+  if (handler) return handler(data);
   if (channel === DELIVER) {
     if (data.from === NODE_ID) return;
     const json = JSON.stringify(data.msg);

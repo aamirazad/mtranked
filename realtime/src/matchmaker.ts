@@ -10,6 +10,7 @@ import { NODE_ID, redis } from "./redis";
 import { reportError } from "./sentry";
 import { Room, roomOf, type Member, type GhostSource } from "./room";
 import { showBanner, type Identity } from "./players";
+import { clearActivity, setActivity } from "./friends";
 
 const META = "qmeta";
 const GHOST_AFTER_MS = 60_000;
@@ -49,6 +50,7 @@ export async function enqueue(
   const meta: Meta = { key, mode, since, idn: { id: idn.id, guest: idn.guest, name: idn.name }, info, rating };
   await redis.multi().zadd(key, rating?.rating ?? 1500, idn.id).hset(META, idn.id, JSON.stringify(meta)).exec();
   sendStatus(meta, 1);
+  setActivity(idn.id, { kind: "queue", mode }, "queue");
 }
 
 export async function dequeue(id: string, reason?: string) {
@@ -56,6 +58,7 @@ export async function dequeue(id: string, reason?: string) {
   if (!meta) return false;
   await redis.multi().zrem(meta.key, id).hdel(META, id).exec();
   sendTo(id, { type: "queue.left", reason });
+  clearActivity(id, "queue");
   return true;
 }
 
@@ -169,6 +172,7 @@ async function matchQueue(key: QueueKey) {
     if (m.dcAt && now - m.dcAt > QUEUE_GRACE_MS) {
       await redis.multi().zrem(key, m.idn.id).hdel(META, m.idn.id).exec();
       await holdNotice(m.idn.id, "You were away for a while, so you were taken out of the queue.");
+      clearActivity(m.idn.id, "queue");
       continue;
     }
     entries.push(m);

@@ -27,13 +27,17 @@ import {
 } from "@mtr/engine";
 import {
   COUNTDOWN_MS,
+  type FriendActivity,
   HURRY_MS,
+  INVITE_MS,
   MAX_PING_ALLOWANCE_MS,
   PREPARE_MS,
   RACE_CAP_MS,
   READY_CHECK_MS,
   RECONNECT_GRACE_MS,
   REMATCH_MS,
+  SPECTATE_TYPES,
+  type SpectateMsg,
   type LivePlayer,
   type Mode,
   type PlayerPublic,
@@ -62,6 +66,7 @@ import { analyzeTiming, type Flag } from "./anticheat";
 import { saveRace, type RatingUpdate } from "./persist";
 import { recordDecline, requeue, strikeWarning } from "./matchmaker";
 import { offerRematch } from "./rematch";
+import { clearActivity, friendsWith, setActivity } from "./friends";
 import { reportError } from "./sentry";
 
 const IDLE_FORFEIT_MS = 25_000;
@@ -125,6 +130,8 @@ type Race = {
   ruleSec: number;
 };
 
+export type JoinRequest = { id: string; name: string; level: number; via: string };
+
 export type GhostSource = {
   matchId: string;
   text: string;
@@ -136,6 +143,11 @@ export const rooms = new Map<string, Room>();
 export const roomByCode = new Map<string, string>();
 /** player id -> room id, for players whose room lives on this node */
 export const playerRoom = new Map<string, string>();
+/** spectator id -> room id they watch, for rooms on this node */
+export const spectating = new Map<string, string>();
+const MAX_SPECTATORS = 32;
+
+export type Spectator = { id: string; name: string; via: string };
 
 /**
  * Gameplay rules only apply in private rooms (everyone there shares the
@@ -165,7 +177,8 @@ export class Room {
   code?: string;
   status: "waiting" | "ready_check" | "countdown" | "racing" | "finished" | "closed" = "waiting";
   members = new Map<string, Member>();
-  hostId?: string;
+  /** private rooms can have several hosts; any of them can promote, demote (even themselves) and run the room */
+  hosts = new Set<string>();
   settings: TextSettings;
   cap = 2;
   hostSubscriber = false;
@@ -182,10 +195,25 @@ export class Room {
   race: Race | null = null;
   ghost?: GhostSource;
   private lastSettingsSeed?: { seed: string; text: string; source?: string };
-  /** players the host kicked; they can't come back */
+  /** players the host kicked; they can't come back unless a host invites them */
   private kicked = new Set<string>();
+  /** friends invited in (by a host: past the lock too), by player id */
+  private invites = new Map<string, { byHost: boolean; at: number }>();
+  /** watching, not playing: they get the race and room updates, nothing else */
+  spectators = new Map<string, Spectator>();
+  /** players asking to join, by player id; `via` is the friend in here they asked */
+  private requests = new Map<string, JoinRequest & { at: number }>();
   /** a start is in flight (text generation is async) */
   private starting = false;
+
+  isHost(playerId: string) {
+    return this.hosts.has(playerId);
+  }
+
+  /** room perks (name, theme) follow whether any host is a supporter */
+  private refreshHostPerks() {
+    this.hostSubscriber = [...this.hosts].some((id) => this.members.get(id)?.info.subscriber);
+  }
 
   /** read through a getter so checks after an await aren't narrowed away */
   get closed() {
@@ -238,7 +266,7 @@ export class Room {
     room.code = newCode();
     roomByCode.set(room.code, room.id);
     void redis.set(`roomcode:${room.code}`, room.id, "EX", 6 * 3600);
-    room.hostId = host.idn.id;
+    room.hosts.add(host.idn.id);
     room.hostSubscriber = host.info.subscriber;
     room.cap = host.info.subscriber ? ROOM_CAP_SUBSCRIBER : ROOM_CAP_FREE;
     if (settings.mode === "custom" && !settings.custom?.trim()) room.settings = { ...room.settings, mode: "words" };
@@ -264,12 +292,15 @@ export class Room {
   // ------------------------------------------------------------ messaging
   broadcast(msg: ServerMsg) {
     deliver(this.members.keys(), msg);
+    if (this.spectators.size && SPECTATE_TYPES.has(msg.type)) {
+      deliver(this.spectators.keys(), { type: "spectate.msg", msg: msg as SpectateMsg });
+    }
   }
 
   publicState(): RoomPublic {
     return {
       code: this.code ?? "",
-      hostId: this.hostId ?? "",
+      hosts: [...this.hosts],
       locked: this.locked,
       cap: this.cap,
       hostSubscriber: this.hostSubscriber,
@@ -277,6 +308,11 @@ export class Room {
       theme: this.theme,
       settings: this.settings,
       players: [...this.members.values()].map((m) => m.info),
+      invited: [...this.invites.keys()].filter((id) => this.invitedOk(id)),
+      requests: [...this.requests.values()]
+        .filter((r) => Date.now() - r.at < INVITE_MS)
+        .map((r) => ({ id: r.id, name: r.name, level: r.level })),
+      spectators: [...this.spectators.values()].map((x) => ({ id: x.id, name: x.name })),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
       scoreboard: this.scoreboard,
       races: this.racesRun,
@@ -295,11 +331,26 @@ export class Room {
       mode: this.mode,
       code: this.code,
       status: this.status,
-      hostId: this.hostId,
+      hosts: [...this.hosts],
       settings: this.settings,
       members: [...this.members.keys()],
     };
     void redis.set(`room:${this.id}`, JSON.stringify(data), "EX", 3600);
+    const act = this.activity();
+    for (const id of this.members.keys()) setActivity(id, act, this.id);
+  }
+
+  /** what friends of the players in here see them doing */
+  private activity(): FriendActivity {
+    if (this.mode !== "private") return { kind: "match", mode: this.mode };
+    return {
+      kind: "room",
+      racing: this.status === "countdown" || this.status === "racing",
+      players: this.members.size,
+      cap: this.cap,
+      locked: this.locked,
+      name: this.name,
+    };
   }
 
   raceStart(): RaceStart | null {
@@ -759,7 +810,7 @@ export class Room {
 
   // ------------------------------------------------------------ private rooms
   async onStart(playerId: string, sameText?: boolean) {
-    if (playerId !== this.hostId || this.mode !== "private") return;
+    if (!this.isHost(playerId) || this.mode !== "private") return;
     if (this.status === "countdown" || this.status === "racing") return;
     await this.startRace(sameText && this.lastSettingsSeed ? this.lastSettingsSeed : undefined);
   }
@@ -767,7 +818,7 @@ export class Room {
   /** The host is done and tired of waiting: everyone still typing gets HURRY_MS to finish. */
   onHurry(playerId: string) {
     const race = this.race;
-    if (playerId !== this.hostId || this.mode !== "private" || this.status !== "racing") return;
+    if (!this.isHost(playerId) || this.mode !== "private" || this.status !== "racing") return;
     if (!race || race.ended || race.timeLimit || race.deadline) return;
     if (race.racers.get(playerId)?.finishMs == null) return;
     race.deadline = Math.min(race.endAt, Date.now() + HURRY_MS);
@@ -776,7 +827,7 @@ export class Room {
   }
 
   onSettings(playerId: string, settings: TextSettings) {
-    if (playerId !== this.hostId || this.status === "countdown" || this.status === "racing") return;
+    if (!this.isHost(playerId) || this.status === "countdown" || this.status === "racing") return;
     if (settings.mode === "custom" && !settings.custom?.trim()) {
       sendTo(playerId, { type: "error", code: "custom_empty", message: "Custom text can't be empty." });
       return;
@@ -791,9 +842,13 @@ export class Room {
       this.reconnect(m.idn.id);
       return null;
     }
+    const invite = this.invitedOk(m.idn.id) ? this.invites.get(m.idn.id) : undefined;
     if (this.kicked.has(m.idn.id)) return "You were removed from this room by the host.";
-    if (this.locked) return "This room is locked.";
+    if (this.locked && !invite?.byHost) return "This room is locked.";
     if (this.members.size >= this.cap) return `This room is full (${this.cap} players).`;
+    this.invites.delete(m.idn.id);
+    this.requests.delete(m.idn.id);
+    this.removeSpectator(m.idn.id, false);
     this.addMember(m);
     this.lastActivity = Date.now();
     this.broadcastRoom();
@@ -810,46 +865,155 @@ export class Room {
     this.members.delete(playerId);
     playerRoom.delete(playerId);
     void redis.del(`proom:${playerId}`);
+    clearActivity(playerId, this.id);
     if (reason) {
       sendTo(playerId, { type: "room.closed", code: this.code, reason, rejoin: false });
       if (!m.connected) void holdRoomGone(playerId, { code: this.code, reason, rejoin: false });
     }
     if (this.members.size === 0) return this.close("Everyone left, so the room closed.");
-    if (this.hostId === playerId) {
-      const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
-      this.hostId = next.idn.id;
-      // the cap follows the host's plan; rooms already open keep their size
-      this.hostSubscriber = next.info.subscriber;
+    if (this.hosts.delete(playerId)) {
+      if (!this.hosts.size) {
+        const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
+        this.hosts.add(next.idn.id);
+      }
+      // rooms already open keep their size; only the perks follow the hosts
+      this.refreshHostPerks();
     }
     this.broadcastRoom();
   }
 
   onKick(playerId: string, target: string) {
-    if (playerId !== this.hostId || target === playerId || !this.members.has(target)) return;
+    if (!this.isHost(playerId) || target === playerId || !this.members.has(target)) return;
     this.kicked.add(target);
     this.removeMember(target, "You were removed from the room by the host.");
   }
 
-  onTransfer(playerId: string, target: string) {
-    if (playerId !== this.hostId || !this.members.has(target)) return;
-    this.hostId = target;
-    this.hostSubscriber = this.members.get(target)!.info.subscriber;
+  /** Make another player a host too; the one promoting stays a host. */
+  onPromote(playerId: string, target: string) {
+    if (!this.isHost(playerId) || !this.members.has(target) || this.isHost(target)) return;
+    this.hosts.add(target);
+    this.refreshHostPerks();
+    this.broadcastRoom();
+  }
+
+  /** Any host can take the host role away from any host, themselves included, as long as one is left. */
+  onDemote(playerId: string, target: string) {
+    if (!this.isHost(playerId) || !this.isHost(target)) return;
+    if (this.hosts.size === 1) {
+      sendTo(playerId, { type: "error", code: "last_host", message: "A room needs a host. Make someone else a host first." });
+      return;
+    }
+    this.hosts.delete(target);
+    this.refreshHostPerks();
+    this.broadcastRoom();
+  }
+
+  private invitedOk(id: string) {
+    const inv = this.invites.get(id);
+    return !!inv && Date.now() - inv.at < INVITE_MS;
+  }
+
+  /** Invite some of the player's friends in. Invites from a host get past the lock (and a kick). */
+  async onInvite(playerId: string, ids: string[]) {
+    const from = this.members.get(playerId);
+    if (this.mode !== "private" || !from || this.closed) return;
+    const wanted = [...new Set(ids)].filter((id) => id !== playerId && !this.members.has(id));
+    const ok = await friendsWith(playerId, wanted);
+    if (this.closed || !ok.size) return;
+    const byHost = this.isHost(playerId);
+    const now = Date.now();
+    const sent: string[] = [];
+    for (const id of ok) {
+      const prev = this.invites.get(id);
+      // don't let a room nag someone: one invite per player every 30s
+      if (prev && now - prev.at < 30_000 && (prev.byHost || !byHost)) continue;
+      if (byHost) this.kicked.delete(id);
+      this.invites.set(id, { byHost: byHost || !!prev?.byHost, at: now });
+      sent.push(id);
+    }
+    if (!sent.length) return;
+    deliver(sent, {
+      type: "room.invite",
+      code: this.code!,
+      from: { id: playerId, name: from.info.name },
+      roomName: this.name,
+      players: this.members.size,
+    });
+    this.broadcastRoom();
+  }
+
+  /** A friend of someone in here wants to watch. */
+  addSpectator(sp: Spectator) {
+    const no = (message: string) => sendTo(sp.id, { type: "error", code: "spectate", message });
+    if (this.closed) return no("There's nothing to watch right now.");
+    if (this.members.has(sp.id)) return no("You're playing in that one.");
+    if (this.mode === "private" && this.locked) return no("That room is locked, so it can't be watched.");
+    if (!this.spectators.has(sp.id) && this.spectators.size >= MAX_SPECTATORS) return no("Too many people are watching already.");
+    this.spectators.set(sp.id, sp);
+    spectating.set(sp.id, this.id);
+    void redis.set(`pspec:${sp.id}`, this.id, "EX", 3600);
+    const name = this.members.get(sp.via)?.info.name ?? "";
+    sendTo(sp.id, { type: "spectate.started", playerId: sp.via, name, mode: this.mode });
+    const wrap = (msg: SpectateMsg) => sendTo(sp.id, { type: "spectate.msg", msg });
+    if (this.mode === "private") this.broadcastRoom();
+    const rs = this.raceStart();
+    if (rs && (this.status === "countdown" || this.status === "racing")) wrap({ type: "race.resume", ...rs, keys: [] });
+  }
+
+  /** `tell`: say so to the spectator (not when they're the one who stopped, or they joined as a player) */
+  removeSpectator(id: string, tell: boolean, reason = "You stopped watching.") {
+    if (!this.spectators.delete(id)) return;
+    if (spectating.get(id) === this.id) {
+      spectating.delete(id);
+      void redis.del(`pspec:${id}`);
+    }
+    if (tell) sendTo(id, { type: "spectate.ended", reason });
+    if (this.mode === "private" && !this.closed) this.broadcastRoom();
+  }
+
+  /** A friend of someone in here asks to be let in; the hosts decide. */
+  onJoinRequest(req: JoinRequest) {
+    const no = (message: string) => sendTo(req.id, { type: "error", code: "room_request", message });
+    if (this.mode !== "private" || this.closed) return no("They're not in a private room right now.");
+    if (this.members.has(req.id)) return no("You're already in that room.");
+    if (this.kicked.has(req.id)) return no("You were removed from that room by the host.");
+    if (this.invitedOk(req.id) && (!this.locked || this.invites.get(req.id)!.byHost)) {
+      // already welcome: no need to bother the hosts
+      return sendTo(req.id, { type: "room.admit", code: this.code!, playerId: req.via, by: "" });
+    }
+    if (this.members.size >= this.cap) return no(`That room is full (${this.cap} players).`);
+    if (!this.requests.has(req.id) && this.requests.size >= 20) return no("That room has a lot of requests waiting. Try again in a bit.");
+    this.requests.set(req.id, { ...req, at: Date.now() });
+    sendTo(req.id, { type: "room.requested", playerId: req.via });
+    this.broadcastRoom();
+  }
+
+  onAnswer(playerId: string, target: string, accept: boolean) {
+    const req = this.requests.get(target);
+    if (!this.isHost(playerId) || !req) return;
+    this.requests.delete(target);
+    if (accept) {
+      this.invites.set(target, { byHost: true, at: Date.now() });
+      sendTo(target, { type: "room.admit", code: this.code!, playerId: req.via, by: this.members.get(playerId)!.info.name });
+    } else {
+      sendTo(target, { type: "room.declined", playerId: req.via, message: "A host turned down your request to join." });
+    }
     this.broadcastRoom();
   }
 
   onClose(playerId: string) {
-    if (playerId !== this.hostId || this.mode !== "private") return;
+    if (!this.isHost(playerId) || this.mode !== "private") return;
     this.close("The host closed the room.");
   }
 
   onLock(playerId: string, locked: boolean) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     this.locked = locked;
     this.broadcastRoom();
   }
 
   onRename(playerId: string, name: string) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     if (!this.hostSubscriber) {
       sendTo(playerId, { type: "error", code: "subscriber_only", message: "Naming rooms is a supporter perk." });
       return;
@@ -864,7 +1028,7 @@ export class Room {
   }
 
   onTheme(playerId: string, theme: string | null) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     if (!this.hostSubscriber) {
       sendTo(playerId, { type: "error", code: "subscriber_only", message: "Room themes are a supporter perk." });
       return;
@@ -917,10 +1081,13 @@ export class Room {
         playerRoom.delete(id);
         void redis.del(`proom:${id}`);
       }
+      clearActivity(id, this.id);
       if (!priv) continue;
       sendTo(id, { type: "room.closed", code: this.code, reason: why, rejoin: false });
       if (!m.connected) void holdRoomGone(id, { code: this.code, reason: why, rejoin: false });
     }
+    const over = priv ? why : "The match is over.";
+    for (const id of [...this.spectators.keys()]) this.removeSpectator(id, true, over);
     rooms.delete(this.id);
     if (this.code) {
       roomByCode.delete(this.code);

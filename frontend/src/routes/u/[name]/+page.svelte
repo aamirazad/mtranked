@@ -1,12 +1,13 @@
 <script lang="ts">
   import { dimBanner } from "#lib/banner.ts";
   import { page } from "$app/state";
-  import { Flame, Trophy, TrendingDown, TrendingUp } from "@lucide/svelte";
+  import { Check, Flame, Trophy, TrendingDown, TrendingUp, UserPlus } from "@lucide/svelte";
   import type { PersonalBest, Profile, ProfileStats, StatKind } from "@mtr/contracts";
   import { tierFor, levelFromXp, PLACEMENT_RACES } from "@mtr/shared";
   import { api } from "#lib/api.ts";
   import { flag } from "#lib/countries.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { friends } from "#lib/friends.svelte.ts";
   import { fmtDate, hms, ordinal } from "#lib/format.ts";
   import TierBadge from "#lib/components/TierBadge.svelte";
   import EloChart from "#lib/components/EloChart.svelte";
@@ -33,6 +34,16 @@
     void api.users.stats({ params: { name: n } }).then((r) => {
       if (n === name && r.status === 200) stats = r.body.stats;
     });
+  });
+
+  const friendStatus = $derived.by(() => {
+    const id = profile?.id;
+    const l = friends.list;
+    if (!id || !l || !session.me || id === session.me.id) return null;
+    if (l.friends.some((f) => f.id === id)) return "friends";
+    if (l.incoming.some((f) => f.id === id)) return "incoming";
+    if (l.outgoing.some((f) => f.id === id)) return "outgoing";
+    return "none";
   });
 
   const lvl = $derived(profile ? levelFromXp(profile.xp) : null);
@@ -122,6 +133,15 @@
                 </div>
               {/if}
               {#if profile.subscriber && session.supporterSales}<span class="mt-1 inline-block rounded bg-main px-2 py-0.5 text-xs text-bg">supporter</span>{/if}
+              {#if friendStatus === "none"}
+                <button class="mt-2 flex items-center gap-1.5 text-sm text-sub hover:text-main" onclick={() => friends.add(profile!.name)}><UserPlus size={14} /> add friend</button>
+              {:else if friendStatus === "incoming"}
+                <button class="mt-2 flex items-center gap-1.5 text-sm text-main hover:text-text" onclick={() => friends.accept(profile!)}><Check size={14} /> accept friend request</button>
+              {:else if friendStatus === "outgoing"}
+                <div class="mt-2 text-sm text-sub">friend request sent</div>
+              {:else if friendStatus === "friends"}
+                <a href="/friends" class="mt-2 flex items-center gap-1.5 text-sm text-sub hover:text-text"><Check size={14} /> friends</a>
+              {/if}
             </div>
           </div>
           {#if lvl}

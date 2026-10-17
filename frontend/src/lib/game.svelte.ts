@@ -1,17 +1,22 @@
 // Realtime connection + all live game state. Pages render from this store;
 // the server is authoritative for everything except local typing feedback.
-import type {
-  ClientMsg,
-  LivePlayer,
-  Mode,
-  PlayerPublic,
-  QueueMode,
-  RaceResultRow,
-  RaceStart,
-  RoomPublic,
-  ServerMsg,
+import {
+  DEFAULT_ROOM_SETTINGS,
+  INVITE_MS,
+  type TextSettings,
+  type ClientMsg,
+  type LivePlayer,
+  type Mode,
+  type PlayerPublic,
+  type QueueMode,
+  type RaceResultRow,
+  type RaceStart,
+  type RoomPublic,
+  type ServerMsg,
+  type SpectateMsg,
 } from "@mtr/race-protocol";
 import { api } from "./api";
+import { friends } from "./friends.svelte";
 import { notifier } from "./notify.svelte";
 import { toasts } from "./toast.svelte";
 
@@ -21,6 +26,60 @@ export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type
 export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
 export type RoomClosed = { code?: string; reason: string; rejoin: boolean };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
+/** What a race view renders from: our own race, or one we're watching. */
+export type RaceFeed = { race: ActiveRace | null; live: Record<string, LivePlayer>; result: RaceResult | null };
+
+/** A friend's race or room we're watching. */
+class Watch implements RaceFeed {
+  /** the friend we came to watch */
+  target = $state<{ id: string; name: string; mode: Mode } | null>(null);
+  race = $state<ActiveRace | null>(null);
+  live = $state<Record<string, LivePlayer>>({});
+  result = $state<RaceResult | null>(null);
+  room = $state<RoomPublic | null>(null);
+  /** why there's nothing more to watch */
+  ended = $state<string | null>(null);
+
+  reset() {
+    this.target = null;
+    this.race = null;
+    this.live = {};
+    this.result = null;
+    this.room = null;
+    this.ended = null;
+  }
+
+  onMessage(msg: SpectateMsg) {
+    switch (msg.type) {
+      case "race.countdown":
+      case "race.resume":
+        this.result = null;
+        this.live = {};
+        // spectators have no keys of their own to resume
+        this.race = { ...msg, resumeKeys: [] };
+        break;
+      case "race.state":
+        if (this.race?.raceId === msg.raceId) {
+          const live: Record<string, LivePlayer> = {};
+          for (const p of msg.players) live[p.id] = p;
+          this.live = live;
+        }
+        break;
+      case "race.deadline":
+        if (this.race?.raceId === msg.raceId) this.race.deadline = msg.deadline;
+        break;
+      case "race.result":
+        this.result = msg;
+        break;
+      case "room.state":
+        this.room = msg.room;
+        break;
+    }
+  }
+}
+
+/** `admitted`: a host accepted our request to join, rather than us being invited */
+export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number; admitted?: boolean };
 
 class Game {
   status = $state<"offline" | "connecting" | "online">("offline");
@@ -45,6 +104,16 @@ class Game {
   /** open casual rematch offer for the last result */
   rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
+  /** friends' invites to their rooms, newest last */
+  invites = $state<RoomInvite[]>([]);
+  /** the friend's race or room we're watching */
+  watch = new Watch();
+  /** friends whose rooms we asked to join, and when */
+  asked = $state<Record<string, number>>({});
+  /** a host let us into this room; the layout takes us there */
+  admitted = $state<string | null>(null);
+  /** friends who were around when we created this room, to offer inviting them all */
+  suggest = $state<{ code: string; friends: string[] } | null>(null);
   rtt = $state(0);
 
   /** server clock minus local clock, in ms */
@@ -57,6 +126,8 @@ class Game {
   private pending: ClientMsg[] = [];
   private guestName: string | undefined;
   private connecting: Promise<void> | null = null;
+  /** a room.create waiting for its room */
+  private created: { resolve: (code: string) => void; reject: (e: Error) => void } | null = null;
 
   serverNow() {
     return Date.now() + this.offset;
@@ -178,6 +249,8 @@ class Game {
       }
       case "error":
         this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
+        this.created?.reject(new Error(msg.message));
+        this.created = null;
         // queue refusals are shown in place by the play page
         if (msg.code === "queue_timeout" || msg.code === "ranked_blocked" || msg.code === "suspended") {
           this.queue = null;
@@ -221,7 +294,12 @@ class Game {
         if (!msg.requeued) this.queueMode = null;
         break;
       case "room.state":
+        if (this.created && msg.room.code !== this.room?.code) {
+          this.created.resolve(msg.room.code);
+          this.created = null;
+        }
         this.room = msg.room;
+        this.invites = this.invites.filter((i) => i.code !== msg.room.code);
         this.roomLive = true;
         this.roomClosed = null;
         break;
@@ -254,6 +332,53 @@ class Game {
         this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;
         if (msg.mode !== "ghost" && msg.mode !== "private") this.queueMode = null;
         break;
+      case "room.invite": {
+        const { type: _, ...inv } = msg;
+        this.invites = [...this.invites.filter((i) => i.from.id !== inv.from.id), { ...inv, at: Date.now() }];
+        notifier.alert(`${inv.from.name} invited you to race`, "Click to come back and join their room.", "room-invite");
+        break;
+      }
+      case "spectate.started":
+        this.watch.reset();
+        this.watch.target = { id: msg.playerId, name: msg.name, mode: msg.mode };
+        break;
+      case "spectate.msg":
+        if (this.watch.target) this.watch.onMessage(msg.msg);
+        break;
+      case "spectate.ended":
+        if (this.watch.target) this.watch.ended = msg.reason;
+        break;
+      case "room.requested":
+        this.asked[msg.playerId] = Date.now();
+        toasts.show("Asked to join. You'll be let in as soon as a host accepts.", "info", 5000);
+        break;
+      case "room.admit":
+        delete this.asked[msg.playerId];
+        // mid-race or in a ready check: keep it as an invite for later instead of pulling us out
+        if (this.match || (this.race && !this.result)) {
+          const from = { id: msg.playerId, name: msg.by || "A host" };
+          this.invites = [...this.invites, { code: msg.code, from, roomName: null, players: 0, at: Date.now(), admitted: true }];
+        } else {
+          if (msg.by) toasts.show(`${msg.by} let you in.`, "success", 4000);
+          this.admitted = msg.code;
+        }
+        break;
+      case "room.declined":
+        delete this.asked[msg.playerId];
+        toasts.show(msg.message, "info", 6000);
+        break;
+      case "room.suggest":
+        this.suggest = { code: msg.code, friends: msg.friends };
+        break;
+      case "friends.presence":
+        friends.presence = msg.presence;
+        break;
+      case "friend.presence":
+        friends.presence[msg.id] = msg.presence;
+        break;
+      case "friends.changed":
+        void friends.load();
+        break;
       case "rematch.status":
         if (this.rematch?.matchId === msg.matchId) {
           this.rematch.requested = msg.requested;
@@ -270,6 +395,42 @@ class Game {
   }
 
   // ------------------------------------------------------------ actions
+  /** Create a private room (inviting `invite` straight away); resolves with its code. */
+  async createRoom(opts: { invite?: string[]; settings?: TextSettings } = {}): Promise<string> {
+    this.room = null;
+    this.roomClosed = null;
+    await this.connect().catch(() => {});
+    this.created?.reject(new Error("superseded"));
+    const code = new Promise<string>((resolve, reject) => (this.created = { resolve, reject }));
+    this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite });
+    return code;
+  }
+  /** invites still worth showing */
+  get openInvites() {
+    const now = Date.now();
+    return this.invites.filter((i) => now - i.at < INVITE_MS && i.code !== this.room?.code);
+  }
+  /** Watch whatever this friend is racing in. */
+  spectate(friendId: string) {
+    this.watch.reset();
+    this.send({ type: "spectate.start", playerId: friendId });
+  }
+  stopSpectating() {
+    if (this.watch.target) this.send({ type: "spectate.stop" });
+    this.watch.reset();
+  }
+  /** Ask the hosts of the room this friend is in to let us in. */
+  askToJoin(friendId: string) {
+    this.send({ type: "room.request", playerId: friendId });
+  }
+  /** we asked to join this friend's room and haven't heard back */
+  hasAsked(friendId: string) {
+    const at = this.asked[friendId];
+    return !!at && Date.now() - at < INVITE_MS;
+  }
+  dismissInvite(code: string) {
+    this.invites = this.invites.filter((i) => i.code !== code);
+  }
   joinQueue(mode: QueueMode) {
     this.dropRematch();
     this.result = null;

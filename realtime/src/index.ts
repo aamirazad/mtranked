@@ -8,7 +8,7 @@ import { env } from "./env";
 import { NODE_ID, nodeAlive, redis, sub } from "./redis";
 import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded, type RoomGone } from "./hub";
 import { checkSharedIp, currentRating, publicInfo, rankedBlock, redeemTicket, type Identity } from "./players";
-import { Room, roomByCode, roomOf, rooms, type Member } from "./room";
+import { Room, roomByCode, roomOf, rooms, spectating, type JoinRequest, type Member, type Spectator } from "./room";
 import {
   dequeue,
   enqueue,
@@ -21,6 +21,7 @@ import {
   stopMatcher,
 } from "./matchmaker";
 import { declineRematch, requestRematch } from "./rematch";
+import { friendsOf, friendsWith, presenceOf, sendFriendsSnapshot, setOffline, setOnline } from "./friends";
 
 const err = (id: string, code: string, message: string) => sendTo(id, { type: "error", code, message });
 
@@ -33,6 +34,8 @@ const RESTARTING = "The server is restarting for an update. Try again in a momen
 const STARTS = new Set<ClientMsg["type"]>(["queue.join", "ghost.accept", "rematch.request", "room.create", "room.join", "room.start"]);
 
 const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
+const NOT_IN_ROOM = "They're not in a private room right now.";
+const NOTHING_TO_WATCH = "They're not racing or in a room right now.";
 
 const member = (idn: Identity, info: PlayerPublic): Member => ({ idn, info, connected: true, dcAt: null, ready: false });
 
@@ -47,12 +50,15 @@ type RoomMsg = Extract<
       | "room.settings"
       | "room.start"
       | "room.kick"
-      | "room.transfer"
+      | "room.promote"
+      | "room.demote"
       | "room.lock"
       | "room.close"
       | "room.rename"
       | "room.theme"
       | "room.hurry"
+      | "room.invite"
+      | "room.answer"
       | "input.batch"
       | "race.leave";
   }
@@ -83,8 +89,10 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return void room.onStart(id, msg.sameText);
     case "room.kick":
       return room.onKick(id, msg.playerId);
-    case "room.transfer":
-      return room.onTransfer(id, msg.playerId);
+    case "room.promote":
+      return room.onPromote(id, msg.playerId);
+    case "room.demote":
+      return room.onDemote(id, msg.playerId);
     case "room.lock":
       return room.onLock(id, msg.locked);
     case "room.close":
@@ -95,7 +103,29 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return room.onTheme(id, msg.theme);
     case "room.hurry":
       return room.onHurry(id);
+    case "room.invite":
+      return void room.onInvite(id, msg.playerIds);
+    case "room.answer":
+      return room.onAnswer(id, msg.playerId, msg.accept);
   }
+}
+
+/** The live node owning the room this player is in, if it's not this one. */
+async function roomNodeOf(playerId: string): Promise<string | null> {
+  const roomId = await redis.get(`proom:${playerId}`);
+  const raw = roomId ? await redis.get(`room:${roomId}`) : null;
+  const node = raw ? (JSON.parse(raw).node as string) : null;
+  return node && node !== NODE_ID && (await nodeAlive(node)) ? node : null;
+}
+
+/** Stop watching whatever this player watches, wherever that room lives. */
+async function stopSpectating(id: string) {
+  const local = spectating.get(id);
+  if (local) return rooms.get(local)?.removeSpectator(id, false);
+  const roomId = await redis.getdel(`pspec:${id}`);
+  const raw = roomId ? await redis.get(`room:${roomId}`) : null;
+  const node = raw ? (JSON.parse(raw).node as string) : null;
+  if (node && node !== NODE_ID) await forward(node, { from: id, rtt: 0, msg: { type: "_unspec", roomId } });
 }
 
 /** Run a room message locally, or forward it to the node that owns the room. */
@@ -120,11 +150,33 @@ setForwardHandler((f: Forwarded) => {
     if (problem) err(f.from, "room_join", problem);
     return;
   }
+  if (msg.type === "_spec") {
+    const target = roomOf(msg.target as string);
+    if (target) target.addSpectator(msg.spec as Spectator);
+    else err(f.from, "spectate", NOTHING_TO_WATCH);
+    return;
+  }
+  if (msg.type === "_unspec") return rooms.get(msg.roomId as string)?.removeSpectator(f.from, false);
+  if (msg.type === "_request") {
+    const target = roomOf(msg.target as string);
+    if (target) target.onJoinRequest(msg.req as JoinRequest);
+    else err(f.from, "room_request", NOT_IN_ROOM);
+    return;
+  }
   if (!room) return;
   if (msg.type === "_dc") return room.disconnect(f.from);
   if (msg.type === "_rc") return room.reconnect(f.from);
   applyRoomMsg(room, f.from, msg as RoomMsg);
 });
+
+/** A new room: offer to invite every friend who's around (anyone not in a ranked or casual match). */
+async function suggestFriends(conn: Conn, room: Room, skip: string[]) {
+  if (conn.idn.guest || !room.code) return;
+  const ids = (await friendsOf(conn.id)).filter((f) => !skip.includes(f));
+  const presence = await presenceOf(ids);
+  const around = ids.filter((f) => presence[f]!.online && presence[f]!.activity?.kind !== "match");
+  if (around.length) conn.send({ type: "room.suggest", code: room.code, friends: around });
+}
 
 async function handle(conn: Conn, msg: ClientMsg) {
   const id = conn.id;
@@ -186,7 +238,9 @@ async function handle(conn: Conn, msg: ClientMsg) {
       }
       await dequeue(id, LEFT_FOR_ROOM);
       conn.info = await publicInfo(conn.idn);
-      Room.createPrivate(member(conn.idn, conn.info), { ...DEFAULT_ROOM_SETTINGS, ...msg.settings });
+      const room = Room.createPrivate(member(conn.idn, conn.info), { ...DEFAULT_ROOM_SETTINGS, ...msg.settings });
+      if (msg.invite?.length) await room.onInvite(id, msg.invite);
+      await suggestFriends(conn, room, msg.invite ?? []);
       return;
     }
 
@@ -219,6 +273,34 @@ async function handle(conn: Conn, msg: ClientMsg) {
         rtt: conn.rtt(),
         msg: { type: "_join", code, idn: { id, guest: conn.idn.guest, name: conn.idn.name }, info: conn.info },
       });
+      return;
+    }
+
+    case "spectate.start": {
+      if (conn.idn.guest) return err(id, "spectate", "Sign in to watch your friends.");
+      if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "spectate", "You can only watch friends.");
+      await stopSpectating(id);
+      const spec: Spectator = { id, name: conn.info.name, via: msg.playerId };
+      const local = roomOf(msg.playerId);
+      if (local) return local.addSpectator(spec);
+      const node = await roomNodeOf(msg.playerId);
+      if (!node) return err(id, "spectate", NOTHING_TO_WATCH);
+      await forward(node, { from: id, rtt: conn.rtt(), msg: { type: "_spec", target: msg.playerId, spec } });
+      return;
+    }
+
+    case "spectate.stop":
+      return stopSpectating(id);
+
+    case "room.request": {
+      if (conn.idn.guest) return err(id, "room_request", "Sign in to ask friends to let you in.");
+      if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "room_request", "You can only ask to join a friend's room.");
+      const req: JoinRequest = { id, name: conn.info.name, level: conn.info.level, via: msg.playerId };
+      const local = roomOf(msg.playerId);
+      if (local) return local.onJoinRequest(req);
+      const node = await roomNodeOf(msg.playerId);
+      if (!node) return err(id, "room_request", NOT_IN_ROOM);
+      await forward(node, { from: id, rtt: conn.rtt(), msg: { type: "_request", target: msg.playerId, req } });
       return;
     }
 
@@ -279,7 +361,7 @@ function bucket(burst: number, rate: number) {
 }
 
 /** Messages that hit the DB or redis get a much tighter budget. */
-const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request"]);
+const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request", "room.request", "room.invite", "spectate.start"]);
 
 wss.on("connection", async (ws, req) => {
   // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
@@ -309,6 +391,8 @@ wss.on("connection", async (ws, req) => {
     // on the way out: redis is closing and the player reconnects to the next process
     if (exiting || conns.get(idn.id) !== conn) return;
     conns.delete(idn.id);
+    setOffline(idn.id);
+    void stopSpectating(idn.id).catch((e) => reportError("[spectate] cleanup failed", e));
     const room = roomOf(idn.id);
     if (room) room.disconnect(idn.id);
     else {
@@ -325,6 +409,8 @@ wss.on("connection", async (ws, req) => {
   const rankedOk = !(await rankedBlock(idn));
   if (stale()) return;
   conn.send({ type: "hello", you: info, serverTime: Date.now(), verified: !!idn.user?.email_verified_at, rankedOk });
+  setOnline(idn.id);
+  void sendFriendsSnapshot(conn).catch((e) => reportError("[friends] snapshot failed", e));
 
   // resume whatever this player was doing
   const local = roomOf(idn.id);
