@@ -1,11 +1,32 @@
 // Every WebSocket message exchanged between the frontend and the realtime server.
 import { z } from "zod";
-import { LANGUAGES, type TimelinePoint } from "@mtr/engine";
+import { CONFIDENCE, DIFFICULTY, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type FailReason, type TimelinePoint } from "@mtr/engine";
 
 export const Mode = z.enum(["ranked", "casual", "private", "ghost"]);
 export type Mode = z.infer<typeof Mode>;
 export const QueueMode = z.enum(["ranked", "casual"]);
 export type QueueMode = z.infer<typeof QueueMode>;
+
+/**
+ * Gameplay rules a private-room host sets for everyone in the room (see
+ * @mtr/engine rules.ts). Omitted = no rules. Matchmade races never have rules:
+ * the server strips them.
+ */
+export const RoomRules = z
+  .object({
+    stopOnError: z.enum(STOP_ON_ERROR),
+    confidence: z.enum(CONFIDENCE),
+    freedom: z.boolean(),
+    strictSpace: z.boolean(),
+    difficulty: z.enum(DIFFICULTY),
+    lazy: z.boolean(),
+    minWpm: z.number().int().min(0).max(MAX_MIN_WPM),
+    minAcc: z.number().int().min(0).max(100),
+    minBurst: z.number().int().min(0).max(MAX_MIN_WPM),
+    burstFlex: z.boolean(),
+  })
+  .partial();
+export type RoomRules = z.infer<typeof RoomRules>;
 
 export const TextSettings = z.object({
   mode: z.enum(["words", "time", "quote", "custom"]),
@@ -16,6 +37,7 @@ export const TextSettings = z.object({
   numbers: z.boolean(),
   language: z.enum(LANGUAGES),
   custom: z.string().max(5000).optional(),
+  rules: RoomRules.optional(),
 });
 export type TextSettings = z.infer<typeof TextSettings>;
 
@@ -93,6 +115,8 @@ export type LivePlayer = {
   done: boolean;
   dc: boolean;
   out: boolean;
+  /** failed a room rule (min speed, difficulty, ...); also `out` */
+  failed?: FailReason;
 };
 
 export type RaceResultRow = {
@@ -109,6 +133,8 @@ export type RaceResultRow = {
   timeMs: number | null;
   finished: boolean;
   forfeit: boolean;
+  /** failed a room rule: shown as a DNF and placed after everyone who didn't */
+  failed?: FailReason;
   progress: number;
   ratingBefore?: number;
   ratingAfter?: number;

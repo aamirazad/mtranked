@@ -1,7 +1,9 @@
 // Typing state machine shared by the browser (local rendering) and the race
 // server (authoritative replay of the keystroke log). Behaviour follows
 // monkeytype's defaults: space submits a word even with mistakes, and you may
-// backspace into the previous word only if it was typed incorrectly.
+// backspace into the previous word only if it was typed incorrectly. Optional
+// rules (see rules.ts) change that the same way on both sides.
+import { flexBurst, normalizeRules, type FailReason, type Rules } from "./rules";
 
 export const BACKSPACE = "\b";
 /** ctrl/alt + backspace: delete the whole word */
@@ -21,9 +23,16 @@ export type TypingState = {
   finished: boolean;
   correctKeys: number;
   incorrectKeys: number;
+  rules: Rules;
+  /** set once a rule fails the test; no more keys are accepted */
+  failed: FailReason | null;
+  /** when the current word was started (ms), for burst speed */
+  burstStart: number | null;
+  /** speed of the last submitted word */
+  lastBurst: number | null;
 };
 
-export function createState(text: string): TypingState {
+export function createState(text: string, rules?: Rules): TypingState {
   const words = text.split(" ");
   const offsets: number[] = [];
   let o = 0;
@@ -40,22 +49,38 @@ export function createState(text: string): TypingState {
     finished: false,
     correctKeys: 0,
     incorrectKeys: 0,
+    rules: normalizeRules(rules) ?? {},
+    failed: null,
+    burstStart: null,
+    lastBurst: null,
   };
 }
 
-/** Apply one key. Returns false if the key had no effect. */
-export function applyKey(s: TypingState, key: string): boolean {
-  if (s.finished) return false;
+function fail(s: TypingState, reason: FailReason) {
+  s.failed = reason;
+  return true;
+}
+
+/**
+ * Apply one key. Returns false if the key had no effect. `t` (ms) is the time
+ * of the key; it is only needed for the min burst rule and burst stats.
+ */
+export function applyKey(s: TypingState, key: string, t?: number): boolean {
+  if (s.finished || s.failed) return false;
+  const r = s.rules;
   const word = s.words[s.wi]!;
   const input = s.inputs[s.wi] ?? "";
   const last = s.wi === s.words.length - 1;
+  if (t !== undefined && s.burstStart === null) s.burstStart = t;
 
   if (key === BACKSPACE || key === WORD_DELETE) {
+    if (r.confidence === "max") return false;
     if (input.length > 0) {
       s.inputs[s.wi] = key === BACKSPACE ? input.slice(0, -1) : "";
       return true;
     }
-    if (s.wi > 0 && s.inputs[s.wi - 1] !== s.words[s.wi - 1]) {
+    const prevCorrect = s.inputs[s.wi - 1] === s.words[s.wi - 1];
+    if (s.wi > 0 && r.confidence !== "on" && (r.freedom || !prevCorrect)) {
       s.inputs.pop();
       s.wi--;
       if (key === WORD_DELETE) s.inputs[s.wi] = "";
@@ -64,27 +89,64 @@ export function applyKey(s: TypingState, key: string): boolean {
     return false;
   }
 
-  if (key === " ") {
+  // strict space (and expert/master) types a leading space as a wrong letter
+  const strict = r.strictSpace || r.difficulty !== undefined;
+  if (key === " " && (input.length > 0 || !strict)) {
     if (input.length === 0) return false;
-    if (last) {
-      // the race only ends when the final word is correct
+    if (input !== word) {
       s.incorrectKeys++;
-      return false;
+      if (r.difficulty) return fail(s, "difficulty");
+      // the race only ends when the final word is correct
+      if (last) return false;
+      // stop on error: the mistake counts, but you stay on the word
+      if (r.stopOnError) return true;
+    } else {
+      if (last) {
+        s.incorrectKeys++;
+        return false;
+      }
+      s.correctKeys++;
     }
-    if (input === word) s.correctKeys++;
-    else s.incorrectKeys++;
+    let burstFail = false;
+    if (t !== undefined && s.burstStart !== null) {
+      const dt = t - s.burstStart;
+      s.burstStart = t;
+      if (dt > 0) {
+        s.lastBurst = Math.round((input.length * (60000 / dt)) / 5);
+        const min = r.minBurst ? (r.burstFlex ? flexBurst(r.minBurst, word.length) : r.minBurst) : 0;
+        burstFail = min > 0 && s.lastBurst < min;
+      }
+    }
     s.wi++;
     s.inputs[s.wi] = "";
+    if (burstFail) fail(s, "min burst");
     return true;
   }
 
   if (key.length !== 1) return false;
   if (input.length >= word.length + MAX_EXTRA) return false;
   if (word[input.length] === key) s.correctKeys++;
-  else s.incorrectKeys++;
+  else {
+    s.incorrectKeys++;
+    if (r.difficulty === "master") return fail(s, "difficulty");
+    // the mistake counts but nothing is typed
+    if (r.stopOnError === "letter") return true;
+  }
   s.inputs[s.wi] = input + key;
   if (last && s.inputs[s.wi] === word) s.finished = true;
   return true;
+}
+
+/**
+ * Time-based fail rules (min speed, min accuracy), checked once per elapsed
+ * second like monkeytype's timer. Sets and returns `failed`.
+ */
+export function checkLiveFail(s: TypingState, elapsedMs: number): FailReason | null {
+  if (s.failed || s.finished) return s.failed;
+  const r = s.rules;
+  if (r.minWpm && s.wi > 3 && calculateWpm(correctChars(s, true), elapsedMs) < r.minWpm) s.failed = "min speed";
+  else if (r.minAcc && accuracy(s) < r.minAcc) s.failed = "min accuracy";
+  return s.failed;
 }
 
 /** Characters credited towards WPM: correct words plus their spaces (monkeytype's formula). */
@@ -138,11 +200,11 @@ export function correctPrefix(s: TypingState): number {
   return n + j;
 }
 
-export function replay(text: string, keys: Keystroke[], untilMs = Infinity): TypingState {
-  const s = createState(text);
+export function replay(text: string, keys: Keystroke[], untilMs = Infinity, rules?: Rules): TypingState {
+  const s = createState(text, rules);
   for (const ks of keys) {
     if (ks.t > untilMs) break;
-    applyKey(s, ks.k);
+    applyKey(s, ks.k, ks.t);
   }
   return s;
 }
@@ -168,8 +230,8 @@ export function finalStats(s: TypingState, durationMs: number): FinalStats {
 export type TimelinePoint = { wpm: number; raw: number; err: number };
 
 /** Per-second speed/mistake samples for the results graph (the last bucket may be partial). */
-export function raceTimeline(text: string, keys: Keystroke[], durationMs: number): TimelinePoint[] {
-  const s = createState(text);
+export function raceTimeline(text: string, keys: Keystroke[], durationMs: number, rules?: Rules): TimelinePoint[] {
+  const s = createState(text, rules);
   const out: TimelinePoint[] = [];
   const buckets = Math.max(1, Math.ceil(durationMs / 1000));
   let i = 0;
@@ -178,9 +240,9 @@ export function raceTimeline(text: string, keys: Keystroke[], durationMs: number
     const errBefore = s.incorrectKeys;
     let typed = 0;
     while (i < keys.length && (keys[i]!.t <= end || b === buckets)) {
-      const k = keys[i++]!.k;
+      const { k, t } = keys[i++]!;
       if (k !== BACKSPACE && k !== WORD_DELETE) typed++;
-      applyKey(s, k);
+      applyKey(s, k, t);
     }
     const span = Math.max(1, end - (b - 1) * 1000);
     out.push({

@@ -10,6 +10,30 @@
   src: url("/fonts/LexendDeca-Regular.woff2") format("woff2");
   font-display: swap;
 }
+/* typing fonts (settings → appearance → font family), from monkeytype */
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Fira Code"; src: url("/fonts/FiraCode-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Source Code Pro"; src: url("/fonts/SourceCodePro-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Ubuntu Mono"; src: url("/fonts/UbuntuMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Commit Mono"; src: url("/fonts/CommitMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("/fonts/GeistMono-Medium.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Mononoki"; src: url("/fonts/Mononoki-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Hack"; src: url("/fonts/Hack-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Overpass Mono"; src: url("/fonts/OverpassMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Comfortaa"; src: url("/fonts/Comfortaa-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("/fonts/Montserrat-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("/fonts/Nunito-Bold.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Lato"; src: url("/fonts/Lato-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url("/fonts/SpaceGrotesk-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Titillium Web"; src: url("/fonts/TitilliumWeb-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Ubuntu"; src: url("/fonts/Ubuntu-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Oxygen"; src: url("/fonts/Oxygen-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "OpenDyslexic"; src: url("/fonts/OpenDyslexic-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Coming Soon"; src: url("/fonts/ComingSoon-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Itim"; src: url("/fonts/Itim-Regular.woff2") format("woff2"); font-display: swap; }
 
 /* serika dark, monkeytype's default theme */
 @theme {

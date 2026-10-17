@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Check, Lock, LogOut, Monitor } from "@lucide/svelte";
+  import { Check, Lock, LogOut, Monitor, Search, X } from "@lucide/svelte";
   import { COSMETICS, THEMES, tierById, type Cosmetic, type CosmeticType } from "@mtr/shared";
   import { api, errorMessage, fieldErrors } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
@@ -10,7 +10,22 @@
   import { toasts } from "#lib/toast.svelte.ts";
   import { COUNTRIES, flag } from "#lib/countries.ts";
   import Caret from "#lib/components/Caret.svelte";
-  import { FONT_SIZES, QUICK_RESTARTS, fontSizeName, prefs, type QuickRestart } from "#lib/prefs.svelte.ts";
+  import {
+    CARET_SPEEDS,
+    FONT_SIZES,
+    HIGHLIGHT_MODES,
+    INDICATE_TYPOS,
+    LIVE_STYLES,
+    PROGRESS_STYLES,
+    QUICK_RESTARTS,
+    TAPE_MODES,
+    fontSizeName,
+    prefs,
+    type PrefKey,
+  } from "#lib/prefs.svelte.ts";
+  import { FONTS, fontLabel } from "#lib/fonts.ts";
+  import { CLICK_SOUNDS, ERROR_SOUNDS, VOLUMES, playClick, playError } from "#lib/sound.ts";
+  import { LAYOUT_IDS, layoutName } from "#lib/layouts.ts";
 
   type Sess = { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string };
 
@@ -135,6 +150,76 @@
   const equippedId = (type: CosmeticType) => session.me?.equipped[type];
   const shortUa = (ua: string | null) =>
     !ua ? "unknown device" : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
+
+  // ---------------------------------------------------------------- preferences
+  // Every typing preference, grouped like monkeytype's settings page. They're
+  // all cosmetic; gameplay rules live in practice and private rooms instead.
+  type Setting = {
+    id: string;
+    section: string;
+    title: string;
+    hint: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options: readonly any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: () => any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    set: (v: any) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    name?: (v: any) => string;
+    kind?: "buttons" | "select" | "fonts";
+    /** extra search words */
+    tags?: string;
+  };
+  const onOff = [true, false];
+  const onOffName = (v: boolean) => (v ? "on" : "off");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pref = <K extends PrefKey>(id: K) => ({ value: () => prefs[id], set: (v: any) => prefs.set(id, v) });
+
+  const SECTIONS: { id: string; label: string; note?: string }[] = [
+    {
+      id: "behaviour",
+      label: "behaviour",
+      note: 'gameplay rules like stop on error, confidence mode or minimum speed are set per test under <b>rules</b> in <a class="link" href="/practice">practice</a>, or by the host of a private room. ranked and casual always race without them.',
+    },
+    { id: "input", label: "input" },
+    { id: "sound", label: "sound" },
+    { id: "caret", label: "caret", note: 'caret colour and shape are cosmetics you unlock by playing (see <a class="link" href="#cosmetics">cosmetics</a>).' },
+    { id: "appearance", label: "appearance" },
+    { id: "live", label: "live stats" },
+  ];
+
+  const SETTINGS: Setting[] = [
+    { id: "quick-restart", section: "behaviour", title: "quick restart", hint: "restart a practice test with a single key.", options: QUICK_RESTARTS, ...pref("quickRestart") },
+    { id: "layout", section: "input", title: "layout emulation", hint: "type as if your keyboard had this layout, whatever your system layout is (e.g. practise dvorak on a qwerty board).", options: LAYOUT_IDS, name: layoutName, kind: "select", tags: "keyboard dvorak colemak workman azerty qwertz", ...pref("layout") },
+    { id: "sound-click", section: "sound", title: "sound on click", hint: "play a sound on every key.", options: Object.keys(CLICK_SOUNDS), name: (v: string) => CLICK_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnClick, set: (v: string) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)) },
+    { id: "sound-error", section: "sound", title: "sound on error", hint: "play a sound when you make a mistake (instead of the click).", options: Object.keys(ERROR_SOUNDS), name: (v: string) => ERROR_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnError, set: (v: string) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)) },
+    { id: "sound-volume", section: "sound", title: "sound volume", hint: "how loud typing sounds are.", options: VOLUMES, name: (v: number) => `${v * 100}%`, tags: "audio", value: () => prefs.soundVolume, set: (v: number) => (prefs.set("soundVolume", v), playClick(prefs.soundOnClick === "off" ? "click" : prefs.soundOnClick, v)) },
+    { id: "smooth-caret", section: "caret", title: "smooth caret", hint: "glide the caret between letters instead of jumping, and how fast.", options: CARET_SPEEDS, ...pref("smoothCaret") },
+    { id: "font-family", section: "appearance", title: "font family", hint: "the font used across the site and for the words you type.", options: [], kind: "fonts", tags: FONTS.map(fontLabel).join(" "), ...pref("fontFamily") },
+    { id: "font-size", section: "appearance", title: "font size", hint: "size of the words you type.", options: FONT_SIZES, name: fontSizeName, ...pref("fontSize") },
+    { id: "tape-mode", section: "appearance", title: "tape mode", hint: "show the words on one scrolling line. letter scrolls every letter, word every word.", options: TAPE_MODES, ...pref("tapeMode") },
+    { id: "show-all-lines", section: "appearance", title: "show all lines", hint: "show the whole text instead of three lines (not in time mode).", options: onOff, name: onOffName, ...pref("showAllLines") },
+    { id: "smooth-line-scroll", section: "appearance", title: "smooth line scroll", hint: "slide to the next line instead of jumping.", options: onOff, name: onOffName, ...pref("smoothLineScroll") },
+    { id: "highlight-mode", section: "appearance", title: "highlight mode", hint: "letter colours each typed letter, word lights up the whole current word, off only shows mistakes.", options: HIGHLIGHT_MODES, ...pref("highlightMode") },
+    { id: "indicate-typos", section: "appearance", title: "indicate typos", hint: "show the letter you actually typed below the word, or in place of the right one.", options: INDICATE_TYPOS, ...pref("indicateTypos") },
+    { id: "blind-mode", section: "appearance", title: "blind mode", hint: "hide mistakes while you type. they still count.", options: onOff, name: onOffName, ...pref("blindMode") },
+    { id: "hide-extra", section: "appearance", title: "hide extra letters", hint: "don't show letters typed past the end of a word.", options: onOff, name: onOffName, ...pref("hideExtraLetters") },
+    { id: "flip-colors", section: "appearance", title: "flip test colors", hint: "untyped words bright, typed words dim.", options: onOff, name: onOffName, ...pref("flipColors") },
+    { id: "colorful-mode", section: "appearance", title: "colorful mode", hint: "typed letters use the theme's main colour.", options: onOff, name: onOffName, ...pref("colorfulMode") },
+    { id: "live-progress", section: "live", title: "live progress", hint: "the timer or word count while typing: big, small, a bar, or hidden.", options: PROGRESS_STYLES, tags: "timer", ...pref("liveProgress") },
+    { id: "live-wpm", section: "live", title: "live speed", hint: "your wpm while typing.", options: LIVE_STYLES, tags: "wpm", ...pref("liveWpm") },
+    { id: "live-acc", section: "live", title: "live accuracy", hint: "your accuracy while typing.", options: LIVE_STYLES, ...pref("liveAcc") },
+    { id: "live-burst", section: "live", title: "live burst", hint: "the speed of your last word.", options: LIVE_STYLES, ...pref("liveBurst") },
+  ];
+
+  let query = $state("");
+  const terms = $derived(query.toLowerCase().split(/\s+/).filter(Boolean));
+  const hit = (s: string) => terms.every((t) => s.toLowerCase().includes(t));
+  const matching = $derived(SETTINGS.filter((s) => hit(`${s.section} ${s.title} ${s.hint} ${s.tags ?? ""}`)));
+  const visibleSection = (id: string) => matching.some((s) => s.section === id);
+  const shownThemes = $derived(hit("theme colour color") ? THEMES : THEMES.filter((t) => hit(t.name)));
+  const themeVisible = $derived(shownThemes.length > 0 || hit("room themes"));
 </script>
 
 <svelte:head><title>Settings · MT Ranked</title></svelte:head>
@@ -162,37 +247,104 @@
   </ul>
 {/snippet}
 
+{#snippet setting(s: Setting)}
+  {#if s.kind === "fonts"}
+    <div>
+      <div>{s.title}</div>
+      <div class="mb-3 text-xs text-sub">{s.hint}</div>
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        {#each FONTS as f (f.id)}
+          {@const on = prefs.fontFamily === f.id}
+          <button
+            class="truncate rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
+            class:border-main={on}
+            class:border-transparent={!on}
+            class:text-sub={!on}
+            style="font-family: '{f.name}', monospace"
+            onclick={() => prefs.set("fontFamily", f.id)}>{fontLabel(f)}</button
+          >
+        {/each}
+      </div>
+    </div>
+  {:else if s.kind === "select"}
+    <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
+      <div class="max-w-md">
+        <div>{s.title}</div>
+        <div class="text-xs text-sub">{s.hint}</div>
+      </div>
+      <select class="input w-auto cursor-pointer text-sm" value={s.value()} onchange={(e) => s.set(e.currentTarget.value)}>
+        {#each s.options as o (o)}<option value={o}>{(s.name ?? String)(o)}</option>{/each}
+      </select>
+    </div>
+  {:else}
+    {@render choice(s.title, s.hint, s.options, s.value(), s.set, s.name)}
+  {/if}
+{/snippet}
+
 <div class="mx-auto max-w-[900px] space-y-12 animate-fade">
-  <section>
-    <h2 class="label mb-1 text-sm">preferences</h2>
-    <p class="mb-5 text-xs text-sub">{session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere to change these without the mouse.</p>
-    <div class="label mb-2">theme</div>
-    <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" role="presentation" onmouseleave={endPreview}>
-      {#each THEMES as t (t.id)}
-        {@const on = prefs.theme === t.id}
-        <button
-          class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm"
-          style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
-          onmouseenter={() => hoverTheme(t.id)}
-          onfocus={() => (prefs.preview = t.id)}
-          onblur={endPreview}
-          onclick={() => prefs.set("theme", t.id)}
-        >
-          <span class="truncate">{t.name}</span>
-          <span class="flex shrink-0 gap-1">
-            {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"></span>{/each}
-          </span>
-        </button>
+  <div class="sticky top-0 z-10 -mx-2 space-y-3 bg-bg/95 px-2 py-3 backdrop-blur">
+    <label class="flex items-center gap-2 rounded-lg bg-sub-alt px-3">
+      <Search size={16} class="text-sub" />
+      <input class="w-full bg-transparent py-2 outline-none placeholder:text-sub" placeholder="search settings (e.g. caret, sound, tape)" bind:value={query} />
+      {#if query}<button class="text-sub hover:text-text" onclick={() => (query = "")} aria-label="clear search"><X size={16} /></button>{/if}
+    </label>
+    <nav class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {#each SECTIONS as sec (sec.id)}
+        {#if visibleSection(sec.id)}<a class="text-sub hover:text-main" href="#{sec.id}">{sec.label}</a>{/if}
       {/each}
-    </div>
-    <div class="space-y-6">
-      {@render choice<QuickRestart>("quick restart", "restart a practice test with a single key.", QUICK_RESTARTS, prefs.quickRestart, (v) => prefs.set("quickRestart", v))}
+      <a class="text-sub hover:text-main" href="#theme" class:hidden={!themeVisible}>theme</a>
+      {#if session.me && !query}<a class="text-sub hover:text-main" href="#account">account</a>{/if}
+    </nav>
+  </div>
+  <p class="-mt-8 text-xs text-sub">
+    {session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere
+    to change these without the mouse. everything here only changes how typing looks and sounds for you, so it works in ranked too.
+  </p>
+
+  {#each SECTIONS as sec (sec.id)}
+    {#if visibleSection(sec.id)}
+      <section id={sec.id} class="scroll-mt-28">
+        <h2 class="label mb-1 text-sm">{sec.label}</h2>
+        {#if sec.note}<p class="mb-5 text-xs text-sub">{@html sec.note}</p>{:else}<div class="mb-5"></div>{/if}
+        <div class="space-y-6">
+          {#each matching.filter((s) => s.section === sec.id) as s (s.id)}
+            {@render setting(s)}
+          {/each}
+        </div>
+      </section>
+    {/if}
+  {/each}
+
+  {#if themeVisible}
+    <section id="theme" class="scroll-mt-28">
+      <h2 class="label mb-4 text-sm">theme</h2>
+      <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" role="presentation" onmouseleave={endPreview}>
+        {#each shownThemes as t (t.id)}
+          {@const on = prefs.theme === t.id}
+          <button
+            class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm"
+            style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
+            onmouseenter={() => hoverTheme(t.id)}
+            onfocus={() => (prefs.preview = t.id)}
+            onblur={endPreview}
+            onclick={() => prefs.set("theme", t.id)}
+          >
+            <span class="truncate">{t.name}</span>
+            <span class="flex shrink-0 gap-1">
+              {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"></span>{/each}
+            </span>
+          </button>
+        {/each}
+      </div>
       {@render choice("room themes", `show ${session.supporterSales ? "a supporter host's" : "the host's"} room theme while you're in their room. your own theme comes back when you leave.`, [true, false], prefs.roomThemes, (v) => prefs.set("roomThemes", v), (v) => (v ? "on" : "off"))}
-      {@render choice("font size", "size of the words you type.", FONT_SIZES, prefs.fontSize, (v) => prefs.set("fontSize", v), fontSizeName)}
-      {@render choice("smooth caret", "glide the caret between letters instead of jumping.", [true, false], prefs.smoothCaret, (v) => prefs.set("smoothCaret", v), (v) => (v ? "on" : "off"))}
-      {@render choice("live wpm", "show your speed while typing.", [true, false], prefs.liveWpm, (v) => prefs.set("liveWpm", v), (v) => (v ? "on" : "off"))}
-    </div>
-  </section>
+    </section>
+  {/if}
+
+  {#if query && !matching.length && !themeVisible}
+    <div class="text-center text-sub">no settings match "{query}"</div>
+  {/if}
+
+<div id="account" class="scroll-mt-28 space-y-12" class:hidden={!!query}>
 
   {#if session.loaded && !session.me}
     <div class="card flex flex-wrap items-center justify-between gap-4">
@@ -274,7 +426,7 @@
       </button>
     {/snippet}
 
-    <section>
+    <section id="cosmetics" class="scroll-mt-28">
       <h2 class="label mb-1 text-sm">cosmetics</h2>
       <p class="mb-5 text-xs text-sub">
         unlocked by typing. every race earns xp toward your next level, and reaching a tier in ranked unlocks its reward for good.
@@ -353,4 +505,5 @@
       <button class="btn mt-6" onclick={logout}><LogOut size={16} /> sign out</button>
     </section>
 {/if}
+</div>
 </div>

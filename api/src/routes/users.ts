@@ -272,6 +272,7 @@ export const matchRoute = s.route(contract.match, async ({ params }) => {
         status: m.status,
         text: m.text,
         seed: m.seed,
+        rules: m.text_settings?.rules,
         startedAt: m.started_at.toISOString(),
         finishedAt: m.finished_at.toISOString(),
         players: players.map((p) => ({

@@ -3,18 +3,25 @@
   import { RotateCcw } from "@lucide/svelte";
   import {
     applyKey,
+    accuracy,
     calculateWpm,
+    checkLiveFail,
     correctChars,
+    describeRules,
     createState,
     finalStats,
     generateText,
     randomSeed,
     LANGUAGES,
+    type FailReason,
     type FinalStats,
+    type Rules,
     type TextSettings,
     type TypingState,
   } from "@mtr/engine";
   import TypingArea from "#lib/components/TypingArea.svelte";
+  import RulesPicker from "#lib/components/RulesPicker.svelte";
+  import LiveStats from "#lib/components/LiveStats.svelte";
   import { session } from "#lib/session.svelte.ts";
   import { resolveEquipped } from "@mtr/shared";
   import { prefs, type QuickRestart } from "#lib/prefs.svelte.ts";
@@ -32,7 +39,9 @@
   let area: TypingArea | undefined = $state();
   let startedAt = $state<number | null>(null);
   let now = $state(Date.now());
-  let result = $state<(FinalStats & { time: number }) | null>(null);
+  let result = $state<(FinalStats & { time: number; failed: FailReason | null }) | null>(null);
+  /** last whole second the min speed/accuracy rules were checked */
+  let ruleSec = 0;
   let source = $state<string | undefined>();
   let timer: ReturnType<typeof setInterval> | undefined;
   let generation = 0;
@@ -48,7 +57,8 @@
     source = t.source;
     result = null;
     startedAt = null;
-    ts = createState(t.text);
+    ruleSec = 0;
+    ts = createState(t.text, settings.rules);
   }
   void restart();
   onDestroy(() => clearInterval(timer));
@@ -59,20 +69,25 @@
       startedAt = performance.now();
       timer = setInterval(() => {
         now = performance.now();
+        const sec = Math.floor((now - startedAt!) / 1000);
+        if (sec > ruleSec) {
+          ruleSec = sec;
+          if (checkLiveFail(ts, sec * 1000)) return finish();
+        }
         if (settings.mode === "time" && now - startedAt! >= settings.time * 1000) finish();
       }, 100);
     }
-    applyKey(ts, k);
+    applyKey(ts, k, Math.round(performance.now() - startedAt));
     area?.sync();
     version++;
     now = performance.now();
-    if (ts.finished) finish();
+    if (ts.finished || ts.failed) finish();
   }
 
   function finish() {
     clearInterval(timer);
-    const ms = settings.mode === "time" ? settings.time * 1000 : performance.now() - startedAt!;
-    result = { ...finalStats(ts, ms), time: ms / 1000 };
+    const ms = settings.mode === "time" && !ts.failed ? settings.time * 1000 : performance.now() - startedAt!;
+    result = { ...finalStats(ts, ms), time: ms / 1000, failed: ts.failed };
   }
 
   const elapsed = $derived(startedAt === null ? 0 : now - startedAt);
@@ -81,12 +96,20 @@
     void version;
     return startedAt === null || elapsed < 500 ? 0 : Math.round(calculateWpm(correctChars(ts, true), elapsed));
   });
+  const liveAcc = $derived.by(() => (void version, Math.round(accuracy(ts))));
+  const liveBurst = $derived.by(() => (void version, ts.lastBurst ?? 0));
+  const progress = $derived.by(() => {
+    void version;
+    return settings.mode === "time" ? Math.min(1, elapsed / (settings.time * 1000)) : Math.min(1, ts.wi / ts.words.length);
+  });
   const counter = $derived.by(() => {
     void version;
     return settings.mode === "time"
       ? Math.max(0, Math.ceil(settings.time - elapsed / 1000))
       : `${Math.min(ts.wi, ts.words.length)}/${ts.words.length}`;
   });
+
+  const ruleList = $derived(describeRules(settings.rules));
 
   function set<K extends keyof TextSettings>(k: K, v: TextSettings[K]) {
     settings[k] = v;
@@ -108,7 +131,7 @@
 <svelte:head><title>Practice · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[1000px]">
-  <div class="mb-10 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>
+  <div class="mb-3 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>
     <button class="toggle" class:on={settings.punctuation} onclick={() => set("punctuation", !settings.punctuation)}>@ punctuation</button>
     <button class="toggle" class:on={settings.numbers} onclick={() => set("numbers", !settings.numbers)}># numbers</button>
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
@@ -134,22 +157,25 @@
       {#each LANGUAGES as l (l)}<option value={l}>{l.replace("_", " ")}</option>{/each}
     </select>
   </div>
+  <div class="mx-auto mb-8 max-w-2xl text-center transition-opacity" class:opacity-0={startedAt !== null && !result}>
+    <RulesPicker rules={settings.rules} onchange={(r: Rules | undefined) => set("rules", r)} note="your own practice rules. ranked and casual always race without them." />
+  </div>
 
   {#if !result}
     <div class="animate-fade">
-      <div class="mb-2 flex h-9 items-end gap-6 text-3xl text-main">
-        {#if startedAt !== null}
-          <span>{counter}</span>
-          {#if prefs.liveWpm}<span class="text-xl text-sub">{liveWpm} wpm</span>{/if}
-        {/if}
-      </div>
-      <TypingArea bind:this={area} {ts} {onkey} caretColor={eq.caretColor} caretShape={eq.caretShape} />
+      <LiveStats show={startedAt !== null} {counter} {progress} wpm={liveWpm} acc={liveAcc} burst={liveBurst}>
+        {#if ruleList.length}<span class="ml-auto self-center text-xs text-sub">{ruleList.join(" · ")}</span>{/if}
+      </LiveStats>
+      <TypingArea bind:this={area} {ts} {onkey} caretColor={eq.caretColor} caretShape={eq.caretShape} allowAllLines={settings.mode !== "time"} />
       <div class="mt-8 flex justify-center">
         <button class="btn btn-ghost" onclick={restart} title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}><RotateCcw size={18} /></button>
       </div>
     </div>
   {:else}
     <div class="animate-rise">
+      {#if result.failed}
+        <div class="mb-6 text-2xl text-error">test failed · {result.failed}</div>
+      {/if}
       <div class="flex flex-wrap items-end gap-12">
         <div>
           <div class="label text-2xl">wpm</div>
