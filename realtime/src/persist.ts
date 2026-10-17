@@ -1,4 +1,4 @@
-import { sql, grantTierCosmetics, type Sql } from "@mtr/db";
+import { sql, grantTierCosmetics, intArray, type Sql } from "@mtr/db";
 import type { RaceResultRow, TextSettings } from "@mtr/race-protocol";
 import type { Keystroke } from "@mtr/engine";
 import { PLACEMENT_RACES } from "@mtr/shared";
@@ -74,7 +74,7 @@ export async function saveRace(input: SaveInput) {
           finished_at_ms, finished, forfeit, rating_before, rating_after, rating_delta, xp, duration_ms, consistency, chars)
         values (${input.matchId}, ${slot}, ${row.userId ?? null}, ${row.guestName ?? null}, ${r.placement}, ${r.wpm}, ${r.raw},
           ${r.acc}, ${r.timeMs}, ${r.finished}, ${r.forfeit}, ${r.ratingBefore ?? null}, ${r.ratingAfter ?? null},
-          ${r.delta ?? null}, ${r.xp ?? 0}, ${row.durationMs ?? r.timeMs}, ${r.consistency ?? null}, ${r.chars ? tx.array(r.chars) : null})`;
+          ${r.delta ?? null}, ${r.xp ?? 0}, ${row.durationMs ?? r.timeMs}, ${r.consistency ?? null}, ${r.chars ? intArray(tx, r.chars) : null})`;
       if (row.keys) await tx`insert into replays (match_id, slot, keystrokes) values (${input.matchId}, ${slot}, ${tx.json(row.keys)})`;
       if (row.userId) {
         if (r.xp) await tx`update users set xp = xp + ${r.xp} where id = ${row.userId}`;
