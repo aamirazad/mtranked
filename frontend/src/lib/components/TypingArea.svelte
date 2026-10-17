@@ -14,6 +14,7 @@
   import { emulateKey } from "#lib/layouts.ts";
   import { playClick, playError } from "#lib/sound.ts";
   import FunboxLayer from "#lib/funbox/FunboxLayer.svelte";
+  import { commandLine } from "./CommandLine.svelte";
   import { applyGlobalFunbox, funboxClass, funboxLines, mapFunboxKey } from "#lib/funbox/index.ts";
 
   let {
@@ -110,6 +111,16 @@
 
   $effect(() => {
     if (active) void tick().then(focus);
+  });
+
+  // closing the command line leaves focus on the body; take it back. Wait a
+  // task so a backdrop click's own focus change has already happened.
+  $effect(() => {
+    if (commandLine.open || !untrack(() => active)) return;
+    const t = setTimeout(() => {
+      if (active && !commandLine.open) focus();
+    });
+    return () => clearTimeout(t);
   });
 
   // font, size and view preferences change every position
