@@ -246,7 +246,7 @@
               onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null })}
             >
               <option value="">none (everyone keeps theirs)</option>
-              {#each THEMES as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+              {#each THEMES as t (t.id)}<option value={t.id}>{t.name}{t.note ? ` (${t.note})` : ""}</option>{/each}
             </select>
           </label>
         {:else if room.theme}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dimBanner } from "#lib/banner.ts";
   import type { ActiveRace } from "#lib/game.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
   import TierBadge from "./TierBadge.svelte";
@@ -34,7 +35,7 @@
       {:else if p}
         <div
           class="banner flex flex-col items-center gap-2 rounded-xl bg-sub-alt px-4 py-5 text-center"
-          style={p.banner ? `background: ${p.banner}` : undefined}
+          style={p.banner ? `background: ${dimBanner(p.banner, 72)}` : undefined}
         >
           <div class="text-xl" class:text-main={p.id === meId}>{p.name}</div>
           {#if p.rating !== undefined && race.mode === "ranked"}

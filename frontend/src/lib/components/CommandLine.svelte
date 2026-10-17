@@ -304,6 +304,7 @@
               {/if}
               <span class="w-4 shrink-0">{#if r.option.active}<Check size={14} />{/if}</span>
               <span class="truncate">{r.option.label}</span>
+              {#if r.option.theme?.note}<span class="shrink-0 text-xs text-sub">{r.option.theme.note}</span>{/if}
               {#if r.option.theme}<span class="ml-auto">{@render swatch(r.option.theme)}</span>{/if}
             {/if}
           </li>

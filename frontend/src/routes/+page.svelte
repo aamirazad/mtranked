@@ -58,7 +58,7 @@
     <!-- ranked -->
     <button class="mode-card group" onclick={ranked}>
       <div class="flex items-center justify-between">
-        <Swords size={30} class="text-main" />
+        <span class="icon-tile"><Swords size={30} /></span>
         <span class="text-xs text-sub">1v1 · rated</span>
       </div>
       <div class="mt-8 font-logo text-3xl">ranked</div>
@@ -76,7 +76,7 @@
     <!-- casual -->
     <button class="mode-card group" onclick={() => goto("/play/casual")}>
       <div class="flex items-center justify-between">
-        <Zap size={30} class="text-main" />
+        <span class="icon-tile"><Zap size={30} /></span>
         <span class="text-xs text-sub">1v1 · unrated</span>
       </div>
       <div class="mt-8 font-logo text-3xl">casual</div>
@@ -87,7 +87,7 @@
     <!-- private -->
     <div class="mode-card">
       <div class="flex items-center justify-between">
-        <Users size={30} class="text-main" />
+        <span class="icon-tile"><Users size={30} /></span>
         <span class="text-xs text-sub">2–16 players</span>
       </div>
       <div class="mt-8 font-logo text-3xl">private room</div>
@@ -125,7 +125,7 @@
       transform 0.15s;
   }
   button.mode-card:hover {
-    border-color: var(--color-main);
+    border-color: var(--edge-hover);
     transform: translateY(-2px);
   }
 </style>
