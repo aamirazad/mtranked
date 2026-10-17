@@ -8,6 +8,8 @@
   import { game } from "#lib/game.svelte.ts";
   import { friends, describeActivity } from "#lib/friends.svelte.ts";
   import { flag } from "#lib/countries.ts";
+  import { Notes } from "#lib/notes.svelte.ts";
+  import Note from "#lib/components/Note.svelte";
 
   onMount(async () => {
     if (!session.loaded) await session.refresh();
@@ -68,15 +70,27 @@
     if (confirm(`Remove ${f.name} from your friends?`)) void friends.remove(f);
   }
 
+  // feedback shown on the row that was clicked
+  const notes = new Notes();
+  const rowNote = (id: string) => {
+    const refused = game.errorFrom(`friend:${id}`);
+    return refused ? { text: refused, kind: "error" as const } : notes.get(id);
+  };
+
+  async function accept(f: { id: string }) {
+    const problem = await friends.accept(f);
+    if (problem) notes.set(f.id, problem, "error");
+  }
+
   // "race": a new private room with them invited
   let starting = $state<string | null>(null);
   async function race(id: string) {
     starting = id;
     try {
-      const code = await game.createRoom({ invite: [id] });
+      const code = await game.createRoom({ invite: [id], from: `friend:${id}` });
       await goto(`/room/${code}`);
     } catch {
-      // the server said why (already in a match, ...)
+      // the server said why (already in a match, ...), shown on their row
     } finally {
       starting = null;
     }
@@ -155,13 +169,14 @@
         <div class="label mb-3">friend requests</div>
         <ul class="space-y-1">
           {#each list.incoming as f (f.id)}
-            <li class="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-bg/40">
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-1.5 hover:bg-bg/40">
               <a href="/u/{f.name}" class="truncate hover:text-main">{flag(f.country)} {f.name}</a>
               <span class="text-xs text-sub">lv {f.level}</span>
               <span class="ml-auto flex gap-2">
-                <button class="btn btn-main py-1 text-sm" onclick={() => friends.accept(f)}><Check size={14} /> accept</button>
+                <button class="btn btn-main py-1 text-sm" onclick={() => accept(f)}><Check size={14} /> accept</button>
                 <button class="btn btn-ghost py-1 text-sm" onclick={() => friends.remove(f)}><X size={14} /> decline</button>
               </span>
+              <Note note={notes.get(f.id)} class="w-full text-right" />
             </li>
           {/each}
         </ul>
@@ -188,9 +203,9 @@
                 {/if}
                 {#if f.presence.activity?.kind === "room"}
                   {#if game.hasAsked(f.id)}
-                    <span class="text-xs text-sub">asked to join</span>
+                    <span class="text-xs text-sub" title="you'll be let in as soon as a host accepts">asked to join · waiting for a host</span>
                   {:else}
-                    <button class="btn py-1 text-sm" title="ask the room's hosts to let you in" onclick={() => game.askToJoin(f.id)}>
+                    <button class="btn py-1 text-sm" title="ask the room's hosts to let you in" onclick={() => game.askToJoin(f.id, `friend:${f.id}`)}>
                       <DoorOpen size={14} /> ask to join
                     </button>
                   {/if}
@@ -204,6 +219,7 @@
                   <UserMinus size={16} />
                 </button>
               </span>
+              <Note note={rowNote(f.id)} class="w-full text-right" />
             </li>
           {/each}
         </ul>

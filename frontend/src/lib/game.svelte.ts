@@ -78,6 +78,9 @@ class Watch implements RaceFeed {
   }
 }
 
+/** error codes a page already explains in place, so they never toast */
+const SHOWN_IN_PLACE = new Set(["room_join", "room_closed", "spectate"]);
+
 /** `admitted`: a host accepted our request to join, rather than us being invited */
 export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number; admitted?: boolean };
 
@@ -92,7 +95,9 @@ class Game {
   queueMode = $state<QueueMode | null>(null);
   match = $state<MatchFound | null>(null);
   /** last ready check that fell through; `requeued` false means we were dropped from the queue */
-  cancelled = $state<{ requeued: boolean; at: number } | null>(null);
+  cancelled = $state<{ requeued: boolean; reason: string; at: number } | null>(null);
+  /** why the server just took us out of the queue (e.g. we joined a room); the room page says so */
+  queueLeft = $state<{ reason: string; at: number } | null>(null);
   race = $state<ActiveRace | null>(null);
   live = $state<Record<string, LivePlayer>>({});
   result = $state<RaceResult | null>(null);
@@ -106,6 +111,10 @@ class Game {
   /** open casual rematch offer for the last result */
   rematch = $state<Rematch | null>(null);
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
+  /** the server refused something sent with a `from` tag; shown next to that control */
+  actionError = $state<{ from: string; message: string; at: number } | null>(null);
+  /** the guest name we tried to switch to was refused (we carried on under the old one) */
+  guestNameError = $state<string | null>(null);
   /** friends' invites to their rooms, newest last */
   invites = $state<RoomInvite[]>([]);
   /** the friend's race or room we're watching */
@@ -128,6 +137,8 @@ class Game {
   private pending: ClientMsg[] = [];
   private guestName: string | undefined;
   private connecting: Promise<void> | null = null;
+  /** where the last tagged message was sent from, so a refusal lands next to it */
+  private sentFrom: { from: string; at: number } | null = null;
   /** a room.create waiting for its room */
   private created: { resolve: (code: string) => void; reject: (e: Error) => void } | null = null;
 
@@ -146,6 +157,7 @@ class Game {
   /** Reconnect with a new identity (after sign-in/out or a guest rename). */
   async reconnect(guestName?: string) {
     this.guestName = guestName;
+    this.guestNameError = null;
     const ws = this.ws;
     this.ws = null;
     ws?.close(1000);
@@ -158,8 +170,8 @@ class Game {
     this.status = "connecting";
     const r = await api.auth.ticket({ body: { guestName: this.guestName } }).catch(() => null);
     if (r?.status === 400 && this.guestName) {
-      // the server refused the guest name: say so and carry on under the old one
-      toasts.show(r.body.message, "error", 6000);
+      // the server refused the guest name: carry on under the old one and let the page say why
+      this.guestNameError = r.body.message;
       this.guestName = undefined;
       return this.open();
     }
@@ -223,7 +235,12 @@ class Game {
     this.pingTimer = setInterval(ping, 4000);
   }
 
-  send(msg: ClientMsg) {
+  /** `from` tags where in the page this was sent from; a refusal is then shown there instead of as a toast */
+  send(msg: ClientMsg, from?: string) {
+    if (from) {
+      this.sentFrom = { from, at: Date.now() };
+      if (this.actionError?.from === from) this.actionError = null;
+    } else if (msg.type !== "ping" && msg.type !== "input.batch") this.sentFrom = null;
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
     else if (msg.type !== "input.batch" && msg.type !== "ping") {
       this.pending.push(msg);
@@ -249,18 +266,26 @@ class Game {
         }
         break;
       }
-      case "error":
-        this.lastError = { code: msg.code, message: msg.message, at: Date.now() };
+      case "error": {
+        const at = Date.now();
+        this.lastError = { code: msg.code, message: msg.message, at };
         this.created?.reject(new Error(msg.message));
         this.created = null;
-        // queue refusals are shown in place by the play page
+        // a refusal of something sent with a `from` tag is shown next to that control
+        const from = this.sentFrom && at - this.sentFrom.at < 10_000 && msg.code !== "race_failed" ? this.sentFrom.from : null;
+        this.sentFrom = null;
         if (msg.code === "queue_timeout" || msg.code === "ranked_blocked" || msg.code === "suspended") {
+          // queue refusals are shown in place by the play page
           this.queue = null;
           this.queueMode = null;
-        } else toasts.show(msg.message, "error", 6000);
+        } else if (from) {
+          this.actionError = { from, message: msg.message, at };
+          setTimeout(() => this.actionError?.at === at && (this.actionError = null), 6000);
+        } else if (!SHOWN_IN_PLACE.has(msg.code)) toasts.show(msg.message, "error", 6000);
         // a failed join leaves us in no room, so a stale one can't hide the error
         if (msg.code === "room_join" || msg.code === "room_closed") this.dropRoom();
         break;
+      }
       case "notice":
         toasts.show(msg.message, "error", 10_000);
         break;
@@ -274,7 +299,7 @@ class Game {
         // sent on reconnect when we're in neither a queue nor a room, so a ready
         // check that ended while we were away is over
         if (this.match && this.serverNow() > this.match.readyBy) this.match = null;
-        if (msg.reason) toasts.show(msg.reason);
+        if (msg.reason) this.queueLeft = { reason: msg.reason, at: Date.now() };
         break;
       case "match.found":
         this.match = { matchId: msg.matchId, mode: msg.mode, players: msg.players, readyBy: msg.readyBy, ready: [] };
@@ -290,9 +315,9 @@ class Game {
       case "match.cancelled":
         this.match = null;
         notifier.clear();
-        this.cancelled = { requeued: msg.requeued, at: Date.now() };
-        if (msg.requeued) toasts.show(`${msg.reason} Back in the queue.`);
-        else toasts.show(msg.reason, "error", 10_000);
+        this.cancelled = { requeued: msg.requeued, reason: msg.reason, at: Date.now() };
+        // requeued: the play page says so in place. Otherwise we're sent home, so say why there.
+        if (!msg.requeued) toasts.show(msg.reason, "error", 10_000);
         if (!msg.requeued) this.queueMode = null;
         break;
       case "room.state":
@@ -357,7 +382,6 @@ class Game {
         break;
       case "room.requested":
         this.asked[msg.playerId] = Date.now();
-        toasts.show("Asked to join. You'll be let in as soon as a host accepts.", "info", 5000);
         break;
       case "room.admit":
         delete this.asked[msg.playerId];
@@ -403,13 +427,13 @@ class Game {
 
   // ------------------------------------------------------------ actions
   /** Create a private room (inviting `invite` straight away); resolves with its code. */
-  async createRoom(opts: { invite?: string[]; settings?: TextSettings } = {}): Promise<string> {
+  async createRoom(opts: { invite?: string[]; settings?: TextSettings; from?: string } = {}): Promise<string> {
     this.room = null;
     this.roomClosed = null;
     await this.connect().catch(() => {});
     this.created?.reject(new Error("superseded"));
     const code = new Promise<string>((resolve, reject) => (this.created = { resolve, reject }));
-    this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite });
+    this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite }, opts.from);
     return code;
   }
   /** Close our room for everyone; we don't need telling it closed. */
@@ -428,20 +452,24 @@ class Game {
   /** Watch whatever this friend is racing in. */
   spectate(friendId: string) {
     this.watch.reset();
-    this.send({ type: "spectate.start", playerId: friendId });
+    this.send({ type: "spectate.start", playerId: friendId }, "watch");
   }
   stopSpectating() {
     if (this.watch.target) this.send({ type: "spectate.stop" });
     this.watch.reset();
   }
   /** Ask the hosts of the room this friend is in to let us in. */
-  askToJoin(friendId: string) {
-    this.send({ type: "room.request", playerId: friendId });
+  askToJoin(friendId: string, from?: string) {
+    this.send({ type: "room.request", playerId: friendId }, from);
   }
   /** we asked to join this friend's room and haven't heard back */
   hasAsked(friendId: string) {
     const at = this.asked[friendId];
     return !!at && Date.now() - at < INVITE_MS;
+  }
+  /** the refusal for something sent from `from`, if any */
+  errorFrom(from: string) {
+    return this.actionError?.from === from ? this.actionError.message : null;
   }
   dismissInvite(code: string) {
     this.invites = this.invites.filter((i) => i.code !== code);
@@ -451,7 +479,7 @@ class Game {
     this.result = null;
     this.race = null;
     this.queueMode = mode;
-    this.send({ type: "queue.join", mode });
+    this.send({ type: "queue.join", mode }, "queue");
   }
   leaveQueue() {
     this.queueMode = null;

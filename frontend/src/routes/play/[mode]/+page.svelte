@@ -13,6 +13,7 @@
   import GameIntro from "#lib/components/GameIntro.svelte";
   import TierBadge from "#lib/components/TierBadge.svelte";
   import ReportDialog from "#lib/components/ReportDialog.svelte";
+  import Note from "#lib/components/Note.svelte";
 
   const mode = $derived(page.params.mode as QueueMode);
   let blocked = $state<string | null>(null);
@@ -91,6 +92,7 @@
   const theyAsked = $derived(!!rematch && !!opponent && rematch.requested.includes(opponent.id));
   // an incoming request takes over as the primary action
   const rematchInvite = $derived(theyAsked && !iAsked && !rematch?.closed && rematchLeft > 0);
+  const asNote = (text: string | null) => (text ? { text, kind: "error" as const } : null);
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   function again() {
@@ -190,10 +192,11 @@
       {/if}
     </div>
     {#if game.queue?.ghostAvailable}
-      <button class="btn btn-main mt-8 animate-pop" onclick={() => game.send({ type: "ghost.accept" })}>
+      <button class="btn btn-main mt-8 animate-pop" onclick={() => game.send({ type: "ghost.accept" }, "ghost")}>
         <Ghost size={18} /> race a ghost while you wait
       </button>
       <div class="mt-2 text-xs text-sub">an unrated replay of a player near your rating · you stay in the queue</div>
+      <Note note={asNote(game.errorFrom("ghost"))} class="mt-1" />
     {/if}
     {#if notifier.offer}
       <div class="mt-8 flex max-w-md flex-col items-center gap-3 rounded-xl bg-sub-alt px-6 py-4 text-center text-sm animate-rise">
@@ -222,6 +225,10 @@
       <a class="btn" href="/">queue in the background</a>
       <button class="btn btn-ghost" onclick={cancel}><X size={16} /> cancel <kbd>esc</kbd></button>
     </div>
+    <Note note={asNote(game.errorFrom("queue"))} class="mt-3" />
+    {#if game.cancelled?.requeued && now - game.cancelled.at < 8000}
+      <Note note={{ text: `${game.cancelled.reason} Back in the queue.`, kind: "info" }} class="mt-3 text-sm" />
+    {/if}
   </div>
 {/if}
 

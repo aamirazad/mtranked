@@ -3,13 +3,16 @@
   import type { FlagRow, HeldMatch, ReportRow } from "@mtr/contracts";
   import { api, errorMessage } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
-  import { toasts } from "#lib/toast.svelte.ts";
+  import { Notes } from "#lib/notes.svelte.ts";
+  import Note from "#lib/components/Note.svelte";
 
   let tab = $state<"reports" | "held" | "flags">("reports");
   let reports = $state<ReportRow[]>([]);
   let held = $state<HeldMatch[]>([]);
   let flags = $state<FlagRow[]>([]);
   let denied = $state(false);
+  // the outcome of an action, shown on the row it was taken from
+  const notes = new Notes();
 
   async function load() {
     const [r, h, f] = await Promise.all([api.mod.reports(), api.mod.held(), api.mod.flags()]);
@@ -37,7 +40,7 @@
     const reason = action === "ban" || action === "timeout" ? askReason() : undefined;
     if (reason === null) return;
     const r = await api.mod.resolveReport({ params: { id: String(id) }, body: { action, hours, reason } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
+    if (r.status !== 200) notes.set(`r:${id}`, errorMessage(r), "error");
     await load();
   }
   async function ban(userId: string) {
@@ -45,23 +48,23 @@
     const reason = askReason();
     if (reason === null) return;
     const r = await api.mod.ban({ params: { id: userId }, body: { reason } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
-    else toasts.show("Player banned.", "success");
+    if (r.status !== 200) notes.set(`f:${userId}`, errorMessage(r), "error");
+    else notes.set(`f:${userId}`, "banned", "success");
     await load();
   }
   async function timeout(userId: string, hours: number) {
     const reason = askReason();
     if (reason === null) return;
     const r = await api.mod.timeout({ params: { id: userId }, body: { hours, reason } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
-    else toasts.show("Player timed out from ranked and casual.", "success");
+    if (r.status !== 200) notes.set(`f:${userId}`, errorMessage(r), "error");
+    else notes.set(`f:${userId}`, "timed out from ranked and casual", "success");
     await load();
   }
   async function unsuspend(userId: string) {
     if (!confirm("Lift this player's ban or timeout? Voided races and refunded rating stay as they are.")) return;
     const r = await api.mod.unsuspend({ params: { id: userId } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
-    else toasts.show("Ban or timeout lifted.", "success");
+    if (r.status !== 200) notes.set(`f:${userId}`, errorMessage(r), "error");
+    else notes.set(`f:${userId}`, "ban or timeout lifted", "success");
     await load();
   }
   /** a timeout picker that resets itself after each pick */
@@ -73,12 +76,13 @@
   const bannedFrom = (details: unknown) => ((details as { banned?: { id: string; name: string }[] } | null)?.banned ?? []);
   async function resolveHeld(id: string, action: "approve" | "void") {
     const r = await api.mod.resolveHeld({ params: { id }, body: { action } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
+    if (r.status !== 200) notes.set(`h:${id}`, errorMessage(r), "error");
     await load();
   }
   async function unflag(id: string) {
-    await api.mod.unflag({ params: { id } });
-    toasts.show("Player moved back to the normal queue.", "success");
+    const r = await api.mod.unflag({ params: { id } });
+    if (r.status !== 200) notes.set(`f:${id}`, errorMessage(r), "error");
+    else notes.set(`f:${id}`, "moved back to the normal queue", "success");
   }
 </script>
 
@@ -102,6 +106,7 @@
             <div><span class="text-main">{r.reported ?? "unknown"}</span> reported by {r.reporter ?? "deleted"}</div>
             <div class="text-sub">{r.reason}</div>
             <div class="text-xs text-sub">{new Date(r.createdAt).toLocaleString()}</div>
+            <Note note={notes.get(`r:${r.id}`)} />
           </div>
           <a class="btn" href="/replay/{r.matchId}" target="_blank">replay</a>
           <button class="btn" onclick={() => resolve(r.id, "dismiss")}>dismiss</button>
@@ -123,6 +128,7 @@
         <div class="card mb-3 flex flex-wrap items-center gap-4">
           <div class="flex-1 text-sm">
             {#each m.players as p (p.name)}<div>{p.name}: <span class="text-main">{Math.round(p.wpm)} wpm</span> · {Math.round(p.acc)}%</div>{/each}
+            <Note note={notes.get(`h:${m.matchId}`)} />
           </div>
           <a class="btn" href="/replay/{m.matchId}" target="_blank">replay</a>
           <button class="btn btn-main" onclick={() => resolveHeld(m.matchId, "approve")}>approve</button>
@@ -152,6 +158,7 @@
                 {#if f.bannedAt}<span class="text-error">banned</span>
                 {:else if f.timedOutUntil}<span class="text-main">timed out until {new Date(f.timedOutUntil).toLocaleString()}</span>
                 {:else}<span class="text-sub">active</span>{/if}
+                <Note note={notes.get(`f:${f.userId}`)} class="block" />
               </td>
               <td class="space-x-2 text-right whitespace-nowrap">
                 {#if f.matchId}<a class="link" href="/replay/{f.matchId}" target="_blank">replay</a>{/if}

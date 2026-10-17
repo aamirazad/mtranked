@@ -3,7 +3,6 @@
 import type { FriendRow, FriendsList } from "@mtr/contracts";
 import type { FriendActivity, FriendPresence } from "@mtr/race-protocol";
 import { api, errorMessage } from "./api";
-import { toasts } from "./toast.svelte";
 
 const OFFLINE: FriendPresence = { online: false, activity: null };
 
@@ -66,10 +65,11 @@ class Friends {
     return { ok: true, kind: "success", text: status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.` };
   }
 
-  async accept(f: Pick<FriendRow, "id">) {
+  /** accept a request; resolves with why it failed, if it did, for the caller to show in place */
+  async accept(f: Pick<FriendRow, "id">): Promise<string | null> {
     const r = await api.friends.accept({ params: { id: f.id } });
-    if (r.status !== 200) toasts.show(errorMessage(r), "error");
     await this.load();
+    return r.status === 200 ? null : errorMessage(r);
   }
 
   async remove(f: Pick<FriendRow, "id">) {

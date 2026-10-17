@@ -10,6 +10,8 @@
   import { session } from "#lib/session.svelte.ts";
   import { friends, describeActivity } from "#lib/friends.svelte.ts";
   import { toasts } from "#lib/toast.svelte.ts";
+  import { Notes } from "#lib/notes.svelte.ts";
+  import Note from "#lib/components/Note.svelte";
   import { prefs } from "#lib/prefs.svelte.ts";
   import RaceView from "#lib/components/RaceView.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
@@ -56,6 +58,10 @@
       }
       await game.reconnect(guestName).catch(() => {});
       await session.refresh();
+      if (game.guestNameError) {
+        joinError = game.guestNameError;
+        return;
+      }
     }
     needsName = false;
     await game.connect().catch(() => {});
@@ -98,7 +104,7 @@
   // friends who aren't in here yet; any player can invite their own
   const invitable = $derived(room ? friends.online.filter((f) => !room.players.some((p) => p.id === f.id)) : []);
   function invite(ids: string[]) {
-    if (ids.length) game.send({ type: "room.invite", playerIds: ids });
+    if (ids.length) game.send({ type: "room.invite", playerIds: ids }, "invite");
   }
 
   // a heads-up for hosts when someone new asks to join (the card can be below the results)
@@ -123,21 +129,37 @@
     return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
   });
 
-  function copy(text: string, what: string) {
+  // feedback shown next to whatever was clicked
+  const notes = new Notes();
+  /** a refusal from the server for something sent from `from`, as a note */
+  const refused = (from: string) => {
+    const text = game.errorFrom(from);
+    return text ? { text, kind: "error" as const } : null;
+  };
+
+  // joining this room took us out of the matchmaking queue
+  $effect(() => {
+    const q = game.queueLeft;
+    if (!q) return;
+    game.queueLeft = null;
+    if (Date.now() - q.at < 10_000) notes.set("queue", q.reason, "info", 8000);
+  });
+
+  function copy(text: string, what: "code" | "link") {
     void navigator.clipboard.writeText(text);
-    toasts.show(`${what} copied`, "success", 1500);
+    notes.set(what, "copied", "success", 1500);
   }
 
   function update<K extends keyof TextSettings>(k: K, v: TextSettings[K]) {
     if (!room || !isHost) return;
-    game.send({ type: "room.settings", settings: { ...room.settings, [k]: v } });
+    game.send({ type: "room.settings", settings: { ...room.settings, [k]: v } }, "settings");
   }
 
   let customDraft = $state("");
   let editingCustom = $state(false);
   function saveCustom() {
     if (!room) return;
-    game.send({ type: "room.settings", settings: { ...room.settings, mode: "custom", custom: customDraft } });
+    game.send({ type: "room.settings", settings: { ...room.settings, mode: "custom", custom: customDraft } }, "settings");
     editingCustom = false;
   }
 
@@ -148,11 +170,12 @@
   function saveName() {
     if (!room || nameDraft.trim() === (room.name ?? "")) return;
     if (isOffensiveName(nameDraft)) {
-      toasts.show(OFFENSIVE_NAME_MESSAGE, "error");
+      notes.set("name", OFFENSIVE_NAME_MESSAGE, "error");
       nameDraft = room.name ?? "";
       return;
     }
-    game.send({ type: "room.rename", name: nameDraft });
+    notes.clear("name");
+    game.send({ type: "room.rename", name: nameDraft }, "name");
   }
 
   // kicked, or the room closed underneath us
@@ -180,10 +203,13 @@
     game.roomClosed = null;
     game.room = null;
     await game.connect().catch(() => {});
-    game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS });
+    game.send({ type: "room.create", settings: DEFAULT_ROOM_SETTINGS }, "new-room");
   }
   $effect(() => {
     if (creating && game.room?.code) goto(`/room/${game.room.code}`);
+  });
+  $effect(() => {
+    if (game.errorFrom("new-room")) creating = false;
   });
 
   const describe = (s: TextSettings) =>
@@ -217,6 +243,7 @@
       <button class="btn" class:btn-main={!closed.rejoin} onclick={newRoom} disabled={creating}>{creating ? "creating…" : "new room"}</button>
       <a class="btn btn-ghost" href="/">home</a>
     </div>
+    <Note note={refused("new-room")} class="mt-3 block" />
   </div>
 {:else if joinError && !room}
   <div class="mx-auto max-w-md pt-16 text-center animate-rise">
@@ -241,8 +268,9 @@
       <ResultsPanel result={game.result}>
         {#snippet actions()}
           {#if isHost}
-            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" })}><Shuffle size={16} /> race again</button>
-            <button class="btn" onclick={() => game.send({ type: "room.start", sameText: true })}><Repeat size={16} /> same text</button>
+            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" }, "again")}><Shuffle size={16} /> race again</button>
+            <button class="btn" onclick={() => game.send({ type: "room.start", sameText: true }, "again")}><Repeat size={16} /> same text</button>
+            <Note note={refused("again")} />
           {:else}
             <span class="text-sub">waiting for the host to start the next race…</span>
           {/if}
@@ -264,15 +292,22 @@
             onblur={saveName}
             onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           />
+          <Note note={notes.get("name") ?? refused("name")} class="-mt-3 mb-4 block" />
         {:else if room.name}
           <div class="mb-4 text-2xl">{room.name}</div>
         {/if}
+        <Note note={notes.get("queue")} class="mb-3 block" />
         <div class="label">room code</div>
         <button class="group flex items-center gap-3 text-5xl tracking-[0.25em] text-main" onclick={() => copy(code, "code")} title="copy code">
-          {code}<Copy size={20} class="text-sub opacity-0 transition-opacity group-hover:opacity-100" />
+          {code}
+          {#if notes.get("code")}
+            <span class="flex items-center gap-1 text-sm tracking-normal animate-fade"><Check size={16} /> copied</span>
+          {:else}
+            <Copy size={20} class="text-sub opacity-0 transition-opacity group-hover:opacity-100" />
+          {/if}
         </button>
-        <button class="mt-2 flex items-center gap-2 text-sm text-sub hover:text-text" onclick={() => copy(link, "invite link")}>
-          <LinkIcon size={14} /> copy invite link
+        <button class="mt-2 flex items-center gap-2 text-sm text-sub hover:text-text" onclick={() => copy(link, "link")}>
+          {#if notes.get("link")}<Check size={14} class="text-main" /> <span class="text-main">invite link copied</span>{:else}<LinkIcon size={14} /> copy invite link{/if}
         </button>
         {#if isHost && room.hostSubscriber}
           <label class="mt-2 flex items-center gap-2 text-sm text-sub">
@@ -280,12 +315,13 @@
             <select
               class="cursor-pointer bg-transparent outline-none hover:text-text"
               value={room.theme ?? ""}
-              onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null })}
+              onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null }, "theme")}
             >
               <option value="">none (everyone keeps theirs)</option>
               {#each THEMES as t (t.id)}<option value={t.id}>{t.name}{t.note ? ` (${t.note})` : ""}</option>{/each}
             </select>
           </label>
+          <Note note={refused("theme")} class="mt-1 block" />
         {:else if room.theme}
           <div class="mt-2 flex items-center gap-2 text-sm text-sub">
             <Paintbrush size={14} /> room theme · {themeById(room.theme)?.name ?? room.theme}
@@ -301,20 +337,24 @@
           </div>
           <div class="mt-1 text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room?</div>
           <button class="btn btn-main mt-3 w-full justify-center" onclick={() => invite(suggested)}><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button>
+          <Note note={refused("invite")} class="mt-2 block" />
         </div>
       {/if}
       </div>
-      <div class="flex items-center gap-2">
-        {#if isHost}
-          <button class="btn" onclick={() => game.send({ type: "room.lock", locked: !room.locked })} title={room.locked ? "unlock room" : "lock room"}>
-            {#if room.locked}<Lock size={16} /> locked{:else}<LockOpen size={16} /> open{/if}
-          </button>
-          <button class="btn" onclick={closeRoom} title="close room">
-            <DoorClosed size={16} /> close room
-          </button>
-          <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" })}><Play size={16} /> start race</button>
-        {/if}
-        <button class="btn btn-ghost" onclick={() => { leave(); goto("/"); }}><LogOut size={16} /> leave</button>
+      <div class="flex flex-col items-end gap-2">
+        <div class="flex items-center gap-2">
+          {#if isHost}
+            <button class="btn" onclick={() => game.send({ type: "room.lock", locked: !room.locked }, "controls")} title={room.locked ? "unlock room" : "lock room"}>
+              {#if room.locked}<Lock size={16} /> locked{:else}<LockOpen size={16} /> open{/if}
+            </button>
+            <button class="btn" onclick={closeRoom} title="close room">
+              <DoorClosed size={16} /> close room
+            </button>
+            <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" }, "controls")}><Play size={16} /> start race</button>
+          {/if}
+          <button class="btn btn-ghost" onclick={() => { leave(); goto("/"); }}><LogOut size={16} /> leave</button>
+        </div>
+        <Note note={refused("controls")} />
       </div>
     </div>
 
@@ -329,12 +369,13 @@
                 <span class="truncate">{r.name}</span>
                 <span class="text-xs text-sub">lv {r.level}</span>
                 <span class="ml-auto flex gap-2">
-                  <button class="btn btn-main py-1 text-sm" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: true })}><Check size={14} /> let in</button>
-                  <button class="btn btn-ghost py-1 text-sm" aria-label="decline" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: false })}><X size={14} /></button>
+                  <button class="btn btn-main py-1 text-sm" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: true }, "requests")}><Check size={14} /> let in</button>
+                  <button class="btn btn-ghost py-1 text-sm" aria-label="decline" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: false }, "requests")}><X size={14} /></button>
                 </span>
               </li>
             {/each}
           </ul>
+          <Note note={refused("requests")} class="mt-2 block" />
         </div>
       {/if}
       <div class="card">
@@ -351,16 +392,16 @@
               {#if isHost && (p.id !== meId || room.hosts.length > 1)}
                 <span class="ml-auto hidden gap-1 group-hover:flex">
                   {#if !room.hosts.includes(p.id)}
-                    <button class="text-sub hover:text-main" title="make host" onclick={() => game.send({ type: "room.promote", playerId: p.id })}><Crown size={14} /></button>
+                    <button class="text-sub hover:text-main" title="make host" onclick={() => game.send({ type: "room.promote", playerId: p.id }, "players")}><Crown size={14} /></button>
                   {:else if room.hosts.length > 1}
                     <button
                       class="text-sub hover:text-error"
                       title={p.id === meId ? "step down as host" : "remove host"}
-                      onclick={() => game.send({ type: "room.demote", playerId: p.id })}><ShieldMinus size={14} /></button
+                      onclick={() => game.send({ type: "room.demote", playerId: p.id }, "players")}><ShieldMinus size={14} /></button
                     >
                   {/if}
                   {#if p.id !== meId}
-                    <button class="text-sub hover:text-error" title="kick" onclick={() => game.send({ type: "room.kick", playerId: p.id })}><UserMinus size={14} /></button>
+                    <button class="text-sub hover:text-error" title="kick" onclick={() => game.send({ type: "room.kick", playerId: p.id }, "players")}><UserMinus size={14} /></button>
                   {/if}
                 </span>
               {/if}
@@ -368,6 +409,7 @@
             </li>
           {/each}
         </ul>
+        <Note note={refused("players")} class="mt-2 block" />
         {#if room.spectators.length}
           <div class="mt-4 flex items-start gap-2 text-xs text-sub" title="watching, not playing">
             <Eye size={14} class="shrink-0" />
@@ -403,6 +445,7 @@
               </li>
             {/each}
           </ul>
+          <Note note={refused("invite")} class="mt-2 block" />
         </div>
       {/if}
       </div>
@@ -448,6 +491,7 @@
         </fieldset>
         <div class="mt-3"><RulesPicker rules={room.settings.rules} onchange={(r) => update("rules", r)} disabled={!isHost} note="applies to everyone in this room" /></div>
         <div class="mt-3 text-sm"><FunboxPicker value={room.settings.funbox} readonly={!isHost} onchange={(v) => update("funbox", v.length ? v : undefined)} /></div>
+        <Note note={refused("settings")} class="mt-3 block" />
         {#if !isHost}<div class="mt-4 text-xs text-sub">the hosts pick the text</div>{/if}
       </div>
     </div>
