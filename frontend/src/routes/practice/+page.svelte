@@ -5,6 +5,10 @@
     applyKey,
     accuracy,
     calculateWpm,
+    charStats,
+    consistency,
+    raceTimeline,
+    wordHistory,
     checkLiveFail,
     correctChars,
     describeRules,
@@ -15,6 +19,7 @@
     randomSeed,
     type FailReason,
     type FinalStats,
+    type Keystroke,
     type Rules,
     type TextSettings,
     type TypingState,
@@ -28,6 +33,9 @@
   import { resolveEquipped } from "@mtr/shared";
   import { prefs, type QuickRestart } from "#lib/prefs.svelte.ts";
   import { commandLine } from "#lib/components/CommandLine.svelte";
+  import ResultStats from "#lib/components/ResultStats.svelte";
+  import { api } from "#lib/api.ts";
+  import { testType } from "#lib/format.ts";
 
   const saved = typeof localStorage !== "undefined" ? localStorage.getItem("practice") : null;
   let settings = $state<TextSettings>(
@@ -44,6 +52,17 @@
   let result = $state<(FinalStats & { time: number; failed: FailReason | null }) | null>(null);
   /** last whole second the min speed/accuracy rules were checked */
   let ruleSec = 0;
+  // result-screen extras, computed locally; the server re-scores signed-in tests to save them
+  let details = $state.raw<{
+    timeline: ReturnType<typeof raceTimeline>;
+    words: ReturnType<typeof wordHistory>;
+    chars: ReturnType<typeof charStats>;
+    consistency: number;
+  } | null>(null);
+  let previousBest = $state<number | null>(null);
+  let resultSettings = $state<TextSettings | null>(null);
+  let seed = "";
+  let keys: Keystroke[] = [];
   let source = $state<string | undefined>();
   let timer: ReturnType<typeof setInterval> | undefined;
   let generation = 0;
@@ -54,9 +73,14 @@
     clearInterval(timer);
     const gen = ++generation;
     localStorage.setItem("practice", JSON.stringify(settings));
-    const t = await generateText($state.snapshot(settings), randomSeed());
+    const s = randomSeed();
+    const t = await generateText($state.snapshot(settings), s);
     if (gen !== generation) return;
     source = t.source;
+    seed = s;
+    keys = [];
+    details = null;
+    previousBest = null;
     result = null;
     startedAt = null;
     ruleSec = 0;
@@ -79,7 +103,9 @@
         if (settings.mode === "time" && now - startedAt! >= settings.time * 1000) finish();
       }, 100);
     }
-    applyKey(ts, k, Math.round(performance.now() - startedAt));
+    const t = Math.round(performance.now() - startedAt!);
+    keys.push({ k, t });
+    applyKey(ts, k, t);
     area?.sync();
     version++;
     now = performance.now();
@@ -90,6 +116,26 @@
     clearInterval(timer);
     const ms = settings.mode === "time" && !ts.failed ? settings.time * 1000 : performance.now() - startedAt!;
     result = { ...finalStats(ts, ms), time: ms / 1000, failed: ts.failed };
+    const used = keys.filter((x) => x.t <= ms);
+    const text = ts.words.join(" ");
+    const opts = funboxTypingOptions(settings.funbox);
+    const timeline = raceTimeline(text, used, ms, settings.rules, opts);
+    details = {
+      timeline,
+      words: wordHistory(text, used, ms, settings.rules, opts),
+      chars: charStats(ts),
+      consistency: consistency(timeline),
+    };
+    const snap = $state.snapshot(settings);
+    resultSettings = snap;
+    // failed tests aren't saved (the server only accepts tests that were played out)
+    if (session.me && snap.mode !== "custom" && !ts.failed) void save(snap, seed, used);
+  }
+
+  async function save(s: TextSettings, sd: string, ks: Keystroke[]) {
+    const gen = generation;
+    const r = await api.practice.submit({ body: { settings: { ...s, mode: s.mode as "words" | "time" | "quote" }, seed: sd, keys: ks } }).catch(() => null);
+    if (gen === generation && r?.status === 200) previousBest = r.body.result.previousBest;
   }
 
   const elapsed = $derived(startedAt === null ? 0 : now - startedAt);
@@ -183,23 +229,22 @@
   {:else}
     <div class="animate-rise">
       {#if result.failed}
-        <div class="mb-6 text-2xl text-error">test failed · {result.failed}</div>
+        <div class="mb-4 text-2xl text-error">test failed · {result.failed}</div>
+      {:else if previousBest !== null && result.wpm > previousBest}
+        <div class="mb-4 inline-block rounded-lg bg-main px-3 py-1 text-sm text-bg animate-pop">new personal best!</div>
       {/if}
-      <div class="flex flex-wrap items-end gap-12">
-        <div>
-          <div class="label text-2xl">wpm</div>
-          <div class="text-7xl text-main">{Math.round(result.wpm)}</div>
-        </div>
-        <div>
-          <div class="label text-2xl">acc</div>
-          <div class="text-7xl text-main">{Math.round(result.acc)}%</div>
-        </div>
-        <div class="grid grid-cols-3 gap-8 pb-2">
-          <div><div class="label">raw</div><div class="text-2xl text-main">{Math.round(result.raw)}</div></div>
-          <div><div class="label">time</div><div class="text-2xl text-main">{result.time.toFixed(1)}s</div></div>
-          <div><div class="label">test</div><div class="text-2xl text-main">{settings.mode} {settings.mode === "time" ? settings.time : settings.mode === "words" ? settings.words : settings.quoteLength}</div></div>
-        </div>
-      </div>
+      <ResultStats
+        wpm={result.wpm}
+        acc={result.acc}
+        raw={result.raw}
+        timeMs={result.time * 1000}
+        consistency={details?.consistency}
+        chars={details?.chars}
+        timeline={details?.timeline}
+        words={details?.words}
+        pb={previousBest}
+        testType={testType(resultSettings)}
+      />
       {#if source}<div class="mt-6 text-sm text-sub">— {source}</div>{/if}
       <div class="mt-10 flex items-center gap-4">
         <button class="btn" onclick={restart}><RotateCcw size={16} /> next test</button>

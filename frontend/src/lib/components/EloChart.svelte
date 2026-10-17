@@ -2,18 +2,22 @@
   import type { RatingPoint } from "@mtr/contracts";
   import { TIERS } from "@mtr/shared";
   import { api } from "#lib/api.ts";
+  import { areaPath, monotonePath, nearestIndex } from "#lib/charts/curve.ts";
+  import { ChartHover } from "#lib/charts/hover.svelte.ts";
+  import ChartTooltip from "#lib/charts/ChartTooltip.svelte";
 
   let { name }: { name: string } = $props();
 
   let points = $state<RatingPoint[] | null>(null);
   let seasonName = $state("");
   let width = $state(0);
-  let hover = $state<number | null>(null);
+  const hover = new ChartHover();
 
   $effect(() => {
     const n = name;
     points = null;
-    hover = null;
+    hover.hide();
+    hover.index = null;
     void api.users.ratingHistory({ params: { name: n } }).then((r) => {
       if (n !== name) return;
       if (r.status === 200) {
@@ -38,10 +42,8 @@
   const x = (i: number) => pad.left + (points && points.length > 1 ? (i / (points.length - 1)) * innerW : innerW / 2);
   const y = (r: number) => pad.top + innerH - ((r - domain[0]) / (domain[1] - domain[0])) * innerH;
 
-  const line = $derived(points ? points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.rating).toFixed(1)}`).join("") : "");
-  const area = $derived(
-    points && points.length > 1 ? `${line}L${x(points.length - 1).toFixed(1)},${pad.top + innerH}L${x(0).toFixed(1)},${pad.top + innerH}Z` : "",
-  );
+  const line = $derived(points && width ? monotonePath(points.map((_, i) => x(i)), points.map((p) => y(p.rating))) : "");
+  const area = $derived(points && points.length > 1 ? areaPath(line, x(0), x(points.length - 1), pad.top + innerH) : "");
   const ticks = $derived.by(() => {
     const [lo, hi] = domain;
     const step = hi - lo > 600 ? 200 : hi - lo > 300 ? 100 : 50;
@@ -52,25 +54,20 @@
   const tierLines = $derived(TIERS.filter((t) => t.min > domain[0] && t.min < domain[1]));
   const change = $derived(points && points.length > 1 ? points.at(-1)!.rating - points[0]!.rating : 0);
 
-  const hp = $derived(hover !== null && points ? points[hover] : null);
-  const hDelta = $derived(hover !== null && hover > 0 && points ? points[hover]!.rating - points[hover - 1]!.rating : null);
+  const hp = $derived(hover.index !== null && points ? points[hover.index] : null);
+  const hDelta = $derived(hover.index !== null && hover.index > 0 && points ? points[hover.index]!.rating - points[hover.index - 1]!.rating : null);
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
 
+  const show = (i: number) => hover.move(i, x(i), y(points![i]!.rating));
   function onmove(e: PointerEvent) {
     if (!points || points.length < 2) return;
     const box = (e.currentTarget as SVGElement).getBoundingClientRect();
-    const t = (e.clientX - box.left - pad.left) / innerW;
-    hover = Math.max(0, Math.min(points.length - 1, Math.round(t * (points.length - 1))));
+    show(nearestIndex(e.clientX - box.left, pad.left, innerW, points.length));
   }
   function onkey(e: KeyboardEvent) {
     if (!points?.length) return;
-    const last = points.length - 1;
-    if (e.key === "ArrowLeft") hover = Math.max(0, (hover ?? last + 1) - 1);
-    else if (e.key === "ArrowRight") hover = Math.min(last, (hover ?? -1) + 1);
-    else if (e.key === "Home") hover = 0;
-    else if (e.key === "End") hover = last;
-    else return;
-    e.preventDefault();
+    const i = hover.key(e, points.length);
+    if (i !== null) show(i);
   }
 </script>
 
@@ -99,15 +96,21 @@
         aria-label="rating over {points.length - 1} ranked races, from {points[0]!.rating} to {points.at(-1)!.rating}"
         aria-valuemin={0}
         aria-valuemax={points.length - 1}
-        aria-valuenow={hover ?? points.length - 1}
+        aria-valuenow={hover.index ?? points.length - 1}
         aria-valuetext={`${(hp ?? points.at(-1)!).rating} rating${(hp ?? points.at(-1)!).races ? ` after race ${(hp ?? points.at(-1)!).races}` : " at season start"}`}
         onpointermove={onmove}
-        onpointerleave={() => (hover = null)}
+        onpointerleave={() => hover.hide()}
         onkeydown={onkey}
-        onblur={() => (hover = null)}
+        onblur={() => hover.hide()}
       >
+        <defs>
+          <linearGradient id="elo-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="var(--color-main)" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="var(--color-main)" stop-opacity="0" />
+          </linearGradient>
+        </defs>
         {#each ticks as t (t)}
-          <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/25" stroke-width="1" />
+          <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/15" stroke-width="1" />
           <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{t}</text>
         {/each}
         {#each tierLines as t (t.id)}
@@ -117,22 +120,25 @@
         <text x={pad.left} y={H - 6} class="fill-sub text-[11px]">season start</text>
         <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.at(-1)!.races} races</text>
 
-        <path d={area} class="fill-main/10" />
-        <path d={line} fill="none" class="stroke-main" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        <path d={area} fill="url(#elo-fill)" />
+        <path d={line} fill="none" class="stroke-main" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
 
-        {#if hp && hover !== null}
-          <line x1={x(hover)} x2={x(hover)} y1={pad.top} y2={pad.top + innerH} class="stroke-sub" stroke-width="1" />
-          <circle cx={x(hover)} cy={y(hp.rating)} r="4.5" class="fill-main stroke-sub-alt" stroke-width="2" />
-        {:else}
-          <circle cx={x(points.length - 1)} cy={y(points.at(-1)!.rating)} r="4" class="fill-main stroke-sub-alt" stroke-width="2" />
-        {/if}
+        <circle
+          cx={x(points.length - 1)}
+          cy={y(points.at(-1)!.rating)}
+          r="4"
+          class="fill-main stroke-sub-alt"
+          stroke-width="2"
+          style="opacity: {hover.shown ? 0 : 1}; transition: opacity 0.15s"
+        />
+        <g class="pointer-events-none" style="opacity: {hover.shown ? 1 : 0}; transition: opacity 0.15s ease-out">
+          <line x1={hover.x.current} x2={hover.x.current} y1={pad.top} y2={pad.top + innerH} class="stroke-sub/60" stroke-width="1" stroke-dasharray="3 3" />
+          <circle cx={hover.x.current} cy={hover.y.current} r="5" class="fill-main stroke-sub-alt" stroke-width="2" />
+        </g>
       </svg>
 
-      {#if hp && hover !== null}
-        <div
-          class="pointer-events-none absolute top-0 rounded-lg bg-bg px-3 py-2 text-xs shadow-lg"
-          style="left: {x(hover)}px; transform: translateX({x(hover) > width / 2 ? 'calc(-100% - 10px)' : '10px'})"
-        >
+      <ChartTooltip {hover} {width}>
+        {#if hp}
           <div class="text-base tabular-nums text-text">
             {hp.rating}
             {#if hDelta !== null}<span class="ml-1 text-xs {hDelta >= 0 ? 'text-win' : 'text-error'}">{signed(hDelta)}</span>{/if}
@@ -140,8 +146,8 @@
           <div class="whitespace-nowrap text-sub">
             {hp.races ? `race ${hp.races}` : "season start"} · {new Date(hp.at).toLocaleDateString()}
           </div>
-        </div>
-      {/if}
+        {/if}
+      </ChartTooltip>
     {/if}
   </div>
 </div>

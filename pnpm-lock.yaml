@@ -23,6 +23,9 @@ importers:
       '@mtr/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@mtr/engine':
+        specifier: workspace:*
+        version: link:../packages/engine
       '@mtr/shared':
         specifier: workspace:*
         version: link:../packages/shared

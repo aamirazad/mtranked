@@ -16,7 +16,15 @@ export type SaveInput = {
   startedAt: Date;
   ghostOf?: string;
   held: boolean;
-  rows: { userId?: string; guestName?: string; result: RaceResultRow; keys: Keystroke[] | null; flags: Flag[] }[];
+  rows: {
+    userId?: string;
+    guestName?: string;
+    result: RaceResultRow;
+    /** how long this player typed for (to the finish, forfeit or end of the race) */
+    durationMs?: number;
+    keys: Keystroke[] | null;
+    flags: Flag[];
+  }[];
   ratings: Map<string, RatingUpdate>;
 };
 
@@ -55,18 +63,18 @@ export async function saveRace(input: SaveInput) {
   for (const [id, u] of input.ratings) pending[id] = u;
 
   await sql.begin(async (tx) => {
-    await tx`insert into matches (id, mode, seed, text_settings, text, season_id, status, ghost_of, started_at, finished_at, rating_deltas)
+    await tx`insert into matches (id, mode, seed, text_settings, text, season_id, status, ghost_of, started_at, finished_at, rating_deltas, players)
       values (${input.matchId}, ${input.mode}, ${input.seed}, ${tx.json(input.settings)}, ${input.text}, ${input.seasonId},
         ${input.held ? "held" : "finished"}, ${input.ghostOf ?? null}, ${input.startedAt}, now(),
-        ${input.ratings.size ? tx.json(pending) : null})`;
+        ${input.ratings.size ? tx.json(pending) : null}, ${input.rows.length})`;
     let slot = 0;
     for (const row of input.rows) {
       const r = row.result;
       await tx`insert into match_players (match_id, slot, user_id, guest_name, placement, wpm, raw, accuracy,
-          finished_at_ms, finished, forfeit, rating_before, rating_after, rating_delta, xp)
+          finished_at_ms, finished, forfeit, rating_before, rating_after, rating_delta, xp, duration_ms, consistency, chars)
         values (${input.matchId}, ${slot}, ${row.userId ?? null}, ${row.guestName ?? null}, ${r.placement}, ${r.wpm}, ${r.raw},
           ${r.acc}, ${r.timeMs}, ${r.finished}, ${r.forfeit}, ${r.ratingBefore ?? null}, ${r.ratingAfter ?? null},
-          ${r.delta ?? null}, ${r.xp ?? 0})`;
+          ${r.delta ?? null}, ${r.xp ?? 0}, ${row.durationMs ?? r.timeMs}, ${r.consistency ?? null}, ${r.chars ? tx.array(r.chars) : null})`;
       if (row.keys) await tx`insert into replays (match_id, slot, keystrokes) values (${input.matchId}, ${slot}, ${tx.json(row.keys)})`;
       if (row.userId) {
         if (r.xp) await tx`update users set xp = xp + ${r.xp} where id = ${row.userId}`;

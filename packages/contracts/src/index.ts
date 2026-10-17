@@ -112,6 +112,86 @@ export type Profile = {
 
 export type RatingPoint = { at: string; rating: number; races: number };
 
+/** How results are grouped on the profile (ghost races count as casual). */
+export const StatKind = z.enum(["ranked", "casual", "private", "practice"]);
+export type StatKind = z.infer<typeof StatKind>;
+
+export type KindStats = {
+  kind: StatKind;
+  /** results counted, finished or not */
+  results: number;
+  completed: number;
+  /** results against at least one other player, and how many of those were won */
+  versus: number;
+  wins: number;
+  avgWpm: number;
+  bestWpm: number;
+  avgAcc: number;
+  avgConsistency: number | null;
+  /** average wpm of the last 10 finished results */
+  last10Wpm: number | null;
+  timeMs: number;
+};
+
+export type PersonalBest = {
+  wpm: number;
+  raw: number;
+  acc: number;
+  consistency: number | null;
+  at: string;
+  kind: StatKind;
+  language: string;
+  punctuation: boolean;
+  numbers: boolean;
+  matchId: string | null;
+};
+
+export type ProfileStats = {
+  totals: { results: number; completed: number; timeMs: number };
+  kinds: KindStats[];
+  /** best result per test length, keyed by seconds / word count */
+  pbs: { time: Record<string, PersonalBest | null>; words: Record<string, PersonalBest | null> };
+  ranked: {
+    /** highest season peak ever */
+    allTimePeak: number;
+    bestWinStreak: number;
+    winStreak: number;
+    /** current season ladder position among placed players, null if not on it */
+    rank: number | null;
+    ladder: number;
+  };
+  /** consecutive UTC days with at least one result */
+  streak: { current: number; best: number };
+};
+
+export type WpmPoint = { at: string; wpm: number; raw: number; acc: number; kind: StatKind };
+export type ActivityDay = { date: string; count: number };
+
+/** Settings of a practice test (custom text isn't saved). Extra keys are kept for newer generators. */
+export const PracticeSettings = z
+  .object({
+    mode: z.enum(["words", "time", "quote"]),
+    words: z.number().int().min(5).max(200),
+    time: z.number().int().min(5).max(120),
+    quoteLength: z.enum(["short", "medium", "long"]),
+    punctuation: z.boolean(),
+    numbers: z.boolean(),
+    language: z.string().max(32),
+  })
+  .passthrough();
+export type PracticeSettings = z.infer<typeof PracticeSettings>;
+
+export type PracticeResult = {
+  wpm: number;
+  raw: number;
+  acc: number;
+  consistency: number;
+  chars: [number, number, number, number];
+  durationMs: number;
+  /** best wpm for this exact test before this one, null if it's the first */
+  previousBest: number | null;
+};
+
 export type PlayerHit = { name: string; country: string | null; rating: number; races: number; subscriber: boolean };
 
 export type LeaderboardRow = {
@@ -303,11 +383,45 @@ export const contract = c.router(
         path: "/users/:name/rating-history",
         responses: { 200: c.type<{ season: { id: number; name: string }; points: RatingPoint[] }>(), 404: err },
       },
+      stats: {
+        method: "GET",
+        path: "/users/:name/stats",
+        responses: { 200: c.type<{ stats: ProfileStats }>(), 404: err },
+      },
+      wpmHistory: {
+        method: "GET",
+        path: "/users/:name/wpm-history",
+        query: z.object({ kind: StatKind.optional() }),
+        responses: { 200: c.type<{ points: WpmPoint[] }>(), 404: err },
+      },
+      activity: {
+        method: "GET",
+        path: "/users/:name/activity",
+        /** a calendar year, or the last 12 months when omitted */
+        query: z.object({ year: z.coerce.number().int().min(2000).max(3000).optional() }),
+        responses: { 200: c.type<{ days: ActivityDay[]; from: string; to: string; years: number[] }>(), 404: err },
+      },
       search: {
         method: "GET",
         path: "/search/players",
         query: z.object({ q: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
         responses: { 200: c.type<{ players: PlayerHit[] }>(), 429: err },
+      },
+    },
+    practice: {
+      /** save a finished practice test; the server regenerates the text and replays the keys */
+      submit: {
+        method: "POST",
+        path: "/practice",
+        body: z.object({
+          settings: PracticeSettings,
+          seed: z.string().min(1).max(64),
+          keys: z
+            .array(z.object({ k: z.string().min(1).max(2), t: z.number().min(0).max(300000) }))
+            .min(1)
+            .max(4000),
+        }),
+        responses: { 200: c.type<{ result: PracticeResult }>(), 400: err, 401: err, 429: err },
       },
     },
     leaderboard: {

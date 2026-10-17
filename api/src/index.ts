@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth";
 import { meRouter, usersRouter, leaderboardRoute, seasonRoute, matchRoute, reportRoute } from "./routes/users";
 import { modRouter } from "./routes/mod";
 import { billingRouter, stripeWebhook } from "./routes/billing";
+import { practiceRouter } from "./routes/practice";
 
 const app = express();
 app.set("trust proxy", env.trustProxy);
@@ -27,6 +28,7 @@ const router = s.router(contract, {
   season: seasonRoute,
   match: matchRoute,
   report: reportRoute,
+  practice: practiceRouter,
   mod: modRouter,
   billing: billingRouter,
 });

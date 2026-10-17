@@ -3,9 +3,25 @@
   import { page } from "$app/state";
   import { Pause, Play, RotateCcw } from "@lucide/svelte";
   import type { MatchDetail } from "@mtr/contracts";
-  import { applyKey, calculateWpm, caretIndex, correctChars, createState, funboxTypingOptions, type Keystroke, type Rules, type TypingState } from "@mtr/engine";
+  import {
+    applyKey,
+    calculateWpm,
+    caretIndex,
+    charStats,
+    consistency,
+    correctChars,
+    createState,
+    funboxTypingOptions,
+    raceTimeline,
+    replay,
+    wordHistory,
+    type Keystroke,
+    type Rules,
+    type TypingState,
+  } from "@mtr/engine";
   import { api, errorMessage } from "#lib/api.ts";
   import TypingArea from "#lib/components/TypingArea.svelte";
+  import ResultStats from "#lib/components/ResultStats.svelte";
 
   type Track = { slot: number; name: string; color: string; caret: string; keys: Keystroke[]; state: TypingState; i: number };
 
@@ -101,6 +117,23 @@
       done: x.state.finished,
     }));
   });
+  // the followed player's full result, scored from their keystrokes
+  const summary = $derived.by(() => {
+    if (!match) return null;
+    const p = match.players.find((x) => x.slot === focusSlot);
+    if (!p?.keystrokes?.length) return null;
+    const dur = Math.max(1, p.timeMs ?? p.keystrokes.at(-1)!.t);
+    const rules = match.rules as Rules | undefined;
+    const opts = funboxTypingOptions(match.funbox);
+    const timeline = raceTimeline(match.text, p.keystrokes, dur, rules, opts);
+    return {
+      p,
+      timeline,
+      consistency: consistency(timeline),
+      chars: charStats(replay(match.text, p.keystrokes, dur, rules, opts)),
+      words: wordHistory(match.text, p.keystrokes, dur, rules, opts),
+    };
+  });
   const focusColor = $derived(tracks.find((x) => x.slot === focusSlot)?.caret ?? "#e2b714");
 </script>
 
@@ -144,5 +177,21 @@
         {#each [0.5, 1, 2, 4] as s (s)}<option value={s}>{s}x</option>{/each}
       </select>
     </div>
+
+    {#if summary}
+      <div class="mt-12">
+        <div class="label mb-4 text-sm">{summary.p.name}'s result</div>
+        <ResultStats
+          wpm={summary.p.wpm}
+          acc={summary.p.acc}
+          raw={summary.p.raw}
+          timeMs={summary.p.timeMs}
+          consistency={summary.consistency}
+          chars={summary.chars}
+          timeline={summary.timeline}
+          words={summary.words}
+        />
+      </div>
+    {/if}
   </div>
 {/if}

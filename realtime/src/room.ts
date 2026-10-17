@@ -7,6 +7,8 @@ import {
   applyKey,
   calculateWpm,
   caretIndex,
+  charStats,
+  consistency,
   checkLiveFail,
   correctChars,
   normalizeRules,
@@ -17,6 +19,7 @@ import {
   raceTimeline,
   randomSeed,
   RANKED_SETTINGS,
+  wordHistory,
   withFunbox,
   type FailReason,
   type Keystroke,
@@ -591,7 +594,7 @@ export class Room {
     const elapsed = Math.min(now - race.startAt, race.endAt - race.startAt);
     const timed = race.timeLimit > 0;
 
-    type Row = { r: Racer; result: RaceResultRow; flags: Flag[] };
+    type Row = { r: Racer; result: RaceResultRow; flags: Flag[]; durationMs: number };
     const rows: Row[] = [...race.racers.values()].map((r) => {
       const finished = timed ? !r.forfeit && !r.failed : r.finishMs !== null;
       const duration = timed
@@ -600,9 +603,12 @@ export class Room {
           : race.timeLimit
         : (r.finishMs ?? (r.out ? (r.outAt ?? elapsed) : elapsed));
       const st = finalStats(r.state, Math.max(1, duration));
+      const fbOpts = funboxTypingOptions(race.settings.funbox);
+      const timeline = raceTimeline(race.text, r.keys, Math.max(1, duration), race.settings.rules, fbOpts);
       return {
         r,
         flags: [],
+        durationMs: Math.round(duration),
         result: {
           id: r.id,
           name: r.info.name,
@@ -618,7 +624,10 @@ export class Room {
           forfeit: r.forfeit,
           ...(r.failed ? { failed: r.failed } : {}),
           progress: Math.round((st.prefix / r.state.textLength) * 1000) / 10,
-          timeline: raceTimeline(race.text, r.keys, Math.max(1, duration), race.settings.rules, funboxTypingOptions(race.settings.funbox)),
+          timeline,
+          consistency: consistency(timeline),
+          chars: charStats(r.state),
+          words: wordHistory(race.text, r.keys, duration, race.settings.rules, fbOpts),
         },
       };
     });
@@ -695,6 +704,7 @@ export class Room {
           userId: row.r.userId,
           guestName: row.r.userId ? undefined : row.r.ghost ? `ghost of ${row.r.info.name}` : row.r.info.name,
           result: row.result,
+          durationMs: row.durationMs,
           keys: row.r.keys,
           flags: row.flags,
         })),
