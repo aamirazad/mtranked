@@ -234,10 +234,10 @@
       <ResultsPanel result={game.result}>
         {#snippet actions()}
           {#if isHost}
-            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" })}><Shuffle size={16} /> rematch · new text</button>
+            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" })}><Shuffle size={16} /> race again</button>
             <button class="btn" onclick={() => game.send({ type: "room.start", sameText: true })}><Repeat size={16} /> same text</button>
           {:else}
-            <span class="text-sub">waiting for the host to start a rematch…</span>
+            <span class="text-sub">waiting for the host to start the next race…</span>
           {/if}
           <a class="btn btn-ghost" href="/replay/{game.result!.matchId}">replay</a>
         {/snippet}

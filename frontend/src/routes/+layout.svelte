@@ -62,6 +62,11 @@
   });
 
   // during a race keep the chrome quiet, like monkeytype's focus mode
+  const friendsLabel = $derived.by(() => {
+    if (!friends.list) return "friends";
+    const n = friends.list.friends.length;
+    return `${n} friend${n === 1 ? "" : "s"} · ${friends.online.length} online`;
+  });
   const racing = $derived(!!game.race && !game.result && page.url.pathname !== "/");
   const nav = [
     { href: "/", label: "play", icon: Swords },
@@ -107,15 +112,16 @@
       {#if session.me}
         <a
           href="/friends"
-          aria-label="friends"
-          class="tip relative rounded-md p-2 transition-colors hover:text-text"
+          aria-label={friendsLabel}
+          class="tip relative flex items-center gap-1 rounded-md p-2 transition-colors hover:text-text"
           class:text-text={page.url.pathname.startsWith("/friends")}
         >
           <Users size={20} />
+          {#if friends.online.length}
+            <span class="text-xs tabular-nums">{friends.online.length}</span>
+          {/if}
           {#if friends.incomingCount}
-            <span class="absolute top-0.5 right-0.5 min-w-4 rounded-full bg-main px-1 text-center text-[10px] leading-4 text-bg">{friends.incomingCount}</span>
-          {:else if friends.online.length}
-            <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-main" title="{friends.online.length} online"></span>
+            <span class="absolute top-0.5 left-5 min-w-4 rounded-full bg-main px-1 text-center text-[10px] leading-4 text-bg">{friends.incomingCount}</span>
           {/if}
         </a>
         <a href="/u/{session.me.displayName}" class="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:text-text">
