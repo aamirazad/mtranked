@@ -5,6 +5,7 @@ Competitive typing races built on [monkeytype](https://github.com/monkeytypegame
 - **Ranked 1v1**: matchmaking by Glicko-2 rating, placements, tiers, seasons
 - **Casual 1v1**: unrated quick match, guests welcome
 - **Private rooms**: invite link or 6-character code, host picks the text, running scoreboard
+- **Friends**: see what friends are up to, race them in one click, invite everyone online to your room, ask to join theirs, or watch their races
 
 The server is the referee. It generates the text from a seed, replays every keystroke and computes the result with monkeytype's WPM and accuracy formulas. Nothing the browser reports about its own speed is trusted.
 
@@ -81,6 +82,7 @@ You can also open a second browser profile (or a private window) and play agains
 - **Disconnects**: 15 s grace to reconnect and resume. After that, or after 25 s idle, it's a forfeit, which counts as a loss in ranked. If a realtime node restarts mid-race, the match is voided with no rating change.
 - **Ratings**: Glicko-2, starting at 1500/350. The first 5 ranked races are placements. Tiers: Bronze <1200, Silver, Gold, Platinum, Diamond, Master ≥2000.
 - **Anti-cheat**: only trusted keyboard events count, and paste or multi-character insertion is ignored. Races with very uniform key timing or bursts of impossibly fast keys are flagged and the account moves to the shadow queue. Results above 250 WPM are held for review before ratings change. Large jumps over recent form are flagged, and shared signup IPs are a soft flag. Every race keeps its seed plus keystroke log as a replay. Moderators handle reports, held results and flags at `/mod`. A ban gives back the rating that recent opponents lost.
+- **Friends**: requests need the other player to accept. Presence (online, queued, racing, in a private room) lives in Redis and is pushed to friends live. "Race" opens a private room with that friend invited; creating any room offers to invite every friend who's around in one click. Friends in a private room can ask to join, and a host lets them in. Rooms can have several hosts: any host can promote players and remove the host role from any host, themselves included, as long as one is left. Friends can watch each other's ranked, casual and private-room races (not locked rooms); spectators are listed in the room. Players who join a private room mid-race watch it and play the next one.
 - **Progression**: XP per race (bonus for wins) unlocks caret colours and shapes, win animations and profile banners. Tier rewards are granted at season peaks. Supporter cosmetics are separate. Nothing affects play.
 
 ## Hosting publicly
