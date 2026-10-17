@@ -65,8 +65,7 @@ export const friendsRouter = s.router(contract.friends, {
     if (other.id === me) return { status: 400, body: { message: "You can't add yourself." } };
 
     const current = await statusWith(me, other.id);
-    if (current === "friends") return { status: 200, body: { status: "friends" } };
-    if (current === "outgoing") return { status: 200, body: { status: "outgoing" } };
+    if (current === "friends" || current === "outgoing") return { status: 200, body: { status: current, already: true } };
     if (current === "incoming") {
       // they already asked: adding them back accepts
       await sql`update friendships set status = 'accepted', accepted_at = now()

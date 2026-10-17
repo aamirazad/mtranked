@@ -421,12 +421,13 @@ export const contract = c.router(
         path: "/friends",
         responses: { 200: c.type<FriendsList>(), 401: err },
       },
-      /** send a friend request; if they already asked you, this accepts it */
+      /** send a friend request; if they already asked you, this accepts it.
+       *  `already` means nothing changed: you were already friends, or had already asked */
       request: {
         method: "POST",
         path: "/friends/requests",
         body: z.object({ name: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
-        responses: { 200: c.type<{ status: FriendStatus }>(), 400: err, 401: err, 404: err, 429: err },
+        responses: { 200: c.type<{ status: FriendStatus; already?: boolean }>(), 400: err, 401: err, 404: err, 429: err },
       },
       accept: {
         method: "POST",
