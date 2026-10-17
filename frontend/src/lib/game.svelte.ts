@@ -13,6 +13,7 @@ import {
   type RaceStart,
   type RoomPublic,
   type ServerMsg,
+  type SpectateMsg,
 } from "@mtr/race-protocol";
 import { api } from "./api";
 import { friends } from "./friends.svelte";
@@ -25,6 +26,58 @@ export type RaceResult = Omit<Extract<ServerMsg, { type: "race.result" }>, "type
 export type Rematch = { matchId: string; expiresAt: number; requested: string[]; closed: string | null };
 export type RoomClosed = { code?: string; reason: string; rejoin: boolean };
 export type ActiveRace = RaceStart & { resumeKeys: { k: string; t: number }[] | null };
+/** What a race view renders from: our own race, or one we're watching. */
+export type RaceFeed = { race: ActiveRace | null; live: Record<string, LivePlayer>; result: RaceResult | null };
+
+/** A friend's race or room we're watching. */
+class Watch implements RaceFeed {
+  /** the friend we came to watch */
+  target = $state<{ id: string; name: string; mode: Mode } | null>(null);
+  race = $state<ActiveRace | null>(null);
+  live = $state<Record<string, LivePlayer>>({});
+  result = $state<RaceResult | null>(null);
+  room = $state<RoomPublic | null>(null);
+  /** why there's nothing more to watch */
+  ended = $state<string | null>(null);
+
+  reset() {
+    this.target = null;
+    this.race = null;
+    this.live = {};
+    this.result = null;
+    this.room = null;
+    this.ended = null;
+  }
+
+  onMessage(msg: SpectateMsg) {
+    switch (msg.type) {
+      case "race.countdown":
+      case "race.resume":
+        this.result = null;
+        this.live = {};
+        // spectators have no keys of their own to resume
+        this.race = { ...msg, resumeKeys: [] };
+        break;
+      case "race.state":
+        if (this.race?.raceId === msg.raceId) {
+          const live: Record<string, LivePlayer> = {};
+          for (const p of msg.players) live[p.id] = p;
+          this.live = live;
+        }
+        break;
+      case "race.deadline":
+        if (this.race?.raceId === msg.raceId) this.race.deadline = msg.deadline;
+        break;
+      case "race.result":
+        this.result = msg;
+        break;
+      case "room.state":
+        this.room = msg.room;
+        break;
+    }
+  }
+}
+
 /** `admitted`: a host accepted our request to join, rather than us being invited */
 export type RoomInvite = Omit<Extract<ServerMsg, { type: "room.invite" }>, "type"> & { at: number; admitted?: boolean };
 
@@ -53,6 +106,8 @@ class Game {
   lastError = $state<{ code: string; message: string; at: number } | null>(null);
   /** friends' invites to their rooms, newest last */
   invites = $state<RoomInvite[]>([]);
+  /** the friend's race or room we're watching */
+  watch = new Watch();
   /** friends whose rooms we asked to join, and when */
   asked = $state<Record<string, number>>({});
   /** a host let us into this room; the layout takes us there */
@@ -283,6 +338,16 @@ class Game {
         notifier.alert(`${inv.from.name} invited you to race`, "Click to come back and join their room.", "room-invite");
         break;
       }
+      case "spectate.started":
+        this.watch.reset();
+        this.watch.target = { id: msg.playerId, name: msg.name, mode: msg.mode };
+        break;
+      case "spectate.msg":
+        if (this.watch.target) this.watch.onMessage(msg.msg);
+        break;
+      case "spectate.ended":
+        if (this.watch.target) this.watch.ended = msg.reason;
+        break;
       case "room.requested":
         this.asked[msg.playerId] = Date.now();
         toasts.show("Asked to join. You'll be let in as soon as a host accepts.", "info", 5000);
@@ -344,6 +409,15 @@ class Game {
   get openInvites() {
     const now = Date.now();
     return this.invites.filter((i) => now - i.at < INVITE_MS && i.code !== this.room?.code);
+  }
+  /** Watch whatever this friend is racing in. */
+  spectate(friendId: string) {
+    this.watch.reset();
+    this.send({ type: "spectate.start", playerId: friendId });
+  }
+  stopSpectating() {
+    if (this.watch.target) this.send({ type: "spectate.stop" });
+    this.watch.reset();
   }
   /** Ask the hosts of the room this friend is in to let us in. */
   askToJoin(friendId: string) {

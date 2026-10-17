@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { Check, DoorOpen, Search, Swords, UserMinus, UserPlus, X } from "@lucide/svelte";
+  import { Check, DoorOpen, Eye, Search, Swords, UserMinus, UserPlus, X } from "@lucide/svelte";
   import type { PlayerHit } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
   import { session } from "#lib/session.svelte.ts";
@@ -166,6 +166,9 @@
                 <div class="text-xs text-sub">{describeActivity(f.presence)}</div>
               </div>
               <span class="ml-auto flex items-center gap-2">
+                {#if f.presence.online && (f.presence.activity?.kind === "match" || (f.presence.activity?.kind === "room" && !f.presence.activity.locked))}
+                  <a class="btn py-1 text-sm" title="watch their race" href="/watch/{f.name}"><Eye size={14} /> watch</a>
+                {/if}
                 {#if f.presence.activity?.kind === "room"}
                   {#if game.hasAsked(f.id)}
                     <span class="text-xs text-sub">asked to join</span>

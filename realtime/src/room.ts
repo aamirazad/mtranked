@@ -36,6 +36,8 @@ import {
   READY_CHECK_MS,
   RECONNECT_GRACE_MS,
   REMATCH_MS,
+  SPECTATE_TYPES,
+  type SpectateMsg,
   type LivePlayer,
   type Mode,
   type PlayerPublic,
@@ -141,6 +143,11 @@ export const rooms = new Map<string, Room>();
 export const roomByCode = new Map<string, string>();
 /** player id -> room id, for players whose room lives on this node */
 export const playerRoom = new Map<string, string>();
+/** spectator id -> room id they watch, for rooms on this node */
+export const spectating = new Map<string, string>();
+const MAX_SPECTATORS = 32;
+
+export type Spectator = { id: string; name: string; via: string };
 
 /**
  * Gameplay rules only apply in private rooms (everyone there shares the
@@ -192,6 +199,8 @@ export class Room {
   private kicked = new Set<string>();
   /** friends invited in (by a host: past the lock too), by player id */
   private invites = new Map<string, { byHost: boolean; at: number }>();
+  /** watching, not playing: they get the race and room updates, nothing else */
+  spectators = new Map<string, Spectator>();
   /** players asking to join, by player id; `via` is the friend in here they asked */
   private requests = new Map<string, JoinRequest & { at: number }>();
   /** a start is in flight (text generation is async) */
@@ -283,6 +292,9 @@ export class Room {
   // ------------------------------------------------------------ messaging
   broadcast(msg: ServerMsg) {
     deliver(this.members.keys(), msg);
+    if (this.spectators.size && SPECTATE_TYPES.has(msg.type)) {
+      deliver(this.spectators.keys(), { type: "spectate.msg", msg: msg as SpectateMsg });
+    }
   }
 
   publicState(): RoomPublic {
@@ -300,6 +312,7 @@ export class Room {
       requests: [...this.requests.values()]
         .filter((r) => Date.now() - r.at < INVITE_MS)
         .map((r) => ({ id: r.id, name: r.name, level: r.level })),
+      spectators: [...this.spectators.values()].map((x) => ({ id: x.id, name: x.name })),
       status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
       scoreboard: this.scoreboard,
       races: this.racesRun,
@@ -835,6 +848,7 @@ export class Room {
     if (this.members.size >= this.cap) return `This room is full (${this.cap} players).`;
     this.invites.delete(m.idn.id);
     this.requests.delete(m.idn.id);
+    this.removeSpectator(m.idn.id, false);
     this.addMember(m);
     this.lastActivity = Date.now();
     this.broadcastRoom();
@@ -926,6 +940,35 @@ export class Room {
       players: this.members.size,
     });
     this.broadcastRoom();
+  }
+
+  /** A friend of someone in here wants to watch. */
+  addSpectator(sp: Spectator) {
+    const no = (message: string) => sendTo(sp.id, { type: "error", code: "spectate", message });
+    if (this.closed) return no("There's nothing to watch right now.");
+    if (this.members.has(sp.id)) return no("You're playing in that one.");
+    if (this.mode === "private" && this.locked) return no("That room is locked, so it can't be watched.");
+    if (!this.spectators.has(sp.id) && this.spectators.size >= MAX_SPECTATORS) return no("Too many people are watching already.");
+    this.spectators.set(sp.id, sp);
+    spectating.set(sp.id, this.id);
+    void redis.set(`pspec:${sp.id}`, this.id, "EX", 3600);
+    const name = this.members.get(sp.via)?.info.name ?? "";
+    sendTo(sp.id, { type: "spectate.started", playerId: sp.via, name, mode: this.mode });
+    const wrap = (msg: SpectateMsg) => sendTo(sp.id, { type: "spectate.msg", msg });
+    if (this.mode === "private") this.broadcastRoom();
+    const rs = this.raceStart();
+    if (rs && (this.status === "countdown" || this.status === "racing")) wrap({ type: "race.resume", ...rs, keys: [] });
+  }
+
+  /** `tell`: say so to the spectator (not when they're the one who stopped, or they joined as a player) */
+  removeSpectator(id: string, tell: boolean, reason = "You stopped watching.") {
+    if (!this.spectators.delete(id)) return;
+    if (spectating.get(id) === this.id) {
+      spectating.delete(id);
+      void redis.del(`pspec:${id}`);
+    }
+    if (tell) sendTo(id, { type: "spectate.ended", reason });
+    if (this.mode === "private" && !this.closed) this.broadcastRoom();
   }
 
   /** A friend of someone in here asks to be let in; the hosts decide. */
@@ -1043,6 +1086,8 @@ export class Room {
       sendTo(id, { type: "room.closed", code: this.code, reason: why, rejoin: false });
       if (!m.connected) void holdRoomGone(id, { code: this.code, reason: why, rejoin: false });
     }
+    const over = priv ? why : "The match is over.";
+    for (const id of [...this.spectators.keys()]) this.removeSpectator(id, true, over);
     rooms.delete(this.id);
     if (this.code) {
       roomByCode.delete(this.code);

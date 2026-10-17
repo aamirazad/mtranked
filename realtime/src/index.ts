@@ -8,7 +8,7 @@ import { env } from "./env";
 import { NODE_ID, nodeAlive, redis, sub } from "./redis";
 import { Conn, conns, forward, sendTo, setForwardHandler, type Forwarded, type RoomGone } from "./hub";
 import { checkSharedIp, currentRating, publicInfo, rankedBlock, redeemTicket, type Identity } from "./players";
-import { Room, roomByCode, roomOf, rooms, type JoinRequest, type Member } from "./room";
+import { Room, roomByCode, roomOf, rooms, spectating, type JoinRequest, type Member, type Spectator } from "./room";
 import {
   dequeue,
   enqueue,
@@ -35,6 +35,7 @@ const STARTS = new Set<ClientMsg["type"]>(["queue.join", "ghost.accept", "rematc
 
 const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
 const NOT_IN_ROOM = "They're not in a private room right now.";
+const NOTHING_TO_WATCH = "They're not racing or in a room right now.";
 
 const member = (idn: Identity, info: PlayerPublic): Member => ({ idn, info, connected: true, dcAt: null, ready: false });
 
@@ -117,6 +118,16 @@ async function roomNodeOf(playerId: string): Promise<string | null> {
   return node && node !== NODE_ID && (await nodeAlive(node)) ? node : null;
 }
 
+/** Stop watching whatever this player watches, wherever that room lives. */
+async function stopSpectating(id: string) {
+  const local = spectating.get(id);
+  if (local) return rooms.get(local)?.removeSpectator(id, false);
+  const roomId = await redis.getdel(`pspec:${id}`);
+  const raw = roomId ? await redis.get(`room:${roomId}`) : null;
+  const node = raw ? (JSON.parse(raw).node as string) : null;
+  if (node && node !== NODE_ID) await forward(node, { from: id, rtt: 0, msg: { type: "_unspec", roomId } });
+}
+
 /** Run a room message locally, or forward it to the node that owns the room. */
 async function routeRoomMsg(conn: Conn, msg: RoomMsg) {
   const local = roomOf(conn.id);
@@ -139,6 +150,13 @@ setForwardHandler((f: Forwarded) => {
     if (problem) err(f.from, "room_join", problem);
     return;
   }
+  if (msg.type === "_spec") {
+    const target = roomOf(msg.target as string);
+    if (target) target.addSpectator(msg.spec as Spectator);
+    else err(f.from, "spectate", NOTHING_TO_WATCH);
+    return;
+  }
+  if (msg.type === "_unspec") return rooms.get(msg.roomId as string)?.removeSpectator(f.from, false);
   if (msg.type === "_request") {
     const target = roomOf(msg.target as string);
     if (target) target.onJoinRequest(msg.req as JoinRequest);
@@ -258,6 +276,22 @@ async function handle(conn: Conn, msg: ClientMsg) {
       return;
     }
 
+    case "spectate.start": {
+      if (conn.idn.guest) return err(id, "spectate", "Sign in to watch your friends.");
+      if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "spectate", "You can only watch friends.");
+      await stopSpectating(id);
+      const spec: Spectator = { id, name: conn.info.name, via: msg.playerId };
+      const local = roomOf(msg.playerId);
+      if (local) return local.addSpectator(spec);
+      const node = await roomNodeOf(msg.playerId);
+      if (!node) return err(id, "spectate", NOTHING_TO_WATCH);
+      await forward(node, { from: id, rtt: conn.rtt(), msg: { type: "_spec", target: msg.playerId, spec } });
+      return;
+    }
+
+    case "spectate.stop":
+      return stopSpectating(id);
+
     case "room.request": {
       if (conn.idn.guest) return err(id, "room_request", "Sign in to ask friends to let you in.");
       if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "room_request", "You can only ask to join a friend's room.");
@@ -327,7 +361,7 @@ function bucket(burst: number, rate: number) {
 }
 
 /** Messages that hit the DB or redis get a much tighter budget. */
-const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request", "room.request", "room.invite"]);
+const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request", "room.request", "room.invite", "spectate.start"]);
 
 wss.on("connection", async (ws, req) => {
   // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
@@ -358,6 +392,7 @@ wss.on("connection", async (ws, req) => {
     if (exiting || conns.get(idn.id) !== conn) return;
     conns.delete(idn.id);
     setOffline(idn.id);
+    void stopSpectating(idn.id).catch((e) => reportError("[spectate] cleanup failed", e));
     const room = roomOf(idn.id);
     if (room) room.disconnect(idn.id);
     else {

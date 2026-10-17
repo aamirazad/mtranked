@@ -16,21 +16,23 @@
   } from "@mtr/engine";
   import { HURRY_MS, INPUT_BATCH_MS } from "@mtr/race-protocol";
   import { resolveEquipped } from "@mtr/shared";
-  import { game } from "#lib/game.svelte.ts";
+  import { game, type RaceFeed } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
   import TypingArea from "./TypingArea.svelte";
   import TierBadge from "./TierBadge.svelte";
   import LiveStats from "./LiveStats.svelte";
 
-  let { onleave }: { onleave?: () => void } = $props();
+  // `feed`: render a race we're watching instead of our own
+  let { onleave, feed, watching }: { onleave?: () => void; feed?: RaceFeed; watching?: string } = $props();
+  const src = $derived(feed ?? game);
 
-  const race = $derived(game.race!);
+  const race = $derived(src.race!);
   const meId = $derived(game.you?.id);
   const isRacer = $derived(race.players.some((p) => p.id === meId));
   // funbox only ever applies in private rooms
   const funbox = $derived(race.mode === "private" ? (race.settings.funbox ?? []) : []);
   /** forfeited (left, idle or disconnected too long) */
-  const iAmOut = $derived(!!meId && !!game.live[meId]?.out);
+  const iAmOut = $derived(!!meId && !!src.live[meId]?.out);
   const eq = $derived(resolveEquipped(session.me?.equipped));
 
   let ts = $state.raw<TypingState>(createState(" "));
@@ -93,7 +95,7 @@
   const elapsed = $derived(Math.max(0, now - startPerf));
 
   function onkey(k: string) {
-    if (!isRacer || iAmOut || !started || ts.finished || ts.failed || timeUp || game.result) return;
+    if (!isRacer || iAmOut || !started || ts.finished || ts.failed || timeUp || src.result) return;
     const t = Math.round(performance.now() - startPerf);
     applyKey(ts, k, t);
     pending.push({ k, t });
@@ -115,7 +117,7 @@
   const myAcc = $derived.by(() => (void version, Math.round(accuracy(ts))));
   const myBurst = $derived.by(() => (void version, ts.lastBurst ?? 0));
   /** failed a room rule (the server decides min speed/accuracy) */
-  const myFailed = $derived.by(() => (void version, ts.failed ?? (meId ? game.live[meId]?.failed : undefined) ?? null));
+  const myFailed = $derived.by(() => (void version, ts.failed ?? (meId ? src.live[meId]?.failed : undefined) ?? null));
   const ruleList = $derived(describeRules(race.settings.rules));
   const myProgress = $derived.by(() => {
     void version;
@@ -128,7 +130,7 @@
     void version;
     return race.players.map((p) => {
       const mine = p.id === meId;
-      const live = game.live[p.id];
+      const live = src.live[p.id];
       const idx = mine ? caretIndex(ts) : (live?.idx ?? 0);
       return {
         p,
@@ -149,7 +151,7 @@
       .filter((p) => p.id !== meId)
       .map((p) => ({
         id: p.id,
-        idx: game.live[p.id]?.idx ?? 0,
+        idx: src.live[p.id]?.idx ?? 0,
         color: p.caretColor,
         shape: p.caretShape,
         // labels help tell a few opponents apart; past ~6 they just bury the text
@@ -169,8 +171,8 @@
   // 0: 1v1/ranked look, 1: tighter rows, 2: also two columns on md+ (private rooms up to 16)
   const density = $derived(race.players.length > 8 ? 2 : race.players.length > 4 ? 1 : 0);
   // private-room host can call time once they're done
-  const isHost = $derived(race.mode === "private" && !!meId && !!game.room?.hosts.includes(meId));
-  const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !game.result);
+  const isHost = $derived(!feed && race.mode === "private" && !!meId && !!game.room?.hosts.includes(meId));
+  const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !src.result);
   const hurryLeft = $derived((void now, race.deadline ? Math.max(0, Math.ceil((race.deadline - game.serverNow()) / 1000)) : 0));
   const timeUp = $derived(!!race.deadline && hurryLeft === 0);
 
@@ -181,7 +183,7 @@
       setTimeout(() => (confirmLeave = false), 3000);
       return;
     }
-    game.leaveRace();
+    if (!feed) game.leaveRace();
     onleave?.();
   }
 </script>
@@ -229,17 +231,17 @@
     burst={isRacer ? myBurst : undefined}
   >
     {#if ruleList.length && !race.deadline}<span class="ml-auto self-center text-xs text-sub" title="room rules">{ruleList.join(" · ")}</span>{/if}
-    {#if race.deadline && !game.result}
+    {#if race.deadline && !src.result}
       <span class="ml-auto flex items-center gap-2 text-xl text-error tabular-nums animate-pop">
         <Timer size={20} />{timeUp ? "time's up" : `finish in ${hurryLeft}s`}
       </span>
     {/if}
-    {#if !isRacer}<span class="text-sub">spectating — you'll join the next race</span>{/if}
+    {#if !isRacer}<span class="text-sub">{feed ? `watching ${watching ?? "the race"}` : "spectating — you'll join the next race"}</span>{/if}
     {#if funbox.length}<span class="self-center text-sm text-sub" class:ml-auto={!ruleList.length || !!race.deadline}>funbox · <span class="text-main">{funbox.map((id) => id.replaceAll("_", " ")).join(", ")}</span></span>{/if}
   </LiveStats>
 
   <!-- tall enough for the finished card even when the text is short -->
-  <div class="relative" class:min-h-64={isRacer && done && !game.result && !docked}>
+  <div class="relative" class:min-h-64={isRacer && done && !src.result && !docked}>
     <TypingArea
       bind:this={area}
       {ts}
@@ -260,7 +262,7 @@
         {/key}
       </div>
     {/if}
-    {#if isRacer && done && !game.result && !docked}
+    {#if isRacer && done && !src.result && !docked}
       <div class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade" out:fade={{ duration: 250 }}>
         <div class="flex flex-col items-center gap-3 text-center animate-pop">
           <div class="flex items-center gap-2 font-logo text-4xl text-main"><Flag size={28} /> finished!</div>
@@ -275,7 +277,7 @@
     {/if}
   </div>
 
-  {#if isRacer && done && !game.result && docked}
+  {#if isRacer && done && !src.result && docked}
     <div class="mt-6 flex flex-col items-center gap-3 text-center" in:fly={{ y: -80, duration: 400 }}>
       <div class="flex items-center gap-2 font-logo text-2xl text-main"><Flag size={20} /> finished!</div>
       {@render finishedInfo()}
@@ -302,15 +304,15 @@
 
   <div class="mt-8 flex min-h-10 items-center justify-between text-sm text-sub">
     <div>
-      {#if myFailed && !game.result}
+      {#if myFailed && !src.result}
         <span class="text-error">you failed this race · {myFailed}</span> · waiting for it to end…
-      {:else if iAmOut && !game.result}
+      {:else if iAmOut && !src.result}
         <span class="text-error">you forfeited this race</span> (left or idle for too long) · waiting for it to end…
       {/if}
       {#if race.source}<span class="ml-2">— {race.source}</span>{/if}
     </div>
-    {#if !game.result && !iAmOut}
-      <button class="btn btn-ghost text-sm" onclick={leave}>{confirmLeave ? "click again to forfeit" : "leave"}</button>
+    {#if !src.result && !iAmOut}
+      <button class="btn btn-ghost text-sm" onclick={leave}>{feed ? "stop watching" : confirmLeave ? "click again to forfeit" : "leave"}</button>
     {/if}
   </div>
 </div>

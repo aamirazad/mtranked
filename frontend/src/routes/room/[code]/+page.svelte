@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Check, Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
+  import { Check, Copy, Crown, DoorClosed, Eye, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, Sparkles, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -362,6 +362,12 @@
             </li>
           {/each}
         </ul>
+        {#if room.spectators.length}
+          <div class="mt-4 flex items-start gap-2 text-xs text-sub" title="watching, not playing">
+            <Eye size={14} class="shrink-0" />
+            <span>{room.spectators.map((x) => x.name).join(", ")}</span>
+          </div>
+        {/if}
         {#if room.races}<div class="mt-4 text-xs text-sub">{room.races} race{room.races === 1 ? "" : "s"} played</div>{/if}
         {#if !room.hostSubscriber && room.players.length >= room.cap}
           <div class="mt-4 text-xs text-sub">room is full.{#if session.supporterSales} supporter hosts get rooms of up to 16.{/if}</div>

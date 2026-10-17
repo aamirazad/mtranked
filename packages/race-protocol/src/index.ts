@@ -83,6 +83,9 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("decline"), matchId: z.string() }),
   /** `invite`: friends to invite straight away (the "race a friend" button) */
   z.object({ type: z.literal("room.create"), settings: TextSettings, invite: z.array(z.string().max(64)).max(16).optional() }),
+  /** watch the race (or private room) this friend is in */
+  z.object({ type: z.literal("spectate.start"), playerId: z.string().max(64) }),
+  z.object({ type: z.literal("spectate.stop") }),
   /** ask to be let into the private room this friend is in */
   z.object({ type: z.literal("room.request"), playerId: z.string().max(64) }),
   /** a host lets a player who asked in, or turns them down */
@@ -179,6 +182,8 @@ export type RoomPublic = {
   invited: string[];
   /** players who asked to join, waiting for a host to answer */
   requests: { id: string; name: string; level: number }[];
+  /** watching without playing */
+  spectators: { id: string; name: string }[];
   status: "waiting" | "countdown" | "racing" | "finished";
   scoreboard: Record<string, number>;
   races: number;
@@ -207,6 +212,20 @@ export type RaceStart = {
   deadline?: number;
   players: PlayerPublic[];
 };
+
+/** What spectators are sent from the room they watch (wrapped in `spectate.msg`). */
+export type SpectateMsg = Extract<
+  ServerMsg,
+  { type: "race.countdown" | "race.resume" | "race.state" | "race.deadline" | "race.result" | "room.state" }
+>;
+export const SPECTATE_TYPES: ReadonlySet<string> = new Set<SpectateMsg["type"]>([
+  "race.countdown",
+  "race.resume",
+  "race.state",
+  "race.deadline",
+  "race.result",
+  "room.state",
+]);
 
 export type ServerMsg =
   | { type: "hello"; you: PlayerPublic; serverTime: number; verified: boolean; rankedOk: boolean }
@@ -250,6 +269,11 @@ export type ServerMsg =
   | { type: "rematch.status"; matchId: string; requested: string[]; closed?: string }
   /** a friend invited us to their private room */
   | { type: "room.invite"; code: string; from: { id: string; name: string }; roomName: string | null; players: number }
+  /** we're now watching what this friend is in */
+  | { type: "spectate.started"; playerId: string; name: string; mode: Mode }
+  | { type: "spectate.msg"; msg: SpectateMsg }
+  /** nothing more to watch (the match ended, the room closed, ...) */
+  | { type: "spectate.ended"; reason: string }
   /** our request to join was passed to the room's hosts */
   | { type: "room.requested"; playerId: string }
   /** a host let us in: head to the room */
