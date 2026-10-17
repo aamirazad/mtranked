@@ -47,7 +47,8 @@ type RoomMsg = Extract<
       | "room.settings"
       | "room.start"
       | "room.kick"
-      | "room.transfer"
+      | "room.promote"
+      | "room.demote"
       | "room.lock"
       | "room.close"
       | "room.rename"
@@ -83,8 +84,10 @@ function applyRoomMsg(room: Room, id: string, msg: RoomMsg) {
       return void room.onStart(id, msg.sameText);
     case "room.kick":
       return room.onKick(id, msg.playerId);
-    case "room.transfer":
-      return room.onTransfer(id, msg.playerId);
+    case "room.promote":
+      return room.onPromote(id, msg.playerId);
+    case "room.demote":
+      return room.onDemote(id, msg.playerId);
     case "room.lock":
       return room.onLock(id, msg.locked);
     case "room.close":

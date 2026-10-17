@@ -165,7 +165,8 @@ export class Room {
   code?: string;
   status: "waiting" | "ready_check" | "countdown" | "racing" | "finished" | "closed" = "waiting";
   members = new Map<string, Member>();
-  hostId?: string;
+  /** private rooms can have several hosts; any of them can promote, demote (even themselves) and run the room */
+  hosts = new Set<string>();
   settings: TextSettings;
   cap = 2;
   hostSubscriber = false;
@@ -186,6 +187,15 @@ export class Room {
   private kicked = new Set<string>();
   /** a start is in flight (text generation is async) */
   private starting = false;
+
+  isHost(playerId: string) {
+    return this.hosts.has(playerId);
+  }
+
+  /** room perks (name, theme) follow whether any host is a supporter */
+  private refreshHostPerks() {
+    this.hostSubscriber = [...this.hosts].some((id) => this.members.get(id)?.info.subscriber);
+  }
 
   /** read through a getter so checks after an await aren't narrowed away */
   get closed() {
@@ -238,7 +248,7 @@ export class Room {
     room.code = newCode();
     roomByCode.set(room.code, room.id);
     void redis.set(`roomcode:${room.code}`, room.id, "EX", 6 * 3600);
-    room.hostId = host.idn.id;
+    room.hosts.add(host.idn.id);
     room.hostSubscriber = host.info.subscriber;
     room.cap = host.info.subscriber ? ROOM_CAP_SUBSCRIBER : ROOM_CAP_FREE;
     if (settings.mode === "custom" && !settings.custom?.trim()) room.settings = { ...room.settings, mode: "words" };
@@ -269,7 +279,7 @@ export class Room {
   publicState(): RoomPublic {
     return {
       code: this.code ?? "",
-      hostId: this.hostId ?? "",
+      hosts: [...this.hosts],
       locked: this.locked,
       cap: this.cap,
       hostSubscriber: this.hostSubscriber,
@@ -295,7 +305,7 @@ export class Room {
       mode: this.mode,
       code: this.code,
       status: this.status,
-      hostId: this.hostId,
+      hosts: [...this.hosts],
       settings: this.settings,
       members: [...this.members.keys()],
     };
@@ -759,7 +769,7 @@ export class Room {
 
   // ------------------------------------------------------------ private rooms
   async onStart(playerId: string, sameText?: boolean) {
-    if (playerId !== this.hostId || this.mode !== "private") return;
+    if (!this.isHost(playerId) || this.mode !== "private") return;
     if (this.status === "countdown" || this.status === "racing") return;
     await this.startRace(sameText && this.lastSettingsSeed ? this.lastSettingsSeed : undefined);
   }
@@ -767,7 +777,7 @@ export class Room {
   /** The host is done and tired of waiting: everyone still typing gets HURRY_MS to finish. */
   onHurry(playerId: string) {
     const race = this.race;
-    if (playerId !== this.hostId || this.mode !== "private" || this.status !== "racing") return;
+    if (!this.isHost(playerId) || this.mode !== "private" || this.status !== "racing") return;
     if (!race || race.ended || race.timeLimit || race.deadline) return;
     if (race.racers.get(playerId)?.finishMs == null) return;
     race.deadline = Math.min(race.endAt, Date.now() + HURRY_MS);
@@ -776,7 +786,7 @@ export class Room {
   }
 
   onSettings(playerId: string, settings: TextSettings) {
-    if (playerId !== this.hostId || this.status === "countdown" || this.status === "racing") return;
+    if (!this.isHost(playerId) || this.status === "countdown" || this.status === "racing") return;
     if (settings.mode === "custom" && !settings.custom?.trim()) {
       sendTo(playerId, { type: "error", code: "custom_empty", message: "Custom text can't be empty." });
       return;
@@ -815,41 +825,56 @@ export class Room {
       if (!m.connected) void holdRoomGone(playerId, { code: this.code, reason, rejoin: false });
     }
     if (this.members.size === 0) return this.close("Everyone left, so the room closed.");
-    if (this.hostId === playerId) {
-      const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
-      this.hostId = next.idn.id;
-      // the cap follows the host's plan; rooms already open keep their size
-      this.hostSubscriber = next.info.subscriber;
+    if (this.hosts.delete(playerId)) {
+      if (!this.hosts.size) {
+        const next = [...this.members.values()].find((m) => m.connected) ?? [...this.members.values()][0]!;
+        this.hosts.add(next.idn.id);
+      }
+      // rooms already open keep their size; only the perks follow the hosts
+      this.refreshHostPerks();
     }
     this.broadcastRoom();
   }
 
   onKick(playerId: string, target: string) {
-    if (playerId !== this.hostId || target === playerId || !this.members.has(target)) return;
+    if (!this.isHost(playerId) || target === playerId || !this.members.has(target)) return;
     this.kicked.add(target);
     this.removeMember(target, "You were removed from the room by the host.");
   }
 
-  onTransfer(playerId: string, target: string) {
-    if (playerId !== this.hostId || !this.members.has(target)) return;
-    this.hostId = target;
-    this.hostSubscriber = this.members.get(target)!.info.subscriber;
+  /** Make another player a host too; the one promoting stays a host. */
+  onPromote(playerId: string, target: string) {
+    if (!this.isHost(playerId) || !this.members.has(target) || this.isHost(target)) return;
+    this.hosts.add(target);
+    this.refreshHostPerks();
+    this.broadcastRoom();
+  }
+
+  /** Any host can take the host role away from any host, themselves included, as long as one is left. */
+  onDemote(playerId: string, target: string) {
+    if (!this.isHost(playerId) || !this.isHost(target)) return;
+    if (this.hosts.size === 1) {
+      sendTo(playerId, { type: "error", code: "last_host", message: "A room needs a host. Make someone else a host first." });
+      return;
+    }
+    this.hosts.delete(target);
+    this.refreshHostPerks();
     this.broadcastRoom();
   }
 
   onClose(playerId: string) {
-    if (playerId !== this.hostId || this.mode !== "private") return;
+    if (!this.isHost(playerId) || this.mode !== "private") return;
     this.close("The host closed the room.");
   }
 
   onLock(playerId: string, locked: boolean) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     this.locked = locked;
     this.broadcastRoom();
   }
 
   onRename(playerId: string, name: string) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     if (!this.hostSubscriber) {
       sendTo(playerId, { type: "error", code: "subscriber_only", message: "Naming rooms is a supporter perk." });
       return;
@@ -864,7 +889,7 @@ export class Room {
   }
 
   onTheme(playerId: string, theme: string | null) {
-    if (playerId !== this.hostId) return;
+    if (!this.isHost(playerId)) return;
     if (!this.hostSubscriber) {
       sendTo(playerId, { type: "error", code: "subscriber_only", message: "Room themes are a supporter perk." });
       return;

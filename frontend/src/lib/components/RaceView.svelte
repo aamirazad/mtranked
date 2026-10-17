@@ -169,7 +169,7 @@
   // 0: 1v1/ranked look, 1: tighter rows, 2: also two columns on md+ (private rooms up to 16)
   const density = $derived(race.players.length > 8 ? 2 : race.players.length > 4 ? 1 : 0);
   // private-room host can call time once they're done
-  const isHost = $derived(race.mode === "private" && !!meId && game.room?.hostId === meId);
+  const isHost = $derived(race.mode === "private" && !!meId && !!game.room?.hosts.includes(meId));
   const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !game.result);
   const hurryLeft = $derived((void now, race.deadline ? Math.max(0, Math.ceil((race.deadline - game.serverNow()) / 1000)) : 0));
   const timeUp = $derived(!!race.deadline && hurryLeft === 0);

@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
+  import { Copy, Crown, DoorClosed, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, ShieldMinus, Shuffle, UserMinus, Link as LinkIcon } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -87,7 +87,7 @@
 
   const room = $derived(game.room?.code === code ? game.room : null);
   const meId = $derived(game.you?.id);
-  const isHost = $derived(!!room && room.hostId === meId);
+  const isHost = $derived(!!room && !!meId && room.hosts.includes(meId));
   const inRace = $derived(!!game.race && game.race.mode === "private" && !game.result);
   const link = $derived(typeof location !== "undefined" ? `${location.origin}/room/${code}` : "");
   const board = $derived(
@@ -279,13 +279,23 @@
         <ul class="space-y-1">
           {#each board as { p, wins } (p.id)}
             <li class="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
-              {#if p.id === room.hostId}<Crown size={14} class="text-main" />{:else}<span class="w-3.5"></span>{/if}
+              {#if room.hosts.includes(p.id)}<Crown size={14} class="text-main" aria-label="host" />{:else}<span class="w-3.5"></span>{/if}
               <span class:text-main={p.id === meId}>{p.name}</span>
               {#if p.guest}<span class="text-xs text-sub">guest</span>{:else}<span class="text-xs text-sub">lv {p.level}</span>{/if}
-              {#if isHost && p.id !== meId}
+              {#if isHost && (p.id !== meId || room.hosts.length > 1)}
                 <span class="ml-auto hidden gap-1 group-hover:flex">
-                  <button class="text-sub hover:text-main" title="make host" onclick={() => game.send({ type: "room.transfer", playerId: p.id })}><Crown size={14} /></button>
-                  <button class="text-sub hover:text-error" title="kick" onclick={() => game.send({ type: "room.kick", playerId: p.id })}><UserMinus size={14} /></button>
+                  {#if !room.hosts.includes(p.id)}
+                    <button class="text-sub hover:text-main" title="make host" onclick={() => game.send({ type: "room.promote", playerId: p.id })}><Crown size={14} /></button>
+                  {:else if room.hosts.length > 1}
+                    <button
+                      class="text-sub hover:text-error"
+                      title={p.id === meId ? "step down as host" : "remove host"}
+                      onclick={() => game.send({ type: "room.demote", playerId: p.id })}><ShieldMinus size={14} /></button
+                    >
+                  {/if}
+                  {#if p.id !== meId}
+                    <button class="text-sub hover:text-error" title="kick" onclick={() => game.send({ type: "room.kick", playerId: p.id })}><UserMinus size={14} /></button>
+                  {/if}
                 </span>
               {/if}
               <span class="ml-auto text-main tabular-nums group-hover:ml-2">{wins}</span>
@@ -339,7 +349,7 @@
         </fieldset>
         <div class="mt-3"><RulesPicker rules={room.settings.rules} onchange={(r) => update("rules", r)} disabled={!isHost} note="applies to everyone in this room" /></div>
         <div class="mt-3 text-sm"><FunboxPicker value={room.settings.funbox} readonly={!isHost} onchange={(v) => update("funbox", v.length ? v : undefined)} /></div>
-        {#if !isHost}<div class="mt-4 text-xs text-sub">the host picks the text</div>{/if}
+        {#if !isHost}<div class="mt-4 text-xs text-sub">the hosts pick the text</div>{/if}
       </div>
     </div>
   </div>

@@ -87,7 +87,9 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room.settings"), settings: TextSettings }),
   z.object({ type: z.literal("room.start"), sameText: z.boolean().optional() }),
   z.object({ type: z.literal("room.kick"), playerId: z.string() }),
-  z.object({ type: z.literal("room.transfer"), playerId: z.string() }),
+  /** hosts can make other players hosts too, and take the role from any host (themselves included) */
+  z.object({ type: z.literal("room.promote"), playerId: z.string() }),
+  z.object({ type: z.literal("room.demote"), playerId: z.string() }),
   z.object({ type: z.literal("room.lock"), locked: z.boolean() }),
   /** host only: ends the room for everyone */
   z.object({ type: z.literal("room.close") }),
@@ -155,7 +157,8 @@ export type RaceResultRow = {
 
 export type RoomPublic = {
   code: string;
-  hostId: string;
+  /** everyone who can run the room; never empty */
+  hosts: string[];
   locked: boolean;
   cap: number;
   hostSubscriber: boolean;

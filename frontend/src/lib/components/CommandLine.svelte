@@ -67,7 +67,7 @@
     list.map((v) => ({ label: name(v), active: value === v, run: () => set(v) }));
 
   const room = $derived(game.room);
-  const canThemeRoom = $derived(!!room && room.hostId === game.you?.id && room.hostSubscriber && page.url.pathname.startsWith("/room/"));
+  const canThemeRoom = $derived(!!room && !!game.you && room.hosts.includes(game.you.id) && room.hostSubscriber && page.url.pathname.startsWith("/room/"));
 
   const groups = $derived.by<Group[]>(() => [
     {
