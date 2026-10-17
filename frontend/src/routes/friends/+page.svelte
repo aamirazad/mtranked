@@ -15,7 +15,9 @@
     await friends.load();
   });
 
-  // add by name, with the same prefix search the leaderboard uses
+  // add by name, with the same prefix search the leaderboard uses. Suggestions
+  // only kick in after a few characters so the box doesn't list everyone.
+  const MIN_SUGGEST = 3;
   let q = $state("");
   let hits = $state<PlayerHit[]>([]);
   let open = $state(false);
@@ -23,7 +25,7 @@
   let adding = $state(false);
   $effect(() => {
     const term = q.trim();
-    if (!term) {
+    if (term.length < MIN_SUGGEST) {
       hits = [];
       return;
     }
@@ -108,7 +110,7 @@
       <button class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-sub hover:text-main" title="send friend request" disabled={!q.trim() || adding} onclick={() => add(q)}>
         <UserPlus size={16} />
       </button>
-      {#if open && q.trim() && hits.length}
+      {#if open && q.trim().length >= MIN_SUGGEST && hits.length}
         <div id="friend-hits" role="listbox" class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg">
           {#each hits as h, i (h.name)}
             <button

@@ -60,7 +60,12 @@ class Friends {
       toasts.show(errorMessage(r), "error");
       return false;
     }
-    toasts.show(r.body.status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.`, "success");
+    const { status, already } = r.body;
+    if (already) {
+      toasts.show(status === "friends" ? `You're already friends with ${name}.` : `You already sent ${name} a friend request.`, "info");
+    } else {
+      toasts.show(status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.`, "success");
+    }
     await this.load();
     return true;
   }
