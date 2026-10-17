@@ -96,8 +96,6 @@ class Game {
   match = $state<MatchFound | null>(null);
   /** last ready check that fell through; `requeued` false means we were dropped from the queue */
   cancelled = $state<{ requeued: boolean; reason: string; at: number } | null>(null);
-  /** why the server just took us out of the queue (e.g. we joined a room); the room page says so */
-  queueLeft = $state<{ reason: string; at: number } | null>(null);
   race = $state<ActiveRace | null>(null);
   live = $state<Record<string, LivePlayer>>({});
   result = $state<RaceResult | null>(null);
@@ -299,7 +297,7 @@ class Game {
         // sent on reconnect when we're in neither a queue nor a room, so a ready
         // check that ended while we were away is over
         if (this.match && this.serverNow() > this.match.readyBy) this.match = null;
-        if (msg.reason) this.queueLeft = { reason: msg.reason, at: Date.now() };
+        if (msg.reason) toasts.show(msg.reason);
         break;
       case "match.found":
         this.match = { matchId: msg.matchId, mode: msg.mode, players: msg.players, readyBy: msg.readyBy, ready: [] };

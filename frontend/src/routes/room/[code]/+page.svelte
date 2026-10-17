@@ -137,14 +137,6 @@
     return text ? { text, kind: "error" as const } : null;
   };
 
-  // joining this room took us out of the matchmaking queue
-  $effect(() => {
-    const q = game.queueLeft;
-    if (!q) return;
-    game.queueLeft = null;
-    if (Date.now() - q.at < 10_000) notes.set("queue", q.reason, "info", 8000);
-  });
-
   function copy(text: string, what: "code" | "link") {
     void navigator.clipboard.writeText(text);
     notes.set(what, "copied", "success", 1500);
@@ -296,7 +288,6 @@
         {:else if room.name}
           <div class="mb-4 text-2xl">{room.name}</div>
         {/if}
-        <Note note={notes.get("queue")} class="mb-3 block" />
         <div class="label">room code</div>
         <button class="group flex items-center gap-3 text-5xl tracking-[0.25em] text-main" onclick={() => copy(code, "code")} title="copy code">
           {code}
