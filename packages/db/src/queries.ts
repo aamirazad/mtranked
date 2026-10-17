@@ -154,3 +154,22 @@ export async function playerBits(userId: string): Promise<PublicProfileBits | un
 }
 
 export const isPlaced = (races: number) => races >= PLACEMENT_RACES;
+
+/** Ids of the user's accepted friends. */
+export async function friendIds(userId: string): Promise<string[]> {
+  const rows = await sql<{ id: string }[]>`
+    select case when requester_id = ${userId} then addressee_id else requester_id end id
+    from friendships where status = 'accepted' and (requester_id = ${userId} or addressee_id = ${userId})`;
+  return rows.map((r) => r.id);
+}
+
+/** Which of `others` are accepted friends of the user. */
+export async function friendsAmong(userId: string, others: string[]): Promise<Set<string>> {
+  const ids = others.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (!ids.length) return new Set();
+  const rows = await sql<{ id: string }[]>`
+    select case when requester_id = ${userId} then addressee_id else requester_id end id
+    from friendships where status = 'accepted'
+      and ((requester_id = ${userId} and addressee_id in ${sql(ids)}) or (addressee_id = ${userId} and requester_id in ${sql(ids)}))`;
+  return new Set(rows.map((r) => r.id));
+}

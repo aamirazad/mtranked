@@ -9,6 +9,7 @@ import { meRouter, usersRouter, leaderboardRoute, seasonRoute, matchRoute, repor
 import { modRouter } from "./routes/mod";
 import { billingRouter, stripeWebhook } from "./routes/billing";
 import { practiceRouter } from "./routes/practice";
+import { friendsRouter } from "./routes/friends";
 
 const app = express();
 app.set("trust proxy", env.trustProxy);
@@ -29,6 +30,7 @@ const router = s.router(contract, {
   match: matchRoute,
   report: reportRoute,
   practice: practiceRouter,
+  friends: friendsRouter,
   mod: modRouter,
   billing: billingRouter,
 });

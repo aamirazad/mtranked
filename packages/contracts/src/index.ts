@@ -194,6 +194,13 @@ export type PracticeResult = {
 
 export type PlayerHit = { name: string; country: string | null; rating: number; races: number; subscriber: boolean };
 
+/** Another account on the friends page: a friend, or one side of a pending request. */
+export type FriendRow = { id: string; name: string; level: number; country: string | null; subscriber: boolean; since: string };
+export type FriendsList = { friends: FriendRow[]; incoming: FriendRow[]; outgoing: FriendRow[] };
+/** How the viewer stands with a profile's owner. */
+export type FriendStatus = "none" | "friends" | "incoming" | "outgoing";
+export const MAX_FRIENDS = 200;
+
 export type LeaderboardRow = {
   rank: number;
   id: string;
@@ -406,6 +413,41 @@ export const contract = c.router(
         path: "/search/players",
         query: z.object({ q: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
         responses: { 200: c.type<{ players: PlayerHit[] }>(), 429: err },
+      },
+    },
+    friends: {
+      list: {
+        method: "GET",
+        path: "/friends",
+        responses: { 200: c.type<FriendsList>(), 401: err },
+      },
+      /** send a friend request; if they already asked you, this accepts it */
+      request: {
+        method: "POST",
+        path: "/friends/requests",
+        body: z.object({ name: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
+        responses: { 200: c.type<{ status: FriendStatus }>(), 400: err, 401: err, 404: err, 429: err },
+      },
+      accept: {
+        method: "POST",
+        path: "/friends/:id/accept",
+        pathParams: UserId,
+        body: c.noBody(),
+        responses: { 200: ok, 401: err, 404: err },
+      },
+      /** unfriend, decline an incoming request or cancel an outgoing one */
+      remove: {
+        method: "DELETE",
+        path: "/friends/:id",
+        pathParams: UserId,
+        body: c.noBody(),
+        responses: { 200: ok, 401: err },
+      },
+      /** how the signed-in viewer stands with this player (for the profile page) */
+      status: {
+        method: "GET",
+        path: "/friends/status/:name",
+        responses: { 200: c.type<{ status: FriendStatus }>(), 401: err, 404: err },
       },
     },
     practice: {
