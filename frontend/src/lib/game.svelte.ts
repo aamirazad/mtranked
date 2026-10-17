@@ -479,5 +479,7 @@ class Game {
   }
 }
 
-// one instance per page even if the dev server hands out a stale copy of this module
+// one instance per page: editing this module reloads the page, and any stale copy
+// the dev server hands out shares the instance instead of making its own
+import.meta.hot?.accept(() => location.reload());
 export const game: Game = import.meta.hot ? (import.meta.hot.data.game ??= new Game()) : new Game();
