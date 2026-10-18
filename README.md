@@ -2,20 +2,53 @@
 
 Competitive typing races built on [monkeytype](https://github.com/monkeytypegame/monkeytype)'s typing engine:
 
-- **Ranked 1v1**: matchmaking by Glicko-2 rating, placements, tiers, seasons
-- **Casual 1v1**: unrated quick match, guests welcome
-- **Private rooms**: invite link or 6-character code, host picks the text, running scoreboard
-- **Friends**: see what friends are up to, race them in one click, invite everyone online to your room, ask to join theirs, or watch their races
-
-The server is the referee. It generates the text from a seed, replays every keystroke and computes the result with monkeytype's WPM and accuracy formulas. Nothing the browser reports about its own speed is trusted.
+- **Ranked 1v1**: compete against people of your caliper and gain elo
+- **Casual 1v1**: unrated quick match, no account needed
+- **Private rooms**: compete against your friends in a typing match, or mix it up with funbox
+- **Friends**: race your friends in one click and compete to get the best stats
 
 ## Credits and license
 
-MT Ranked is a fork of [monkeytype](https://github.com/monkeytypegame/monkeytype) by Miodec and contributors. Its WPM and accuracy formulas, typing behaviour, word lists, quotes, fonts and the serika dark theme come from that project. Monkeytype's backend, accounts, branding, ads and links are not used.
+MT Ranked is a fork of [monkeytype](https://github.com/monkeytypegame/monkeytype) by Miodec and contributors. Its WPM and accuracy formulas, typing behavior, word lists, quotes, fonts and themes come from that project. Monkeytype's backend, accounts, branding, ads and links are not used. Not affiliated with monkeytype.com.
 
-Licensed under **GPL-3.0** (see `LICENSE`), like monkeytype. Because the frontend JavaScript is sent to every visitor, publish this repository openly and set `PUBLIC_SOURCE_URL` so the footer links to your source. Not affiliated with monkeytype.com.
+Licensed under **GPL-3.0** (see [LICENSE](./LICENSE)).
 
-## Layout
+## Game Mechanics
+
+At its core, MT Ranked has two different game modes, ranked mode and private room.
+
+When playing ranked, you will be matched with another person at a similar level of experience to you. Once both players accept, the game is on. Type as fast as possible to beat the other player. If you do, you will gain elo. Elo is a number that represents your skill level compared to other typists. Try to increase your elo to reach the next level.
+
+At some point you may find yourself with a group of friends whom you want to challenge to a typing competition. For that, we have private rooms. Private rooms allow you to invite all your friends to race to type the same text as fast as possible. As the host, you get to adjust what game mode everyone plays, or even mix it up and add debuffs by choosing one of the options in the the funbox.
+
+I am always open to new feature ideas, I appreciate all issues with your feedback, both positive and negative. Thank you!
+
+<details>
+<summary>All the details</summary>
+
+- **Ranked format**: 50 words from the 200 most common English words, no punctuation.
+- **Queue**: Redis sorted set by rating. Every second the matcher pairs the closest players whose ranges overlap. Ranked range: ±50, +25 every 5s, max ±400. Casual searches wider. Back-to-back rematches are avoided unless the queue is nearly empty.
+- **Ready check**: 20s. Whoever declines or misses it is taken out of the queue and given a warning; the player who accepted is put back in the queue.
+- **Strikes**: declining, missing a ready check, or forfeiting a ranked or casual race (leaving it, or disconnecting past the 15s grace) is a strike. Three strikes in 10 minutes means a 5-minute queue timeout. A player who forfeits by closing the tab sees the warning when they come back.
+- **Ghost races**: after 60 seconds in a ranked queue you can race a recorded replay from a player near your rating to practice while you wait
+- **Race**: 3s countdown against a server timestamp (client clocks are synced by ping). Keystrokes stream in 100 ms batches. Positions stream out 10×/s, and opponent carets glide between updates.
+- **Finish time** is server receipt time minus your measured one-way latency, capped at 150 ms. The final key is sent immediately.
+- **Disconnects**: 15 s grace to reconnect and resume. After that, or after 25s idle, it's a forfeit, which counts as a loss in ranked. If the server restarts mid-race, the match is voided with no rating change.
+- **Ratings**: Glicko-2, starting at 1500/350. The first 5 ranked races are placements. Tiers: Bronze <1200, Silver, Gold, Platinum, Diamond, Master ≥2000.
+- **Anti-cheat**: only trusted keyboard events count, and paste or multi-character insertion is ignored. Races with very uniform key timing or bursts of impossibly fast keys are flagged, and the account moves to the shadow queue. Results above 250 WPM are held for review before ratings change. Large jumps over recent form are flagged, and shared signup IPs are a soft flag. Every race keeps its seed plus keystroke log as a replay. Moderators handle reports, held results and flags at `/mod`. A ban gives back the rating that recent opponents lost.
+- **Friends**: requests need the other player to accept. Presence (online, queued, racing, in a private room) lives in Redis and is pushed to friends live. "Race" opens a private room with that friend invited; creating any room offers to invite every friend who's around. Friends in a private room can ask to join, and a host lets them in. Rooms can have several hosts: any host can promote players and remove the host role from any host, themselves included, as long as one is left. Friends can watch each other's ranked, casual and private-room races (not locked rooms); spectators are listed in the room. Players who join a private room mid-race watch it and play the next one.
+- **Progression**: XP per race (bonus for wins) unlocks caret colors and shapes, win animations and profile banners. Tier rewards are granted at season peaks. Supporter cosmetics are separate. Nothing affects play.
+
+</details>
+
+## Technical Details
+
+<details>
+<summary>Running locally</summary>
+
+## Running locally
+
+### Layout
 
 ```
 frontend/                 SvelteKit (Svelte 5) static SPA, Tailwind
@@ -29,8 +62,6 @@ packages/db               Postgres client, SQL migrations, seed and maintenance 
 ```
 
 Postgres is the system of record (accounts, sessions, ratings, matches, replays, reports). Redis holds the matchmaking queues, live room snapshots, WebSocket tickets and rate limits.
-
-## Running locally
 
 Requirements: Node 22+, pnpm 11, Docker.
 
@@ -70,20 +101,10 @@ You can also open a second browser profile (or a private window) and play agains
 | `pnpm season:rollover`     | end the current season, start the next (soft reset)  |
 | `pnpm services:down`       | stop the local Docker services                       |
 
-## How the game works
+</details>
 
-- **Ranked format**: 50 words from the 200 most common English words, no punctuation.
-- **Queue**: Redis sorted set by rating. Every second the matcher pairs the closest players whose ranges overlap. Ranked range: ±50, +25 every 5 s, max ±400. Casual searches wider. Back-to-back rematches are avoided unless the queue is nearly empty.
-- **Ready check**: 20 s. Whoever declines or misses it is taken out of the queue, sent home and warned about the timeout; the player who accepted is put back in the queue.
-- **Strikes**: declining, missing a ready check, or forfeiting a ranked or casual race (leaving it, or disconnecting past the 15 s grace) is a strike. Three strikes in 10 minutes means a 5-minute queue timeout. A player who forfeits by closing the tab sees the warning when they come back.
-- **Ghost races**: after 60 s in the ranked queue you can race a recorded replay from a player near your rating while staying in the queue.
-- **Race**: 3 s countdown against a server timestamp (client clocks are synced by ping). Keystrokes stream in 100 ms batches. Positions stream out 10×/s, and opponent carets glide between updates.
-- **Finish time** is server receipt time minus your measured one-way latency, capped at 150 ms. The final key is sent immediately.
-- **Disconnects**: 15 s grace to reconnect and resume. After that, or after 25 s idle, it's a forfeit, which counts as a loss in ranked. If a realtime node restarts mid-race, the match is voided with no rating change.
-- **Ratings**: Glicko-2, starting at 1500/350. The first 5 ranked races are placements. Tiers: Bronze <1200, Silver, Gold, Platinum, Diamond, Master ≥2000.
-- **Anti-cheat**: only trusted keyboard events count, and paste or multi-character insertion is ignored. Races with very uniform key timing or bursts of impossibly fast keys are flagged and the account moves to the shadow queue. Results above 250 WPM are held for review before ratings change. Large jumps over recent form are flagged, and shared signup IPs are a soft flag. Every race keeps its seed plus keystroke log as a replay. Moderators handle reports, held results and flags at `/mod`. A ban gives back the rating that recent opponents lost.
-- **Friends**: requests need the other player to accept. Presence (online, queued, racing, in a private room) lives in Redis and is pushed to friends live. "Race" opens a private room with that friend invited; creating any room offers to invite every friend who's around. Friends in a private room can ask to join, and a host lets them in. Rooms can have several hosts: any host can promote players and remove the host role from any host, themselves included, as long as one is left. Friends can watch each other's ranked, casual and private-room races (not locked rooms); spectators are listed in the room. Players who join a private room mid-race watch it and play the next one.
-- **Progression**: XP per race (bonus for wins) unlocks caret colours and shapes, win animations and profile banners. Tier rewards are granted at season peaks. Supporter cosmetics are separate. Nothing affects play.
+<details>
+<summary>Hosting publically</summary>
 
 ## Hosting publicly
 
@@ -143,13 +164,13 @@ For now every new account is an **early supporter**: supporter perks for life, a
 2. Add a webhook endpoint `https://your-domain/api/billing/webhook` with the events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
 3. Set `STRIPE_SECRET_KEY`. Enable the Customer Portal (Settings → Billing → Customer portal) so users can cancel or switch plans.
 4. Selling outside the US: turn on Stripe Tax and set `STRIPE_AUTOMATIC_TAX=true`.
-5. Restart: `docker compose ... up -d`.
+5. Restart: `docker compose … up -d`.
 
 Perks follow `users.is_subscriber`, which the webhook keeps in sync. Cancelled plans stay active until the paid period ends.
 
 ### 5. Backups
 
-The `backup` service dumps the database with `pg_dump -Fc` when the stack starts and then once a day. Dumps go to `./backups` in the repo checkout on the VPS, named like `mtr-2026-01-31T030000Z.dump`. Dumps from the last 14 days are kept; older ones are deleted only after a new dump succeeds, so a failing backup never removes good ones. The files are owned by whoever owns the directory, so run `mkdir -p backups` as your SSH user before the first `up` (if Docker creates it, it and the dumps belong to root). Change the location with `BACKUP_DIR` and the retention with `BACKUP_KEEP_DAYS` in `.env.production`, then run `docker compose ... up -d`.
+The `backup` service dumps the database with `pg_dump -Fc` when the stack starts and then once a day. Dumps go to `./backups` in the repo checkout on the VPS, named like `mtr-2026-01-31T030000Z.dump`. Dumps from the last 14 days are kept; older ones are deleted only after a new dump succeeds, so a failing backup never removes good ones. The files are owned by whoever owns the directory, so run `mkdir -p backups` as your SSH user before the first `up` (if Docker creates it, it and the dumps belong to root). Change the location with `BACKUP_DIR` and the retention with `BACKUP_KEEP_DAYS` in `.env.production`, then run `docker compose … up -d`.
 
 Check that it's working:
 
@@ -216,7 +237,7 @@ GitHub Actions (`.github/workflows/`) tests every change and publishes the image
 | Event                                   | Runs                                                       | Image tags                                  |
 | --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------- |
 | Pull request                            | frontend check + build; backend check, tests, build, migrations against Postgres | none                 |
-| Pull request titled with the `ci` scope, e.g. `feat(ci): ...` | the above, plus a Docker build and smoke test | none                           |
+| Pull request titled with the `ci` scope, e.g. `feat(ci): …` | the above, plus a Docker build and smoke test | none                           |
 | Push to `main`                          | tests in parallel with build + smoke test, then push                            | `main`, `sha-<short sha>`                   |
 | Tag `v1.2.3`                            | same as main                                                                     | `1.2.3`, `1.2`, `1`, `latest`, `sha-<short sha>` |
 | Tag `v1.2.3-rc.1`                       | same as main                                                                     | `1.2.3-rc.1`, `sha-<short sha>`             |
@@ -226,3 +247,5 @@ Set `MTR_TAG` in `.env.production` to choose what the server runs: `main` follow
 `scripts/smoke-test.sh <image>` boots an image against throwaway Postgres and Redis containers and checks it the same way CI does.
 
 The frontend has its public settings baked in at build time. Set them as repository **variables** (Settings → Secrets and variables → Actions): `PUBLIC_CONTACT_EMAIL`, `PUBLIC_SENTRY_DSN`, and optionally `PUBLIC_SOURCE_URL` (defaults to this repository's URL). Add a `SENTRY_AUTH_TOKEN` repository **secret** to upload frontend source maps to Sentry.
+
+</details>
