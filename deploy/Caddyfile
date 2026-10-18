@@ -1,5 +1,14 @@
 # Runs inside the app container next to the API and realtime server (see deploy/start.mjs).
 # SITE_ADDRESS is DOMAIN by default, so Caddy gets and renews HTTPS certificates automatically.
+
+{
+	servers {
+		# Keep X-Forwarded-For from a proxy in front of the container (cloudflared, nginx, ...),
+		# otherwise every request looks like it came from that proxy. The API only believes the
+		# header past its own hop when TRUST_PROXY allows it (see .env.production.example).
+		trusted_proxies static private_ranges
+	}
+}
 {$SITE_ADDRESS} {
 	encode zstd gzip
 

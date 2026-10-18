@@ -1,0 +1,9 @@
+# Overlay for running behind a Cloudflare Tunnel or another reverse proxy on the same host:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d
+# Publishes Caddy's plain HTTP on localhost only (no 80/443), so the tunnel is the only way in.
+# Set SITE_ADDRESS=:80 and TRUST_PROXY=loopback,uniquelocal in .env.production
+# (see "Behind a Cloudflare Tunnel" in README.md).
+services:
+  app:
+    ports: !override
+      - "127.0.0.1:${APP_PORT:-8085}:80"
