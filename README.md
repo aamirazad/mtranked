@@ -186,6 +186,21 @@ If you point `DATABASE_URL` at a managed Postgres (Neon, Supabase, RDS), use its
 - **Health**: `https://your-domain/api/health`. The realtime server exposes `/health` on port 4002 inside the container; Docker's healthcheck polls both.
 - **Replays**: keystroke logs live in Postgres (a few KB per race). Move them to S3/R2 when that table gets large.
 
+### Alternative: behind a Cloudflare Tunnel
+
+If the server already runs other services and reaches the internet through `cloudflared`, let Cloudflare handle HTTPS and have Caddy serve plain HTTP on a local port:
+
+1. In `.env.production`, set `SITE_ADDRESS=:80` and `TRUST_PROXY=loopback,uniquelocal`. The second makes the API take the visitor's IP from `X-Forwarded-For` instead of seeing every request as coming from `cloudflared`, which would put the whole site in one rate-limit bucket.
+2. Start the stack with `docker-compose.tunnel.yml` added. It replaces the 80/443 ports with `127.0.0.1:${APP_PORT:-8085}`, so only the tunnel can reach the app (and nobody can fake `X-Forwarded-For`):
+   ```sh
+   docker compose --env-file .env.production -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d
+   ```
+   Use the same `-f` pair for every other `docker compose` command. `!override` needs Docker Compose 2.24.4 or newer.
+3. In the tunnel, add one public hostname, `your-domain` → `http://localhost:8085`. That covers the site, `/api` and the `/ws` WebSocket (the frontend uses `wss://` automatically on HTTPS). If `cloudflared` runs in a container on a bridge network, attach it to the `mt-ranked_default` network and use `http://app:80` instead.
+4. In Cloudflare, turn on SSL/TLS → Edge Certificates → **Always Use HTTPS** (the session cookie is `Secure`) and keep **Network → WebSockets** on. Leave Rocket Loader off.
+
+To check the client IP setup, sign in and look at your sessions in Settings: the IP should be yours, not a `172.x` address.
+
 ### Alternative: static frontend on Cloudflare Pages
 
 You can host `frontend/build` on Cloudflare Pages or Vercel (build command `pnpm install && pnpm --filter @mtr/frontend build`, output `frontend/build`, SPA fallback `200.html`). Run the API and realtime server on `api.your-domain`, and route `/api/*` and `/ws` on the site's domain to that host (for example with a Cloudflare Worker or Pages Functions proxy) so the session cookie stays first-party. Keeping everything behind the single Caddy domain is simpler.
