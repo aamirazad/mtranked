@@ -7,7 +7,21 @@
 
   let year = $state<number | null>(null);
   let data = $state<{ days: ActivityDay[]; from: string; to: string; years: number[] } | null>(null);
-  let hovered = $state<{ date: string; count: number; x: number; y: number } | null>(null);
+  let hovered = $state<{ date: string; count: number } | null>(null);
+  // Viewport coords of the hovered cell's top-centre. Kept after hiding so the
+  // tooltip fades out in place instead of sliding back to the origin.
+  let pos = $state({ x: 0, y: 0 });
+  // Only glide between cells while the tooltip is already showing; a fresh
+  // appearance snaps straight to the cell.
+  let glide = $state(false);
+
+  function show(e: PointerEvent, date: string, count: number) {
+    const r = (e.currentTarget as Element).getBoundingClientRect();
+    glide = hovered !== null;
+    pos = { x: r.left + r.width / 2, y: r.top };
+    hovered = { date, count };
+  }
+  const hide = () => (hovered = null);
 
   $effect(() => {
     const n = name;
@@ -60,6 +74,8 @@
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 </script>
 
+<svelte:window onscroll={hide} onresize={hide} />
+
 <div class="card">
   <div class="mb-4 flex flex-wrap items-center gap-4">
     <select
@@ -79,8 +95,8 @@
     </span>
   </div>
   {#if grid}
-    <div class="relative overflow-x-auto">
-      <svg viewBox="0 0 {W} {H}" class="block w-full min-w-[640px]" role="img" aria-label="{total} results in this period">
+    <div class="overflow-x-auto" onscroll={hide}>
+      <svg viewBox="0 0 {W} {H}" class="block w-full min-w-[640px]" role="img" aria-label="{total} results in this period" onpointerleave={hide}>
         {#each grid.months as m (m.col)}
           <text x={LEFT + m.col * (CELL + GAP)} y="10" class="fill-sub text-[9px]">{m.label}</text>
         {/each}
@@ -100,14 +116,14 @@
             class="transition-[stroke] duration-100"
             stroke={hovered?.date === c.date ? "var(--color-text)" : "none"}
             role="presentation"
-            onpointerenter={() => (hovered = { date: c.date, count: c.count, x: (cx + CELL / 2) / W, y: cy / H })}
-            onpointerleave={() => (hovered = null)}
+            onpointerenter={(e) => show(e, c.date, c.count)}
           />
         {/each}
       </svg>
+      <!-- fixed so it isn't clipped by the horizontal scroll container -->
       <div
-        class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-bg px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg transition-[opacity,left,top] duration-150 ease-out"
-        style="left: {(hovered?.x ?? 0) * 100}%; top: calc({(hovered?.y ?? 0) * 100}% - 6px); opacity: {hovered ? 1 : 0}"
+        class="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded-lg bg-bg px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg duration-100 ease-out {glide ? 'transition-[opacity,left,top]' : 'transition-opacity'}"
+        style="left: {pos.x}px; top: {pos.y - 6}px; opacity: {hovered ? 1 : 0}"
       >
         {#if hovered}<span class="text-text">{hovered.count} {hovered.count === 1 ? "result" : "results"}</span> <span class="text-sub">· {fmt(hovered.date)}</span>{/if}
       </div>
