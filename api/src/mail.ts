@@ -16,14 +16,21 @@ export async function sendMail(to: string, subject: string, text: string, html: 
   }
 }
 
+// mt ranked's default theme (frontend/src/app.css). Inline styles only, since mail clients
+// strip <style> and svg, so the logo is the app's wordmark set in text.
 const wrap = (title: string, body: string, link: string, cta: string) => `
-<div style="background:#323437;padding:32px;font-family:Roboto Mono,monospace;color:#d1d0c5">
+<div style="background:#141414;padding:40px 16px;font-family:'Roboto Mono',ui-monospace,monospace;color:#ededed">
   <div style="max-width:480px;margin:auto">
-    <div style="color:#e2b714;font-size:20px;margin-bottom:16px">mt ranked</div>
-    <h2 style="font-weight:normal">${title}</h2>
-    <p style="color:#a6a6a6">${body}</p>
-    <a href="${link}" style="display:inline-block;background:#e2b714;color:#323437;padding:10px 18px;border-radius:8px;text-decoration:none">${cta}</a>
-    <p style="color:#646669;font-size:12px;margin-top:24px">If the button doesn't work: ${link}</p>
+    <div style="margin-bottom:24px;line-height:1">
+      <div style="font-family:Montserrat,'Lexend Deca',sans-serif;font-size:10px;letter-spacing:0.1em;color:#6e6e6e">competitive typing</div>
+      <div style="font-family:Montserrat,'Lexend Deca',sans-serif;font-size:26px;color:#ededed">mt <span style="color:#f8c630">ranked</span></div>
+    </div>
+    <div style="background:#1f1f1f;border-radius:12px;padding:24px">
+      <h2 style="margin:0 0 12px;font-weight:normal;font-size:20px;color:#ededed">${title}</h2>
+      <p style="margin:0 0 20px;color:#6e6e6e;line-height:1.5">${body}</p>
+      <a href="${link}" style="display:inline-block;background:#f8c630;color:#141414;padding:10px 18px;border-radius:8px;text-decoration:none">${cta}</a>
+    </div>
+    <p style="color:#6e6e6e;font-size:12px;margin-top:24px;word-break:break-all">If the button doesn't work: <a href="${link}" style="color:#6e6e6e">${link}</a></p>
   </div>
 </div>`;
 
