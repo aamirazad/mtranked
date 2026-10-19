@@ -266,6 +266,86 @@ export type FlagRow = {
   timedOutUntil: string | null;
 };
 
+/** What the site-wide stats break results down by; ghost races are counted on their own here. */
+export const MOD_STAT_MODES = ["ranked", "casual", "ghost", "private", "practice"] as const;
+export type ModStatMode = (typeof MOD_STAT_MODES)[number];
+export const ModStatsRange = z.enum(["30", "90", "365", "all"]);
+export type ModStatsRange = z.infer<typeof ModStatsRange>;
+
+/** Site-wide numbers for the moderator dashboard. Bots and seeded races are left out. */
+export type ModStats = {
+  users: {
+    total: number;
+    verified: number;
+    new1d: number;
+    new7d: number;
+    new30d: number;
+    /** accounts with at least one result in the window */
+    active1d: number;
+    active7d: number;
+    active30d: number;
+    moderators: number;
+    supporters: number;
+    earlySupporters: number;
+    banned: number;
+    timedOut: number;
+    flagged: number;
+    /** accounts with at least one accepted friend */
+    withFriends: number;
+  };
+  tests: {
+    /** every counted result: signed-in and guest race results plus practice tests */
+    total: number;
+    today: number;
+    last7d: number;
+    fromGuests: number;
+    /** time spent typing across every result, in hours */
+    hoursTyped: number;
+  };
+  modes: {
+    mode: ModStatMode;
+    tests: number;
+    /** distinct races (practice: same as tests) */
+    races: number;
+    /** distinct signed-in players */
+    players: number;
+    last7d: number;
+    avgWpm: number;
+  }[];
+  /** most played test types ("words 50") and languages, most first */
+  testTypes: { label: string; tests: number }[];
+  languages: { label: string; tests: number }[];
+  /** results by UTC hour of day, index 0-23 */
+  hours: number[];
+  /** one row per UTC day of the range, oldest first */
+  daily: { date: string; signups: number; users: number; active: number; tests: Record<ModStatMode, number> }[];
+  moderation: { openReports: number; held: number; flags7d: number; resolved30d: number };
+};
+
+export const ModUserFilter = z.enum(["all", "moderators", "supporters", "suspended", "flagged", "bots"]);
+export type ModUserFilter = z.infer<typeof ModUserFilter>;
+export const ModUserSort = z.enum(["newest", "oldest", "active", "tests", "rating", "name"]);
+export type ModUserSort = z.infer<typeof ModUserSort>;
+export const MOD_USERS_PAGE = 50;
+
+export type ModUser = {
+  id: string;
+  name: string;
+  country: string | null;
+  createdAt: string;
+  verified: boolean;
+  moderator: boolean;
+  bot: boolean;
+  supporter: boolean;
+  flagged: boolean;
+  bannedAt: string | null;
+  timedOutUntil: string | null;
+  /** current season rating; null before their first ranked race */
+  rating: number | null;
+  tests: number;
+  lastSeen: string | null;
+};
+
 /** Longest timeout a moderator can hand out, in hours (90 days). */
 export const MAX_TIMEOUT_HOURS = 90 * 24;
 const UserId = z.object({ id: z.string().uuid() });
@@ -528,6 +608,31 @@ export const contract = c.router(
         path: "/mod/users/:id/timeout",
         pathParams: UserId,
         body: z.object({ hours: z.number().int().min(1).max(MAX_TIMEOUT_HOURS), reason: ModReason }),
+        responses: { 200: ok, 400: err, 403: err, 404: err },
+      },
+      stats: {
+        method: "GET",
+        path: "/mod/stats",
+        query: z.object({ range: ModStatsRange.default("90") }),
+        responses: { 200: c.type<ModStats>(), 403: err },
+      },
+      users: {
+        method: "GET",
+        path: "/mod/users",
+        query: z.object({
+          q: z.string().trim().max(64).optional(),
+          filter: ModUserFilter.default("all"),
+          sort: ModUserSort.default("newest"),
+          page: z.coerce.number().int().min(0).max(10_000).default(0),
+        }),
+        responses: { 200: c.type<{ users: ModUser[]; total: number }>(), 403: err },
+      },
+      /** grant or take away moderator */
+      setModerator: {
+        method: "POST",
+        path: "/mod/users/:id/moderator",
+        pathParams: UserId,
+        body: z.object({ moderator: z.boolean() }),
         responses: { 200: ok, 400: err, 403: err, 404: err },
       },
       /** lift any ban or timeout */

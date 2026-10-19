@@ -5,8 +5,10 @@
   import { session } from "#lib/session.svelte.ts";
   import { Notes } from "#lib/notes.svelte.ts";
   import Note from "#lib/components/Note.svelte";
+  import ModStats from "#lib/components/ModStats.svelte";
+  import ModUsers from "#lib/components/ModUsers.svelte";
 
-  let tab = $state<"reports" | "held" | "flags">("reports");
+  let tab = $state<"reports" | "held" | "flags" | "stats" | "users">("reports");
   let reports = $state<ReportRow[]>([]);
   let held = $state<HeldMatch[]>([]);
   let flags = $state<FlagRow[]>([]);
@@ -97,6 +99,8 @@
       <button class="toggle" class:on={tab === "reports"} onclick={() => (tab = "reports")}>reports ({reports.length})</button>
       <button class="toggle" class:on={tab === "held"} onclick={() => (tab = "held")}>held results ({held.length})</button>
       <button class="toggle" class:on={tab === "flags"} onclick={() => (tab = "flags")}>auto flags ({flags.length})</button>
+      <button class="toggle" class:on={tab === "stats"} onclick={() => (tab = "stats")}>stats</button>
+      <button class="toggle" class:on={tab === "users"} onclick={() => (tab = "users")}>users</button>
     </div>
 
     {#if tab === "reports"}
@@ -137,6 +141,10 @@
       {:else}
         <div class="text-sub">nothing held.</div>
       {/each}
+    {:else if tab === "stats"}
+      <ModStats />
+    {:else if tab === "users"}
+      <ModUsers {notes} timeouts={TIMEOUTS} {ban} {timeout} {unsuspend} />
     {:else}
       <table class="w-full text-left text-sm">
         <thead class="text-sub"><tr><th class="py-2 font-normal">player</th><th class="font-normal">reason</th><th class="font-normal">details</th><th class="font-normal">when</th><th class="font-normal">status</th><th></th></tr></thead>

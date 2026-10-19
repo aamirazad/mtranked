@@ -1,14 +1,15 @@
 import { initServer } from "@ts-rest/express";
 import type { Request, Response } from "express";
-import { contract } from "@mtr/contracts";
+import { contract, MOD_STAT_MODES, MOD_USERS_PAGE, type ModStatMode, type ModStats } from "@mtr/contracts";
 import { sql, currentSeason, getRating } from "@mtr/db";
 import { getAuth } from "../auth";
 
 const s = initServer();
 const forbidden = { status: 403 as const, body: { message: "Moderators only." } };
 
-async function mod(req: Request, res: Response) {
-  const auth = await getAuth(req, res);
+// typed as object: a route's parsed query (numbers, defaults) doesn't fit express's Request
+async function mod(req: object, res: Response) {
+  const auth = await getAuth(req as Request, res);
   return auth?.user.is_moderator ? auth.user : null;
 }
 
@@ -54,6 +55,22 @@ async function timeoutUser(userId: string, hours: number, reason: string | null)
     timed_out_until = greatest(timed_out_until, now() + make_interval(hours => ${hours}))
     where id = ${userId}`;
 }
+
+/**
+ * Every counted result on the site: finished races by signed-in players and guests
+ * (not bots, not the ghost a player raced against, not seeded races) plus practice tests.
+ */
+const results = () => sql`
+  select m.mode, m.id match_id, mp.user_id, m.finished_at at, mp.wpm, m.text_settings settings,
+    coalesce(mp.duration_ms, mp.finished_at_ms, 0) duration_ms
+  from match_players mp join matches m on m.id = mp.match_id left join users u on u.id = mp.user_id
+  where m.status = 'finished' and m.mode in ('ranked', 'casual', 'ghost', 'private')
+    and (mp.user_id is null and mp.guest_name not like 'ghost of %' or not u.is_bot)
+  union all
+  select 'practice', null, p.user_id, p.created_at, p.wpm, p.text_settings, p.duration_ms
+  from practice_results p join users u on u.id = p.user_id where not u.is_bot`;
+
+const n = (v: unknown) => Number(v ?? 0);
 
 export const modRouter = s.router(contract.mod, {
   reports: async ({ req, res }) => {
@@ -160,6 +177,191 @@ export const modRouter = s.router(contract.mod, {
         })),
       },
     };
+  },
+
+  stats: async ({ req, res, query }) => {
+    if (!(await mod(req, res))) return forbidden;
+    const [first] = await sql`select min(created_at) at from users where not is_bot`;
+    // "all" runs from the UTC day of the first signup through today
+    const utcDay = (d: Date) => Math.floor(d.getTime() / 86_400_000);
+    const days = query.range === "all" ? utcDay(new Date()) - utcDay(first?.at ?? new Date()) + 1 : Number(query.range);
+    const [[u], [t], modes, testTypes, languages, hours, daily, [m]] = await Promise.all([
+      sql`
+        select count(*) total,
+          count(*) filter (where email_verified_at is not null) verified,
+          count(*) filter (where created_at > now() - interval '1 day') new1d,
+          count(*) filter (where created_at > now() - interval '7 days') new7d,
+          count(*) filter (where created_at > now() - interval '30 days') new30d,
+          count(*) filter (where is_moderator) moderators,
+          count(*) filter (where is_subscriber or early_supporter) supporters,
+          count(*) filter (where early_supporter) early_supporters,
+          count(*) filter (where banned_at is not null) banned,
+          count(*) filter (where banned_at is null and timed_out_until > now()) timed_out,
+          count(*) filter (where flagged_at is not null) flagged,
+          count(*) filter (where exists (select 1 from friendships f where f.status = 'accepted'
+            and (f.requester_id = users.id or f.addressee_id = users.id))) with_friends,
+          (select count(distinct user_id) from (${results()}) r where at > now() - interval '1 day') active1d,
+          (select count(distinct user_id) from (${results()}) r where at > now() - interval '7 days') active7d,
+          (select count(distinct user_id) from (${results()}) r where at > now() - interval '30 days') active30d
+        from users where not is_bot`,
+      sql`
+        select count(*) total,
+          count(*) filter (where at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc') today,
+          count(*) filter (where at > now() - interval '7 days') last7d,
+          count(*) filter (where user_id is null) guests,
+          coalesce(sum(duration_ms), 0) / 3600000.0 hours
+        from (${results()}) r`,
+      sql`
+        select mode, count(*) tests, count(distinct coalesce(match_id::text, at::text)) races,
+          count(distinct user_id) players, count(*) filter (where at > now() - interval '7 days') last7d,
+          coalesce(avg(wpm), 0) avg_wpm
+        from (${results()}) r group by mode`,
+      sql`
+        select case settings->>'mode'
+            when 'time' then 'time ' || (settings->>'time')
+            when 'words' then 'words ' || (settings->>'words')
+            when 'quote' then 'quote ' || coalesce(settings->>'quoteLength', 'all')
+            else settings->>'mode' end label, count(*) tests
+        from (${results()}) r group by 1 order by 2 desc limit 10`,
+      sql`
+        select replace(coalesce(settings->>'language', 'english'), '_', ' ') label, count(*) tests
+        from (${results()}) r where settings->>'mode' <> 'custom' group by 1 order by 2 desc limit 10`,
+      sql`select extract(hour from at at time zone 'utc')::int h, count(*) tests from (${results()}) r group by 1`,
+      sql`
+        with d as (
+          select generate_series(date_trunc('day', now() at time zone 'utc') - make_interval(days => ${days - 1}),
+            date_trunc('day', now() at time zone 'utc'), interval '1 day')::date as day),
+        r as (select (at at time zone 'utc')::date as day, mode, user_id from (${results()}) r
+          where at >= (select min(day) from d)::timestamp at time zone 'utc'),
+        s as (select (created_at at time zone 'utc')::date as day, count(*) c from users where not is_bot group by 1),
+        a as (select day, count(distinct user_id) c from r group by 1),
+        t as (select day, json_object_agg(mode, c) tests from (select day, mode, count(*) c from r group by 1, 2) x group by 1)
+        select to_char(d.day, 'YYYY-MM-DD') date, coalesce(s.c, 0) signups,
+          (select coalesce(sum(c), 0) from s where s.day < (select min(day) from d))
+            + sum(coalesce(s.c, 0)) over (order by d.day) users,
+          coalesce(a.c, 0) active, coalesce(t.tests, '{}') tests
+        from d left join s using (day) left join a using (day) left join t using (day)
+        order by d.day`,
+      sql`
+        select (select count(*) from reports where status = 'open') open_reports,
+          (select count(*) from matches where status = 'held') held,
+          (select count(*) from flags where created_at > now() - interval '7 days') flags7d,
+          (select count(*) from reports where resolved_at > now() - interval '30 days') resolved30d`,
+    ]);
+    const byHour = Array<number>(24).fill(0);
+    for (const h of hours) byHour[h.h] = n(h.tests);
+    const zero = Object.fromEntries(MOD_STAT_MODES.map((k) => [k, 0])) as Record<ModStatMode, number>;
+    const body: ModStats = {
+      users: {
+        total: n(u?.total),
+        verified: n(u?.verified),
+        new1d: n(u?.new1d),
+        new7d: n(u?.new7d),
+        new30d: n(u?.new30d),
+        active1d: n(u?.active1d),
+        active7d: n(u?.active7d),
+        active30d: n(u?.active30d),
+        moderators: n(u?.moderators),
+        supporters: n(u?.supporters),
+        earlySupporters: n(u?.early_supporters),
+        banned: n(u?.banned),
+        timedOut: n(u?.timed_out),
+        flagged: n(u?.flagged),
+        withFriends: n(u?.with_friends),
+      },
+      tests: { total: n(t?.total), today: n(t?.today), last7d: n(t?.last7d), fromGuests: n(t?.guests), hoursTyped: n(t?.hours) },
+      modes: MOD_STAT_MODES.map((mode) => {
+        const r = modes.find((x) => x.mode === mode);
+        return {
+          mode,
+          tests: n(r?.tests),
+          races: n(r?.races),
+          players: n(r?.players),
+          last7d: n(r?.last7d),
+          avgWpm: n(r?.avg_wpm),
+        };
+      }),
+      testTypes: testTypes.map((r) => ({ label: r.label, tests: n(r.tests) })),
+      languages: languages.map((r) => ({ label: r.label, tests: n(r.tests) })),
+      hours: byHour,
+      daily: daily.map((d) => ({
+        date: d.date,
+        signups: n(d.signups),
+        users: n(d.users),
+        active: n(d.active),
+        tests: { ...zero, ...Object.fromEntries(Object.entries(d.tests as Record<string, unknown>).map(([k, v]) => [k, n(v)])) },
+      })),
+      moderation: { openReports: n(m?.open_reports), held: n(m?.held), flags7d: n(m?.flags7d), resolved30d: n(m?.resolved30d) },
+    };
+    return { status: 200, body };
+  },
+
+  users: async ({ req, res, query }) => {
+    if (!(await mod(req, res))) return forbidden;
+    const season = await currentSeason();
+    const where = sql`where true
+      ${query.q ? sql`and u.display_name ilike ${"%" + query.q.replace(/[\\%_]/g, "\\$&") + "%"}` : sql``}
+      ${query.filter === "moderators" ? sql`and u.is_moderator` : sql``}
+      ${query.filter === "supporters" ? sql`and (u.is_subscriber or u.early_supporter) and not u.is_bot` : sql``}
+      ${query.filter === "suspended" ? sql`and (u.banned_at is not null or u.timed_out_until > now())` : sql``}
+      ${query.filter === "flagged" ? sql`and u.flagged_at is not null` : sql``}
+      ${query.filter === "bots" ? sql`and u.is_bot` : sql`and not u.is_bot`}`;
+    const order = {
+      newest: sql`u.created_at desc`,
+      oldest: sql`u.created_at`,
+      active: sql`last_seen desc nulls last, u.created_at desc`,
+      tests: sql`tests desc, u.created_at desc`,
+      rating: sql`rating desc nulls last, u.created_at desc`,
+      name: sql`u.display_name`,
+    }[query.sort];
+    const [rows, [count]] = await Promise.all([
+      sql`
+        select u.id, u.display_name, u.country, u.created_at, u.email_verified_at is not null verified,
+          u.is_moderator, u.is_bot, u.is_subscriber or u.early_supporter supporter, u.flagged_at is not null flagged,
+          u.banned_at, u.timed_out_until, r.rating, r.races,
+          (select max(last_seen_at) from sessions s where s.user_id = u.id) last_seen,
+          (select count(*) from match_players mp join matches m on m.id = mp.match_id
+            where mp.user_id = u.id and m.status = 'finished' and m.mode in ('ranked', 'casual', 'ghost', 'private'))
+          + (select count(*) from practice_results p where p.user_id = u.id) tests
+        from users u left join ratings r on r.user_id = u.id and r.season_id = ${season.id}
+        ${where} order by ${order} limit ${MOD_USERS_PAGE} offset ${query.page * MOD_USERS_PAGE}`,
+      sql`select count(*) from users u ${where}`,
+    ]);
+    return {
+      status: 200,
+      body: {
+        total: n(count?.count),
+        users: rows.map((r) => ({
+          id: r.id,
+          name: r.display_name,
+          country: r.country,
+          createdAt: r.created_at.toISOString(),
+          verified: r.verified,
+          moderator: r.is_moderator,
+          bot: r.is_bot,
+          supporter: r.supporter,
+          flagged: r.flagged,
+          bannedAt: r.banned_at?.toISOString() ?? null,
+          timedOutUntil: r.timed_out_until > new Date() ? r.timed_out_until.toISOString() : null,
+          rating: r.races ? Math.round(r.rating) : null,
+          tests: n(r.tests),
+          lastSeen: r.last_seen?.toISOString() ?? null,
+        })),
+      },
+    };
+  },
+
+  setModerator: async ({ req, res, params, body }) => {
+    const m = await mod(req, res);
+    if (!m) return forbidden;
+    if (params.id === m.id) return { status: 400, body: { message: "You can't change your own moderator status." } };
+    const [u] = await sql`select is_bot, banned_at from users where id = ${params.id}`;
+    if (!u) return { status: 404, body: { message: "No such player." } };
+    if (body.moderator && (u.is_bot || u.banned_at)) {
+      return { status: 400, body: { message: "Bots and banned players can't be moderators." } };
+    }
+    await sql`update users set is_moderator = ${body.moderator} where id = ${params.id}`;
+    return { status: 200, body: { ok: true } };
   },
 
   unflag: async ({ req, res, params }) => {
