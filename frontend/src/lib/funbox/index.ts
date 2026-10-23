@@ -18,7 +18,7 @@ export function funboxClass(ids: Ids): string {
   return cls.join(" ");
 }
 
-/** Memory needs every line on screen so it can be memorised. */
+/** Memory needs every line on screen so it can be memorized. */
 export function funboxLines(ids: Ids, lines: number): number {
   return on(ids, "memory") ? Math.max(lines, 6) : lines;
 }

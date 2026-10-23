@@ -1,5 +1,5 @@
 -- Friends. One row per pair of accounts: pending until the addressee accepts.
--- Declining, cancelling and unfriending all delete the row.
+-- Declining, canceling and unfriending all delete the row.
 create table friendships (
   requester_id uuid not null references users(id) on delete cascade,
   addressee_id uuid not null references users(id) on delete cascade,

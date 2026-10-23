@@ -1,5 +1,5 @@
 // Typing sounds, ported from monkeytype's sound controller: sample packs
-// (static/sounds, from monkeytype) and a few synthesised oscillator voices.
+// (static/sounds, from monkeytype) and a few synthesized oscillator voices.
 // Samples are fetched the first time a pack is used.
 type Pack = { name: string; dir?: string; n?: number; osc?: OscillatorType; scale?: number[] };
 
@@ -87,7 +87,7 @@ function playPack(p: Pack | undefined, volume: number, code?: string) {
     });
     return;
   }
-  // synthesised voices: pitch follows the key so typing plays a little tune
+  // synthesized voices: pitch follows the key so typing plays a little tune
   const osc = c.createOscillator();
   osc.type = p.osc ?? "sine";
   const h = [...(code ?? "KeyA")].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 997, 7);

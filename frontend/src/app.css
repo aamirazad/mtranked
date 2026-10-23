@@ -124,7 +124,7 @@ html {
     @apply w-full rounded-lg border-0 bg-sub-alt px-3 py-2 text-text outline-none placeholder:text-sub focus:ring-2 focus:ring-main/40;
   }
   .card { @apply rounded-xl bg-sub-alt p-5; }
-  /* a feature icon: a filled rounded tile in themes with a look, a bare main-coloured icon otherwise */
+  /* a feature icon: a filled rounded tile in themes with a look, a bare main-colored icon otherwise */
   .icon-tile {
     @apply inline-flex shrink-0 items-center justify-center rounded-xl;
     padding: var(--tile-pad);
@@ -137,7 +137,7 @@ html {
   .toggle.on { @apply text-main; }
   /* profile banner surface; the gradient itself comes in via inline style.
      a hairline inner edge and shadowed text keep it legible on any banner,
-     and muted text is lifted so it doesn't vanish into the colour */
+     and muted text is lifted so it doesn't vanish into the color */
   .banner {
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.1);
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);

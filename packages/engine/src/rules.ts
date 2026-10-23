@@ -1,4 +1,4 @@
-// Gameplay rules (monkeytype's "behaviour" settings that change what counts).
+// Gameplay rules (monkeytype's "behavior" settings that change what counts).
 // They are only fair when everyone racing shares them, so they exist in
 // practice (per player) and in private rooms (set by the host). Ranked and
 // casual always race with no rules. The engine applies them identically in

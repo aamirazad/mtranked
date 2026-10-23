@@ -55,7 +55,7 @@
   let seqBase = 0;
   let seqN = 0;
 
-  // (re)initialise whenever a new race (or a resume) arrives
+  // (re)initialize whenever a new race (or a resume) arrives
   $effect(() => {
     const r = race;
     untrack(() => {

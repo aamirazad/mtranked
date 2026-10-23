@@ -2,7 +2,7 @@
   import { AlignLeft, Gauge } from "@lucide/svelte";
   import type { WordStat } from "@mtr/engine";
 
-  // monkeytype's input history: every word reached, mistakes marked; or coloured by
+  // monkeytype's input history: every word reached, mistakes marked; or colored by
   // burst speed. Hovering a word shows what was typed and its burst.
   let { words }: { words: WordStat[] } = $props();
 

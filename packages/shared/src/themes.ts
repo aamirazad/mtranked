@@ -1,12 +1,12 @@
-// Site colour themes. Each one fills the same CSS variables the default
-// (mt ranked) defines in app.css, so every page re-colours at once.
+// Site color themes. Each one fills the same CSS variables the default
+// (mt ranked) defines in app.css, so every page re-colors at once.
 export type Theme = {
   id: string;
   name: string;
   /** shown next to the name in theme pickers */
   note?: string;
   light?: boolean;
-  /** more than colours: heading font and filled icon tiles. themes without it keep the monkeytype look */
+  /** more than colors: heading font and filled icon tiles. themes without it keep the monkeytype look */
   look?: { font: string; tiles: boolean };
   bg: string;
   main: string;

@@ -37,7 +37,7 @@ export const practiceRouter = s.router(contract.practice, {
     const { rules: rawRules, ...rest } = body.settings as unknown as TextSettings;
     const rules = normalizeRules(rawRules);
     const settings = withFunbox<TextSettings>(rules ? { ...rest, rules } : rest, true);
-    /** plain tests (no funbox, no rules) are the only ones that count towards personal bests */
+    /** plain tests (no funbox, no rules) are the only ones that count toward personal bests */
     const plain = !settings.funbox && !settings.rules;
     if (!(LANGUAGES as readonly string[]).includes(settings.language)) {
       return { status: 400, body: { message: "Unknown language." } };

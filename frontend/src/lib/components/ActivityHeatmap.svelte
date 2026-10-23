@@ -8,7 +8,7 @@
   let year = $state<number | null>(null);
   let data = $state<{ days: ActivityDay[]; from: string; to: string; years: number[] } | null>(null);
   let hovered = $state<{ date: string; count: number } | null>(null);
-  // Viewport coords of the hovered cell's top-centre. Kept after hiding so the
+  // Viewport coords of the hovered cell's top-center. Kept after hiding so the
   // tooltip fades out in place instead of sliding back to the origin.
   let pos = $state({ x: 0, y: 0 });
   // Only glide between cells while the tooltip is already showing; a fresh

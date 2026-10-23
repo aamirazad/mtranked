@@ -1,5 +1,5 @@
 // Typing fonts, self-hosted from monkeytype's webfonts (each under its own
-// open font licence). The @font-face rules live in app.css, so a font is only
+// open font license). The @font-face rules live in app.css, so a font is only
 // downloaded once something on the page uses it.
 export type FontDef = { id: string; name: string };
 

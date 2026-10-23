@@ -190,7 +190,7 @@
     return letterPos(el, Math.min(idx - offs[lo]!, word.length));
   }
 
-  // matches Caret: the classic and prism carets use the theme colour
+  // matches Caret: the classic and prism carets use the theme color
   const tagColor = (color: string) => (color === "prism" || color === "#e2b714" ? "var(--color-caret)" : color);
 
   const otherPositions = $derived.by(() => {

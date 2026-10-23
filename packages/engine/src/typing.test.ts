@@ -73,7 +73,7 @@ describe("race timeline", () => {
 });
 
 describe("rules", () => {
-  it("has no effect when empty (same as the default behaviour)", () => {
+  it("has no effect when empty (same as the default behavior)", () => {
     const a = createState("ab cd", {});
     const b = createState("ab cd");
     typeStr(a, "ax cd");

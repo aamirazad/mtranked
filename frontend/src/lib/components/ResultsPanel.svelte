@@ -202,7 +202,7 @@
   </table>
   {/if}
   {#if !result.saved}
-    <div class="mt-4 text-sm text-error">We couldn't save this race. It won't count towards your stats.</div>
+    <div class="mt-4 text-sm text-error">We couldn't save this race. It won't count toward your stats.</div>
   {/if}
 
   {#if actions}

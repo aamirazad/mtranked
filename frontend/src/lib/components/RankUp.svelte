@@ -141,7 +141,7 @@
     96% { transform: translate(-7px, 5px) scale(1.18) rotate(-3deg); }
     100% { transform: translate(0, 0) scale(1.25); }
   }
-  /* stays colourless so the new tier isn't given away early */
+  /* stays colorless so the new tier isn't given away early */
   @keyframes charge {
     from { filter: drop-shadow(0 0 12px var(--old)) brightness(1); }
     to { filter: drop-shadow(0 0 40px white) brightness(2.2); }
