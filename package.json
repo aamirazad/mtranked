@@ -15,7 +15,7 @@
     "db:seed": "pnpm --filter @mtr/db seed",
     "season:rollover": "pnpm --filter @mtr/db season-rollover",
     "make-moderator": "pnpm --filter @mtr/db make-moderator",
-    "dev": "turbo run dev",
+    "dev": "node scripts/check-services.mjs && turbo run dev",
     "build": "turbo run build",
     "bot": "pnpm --filter @mtr/realtime bot",
     "check": "turbo run check",
