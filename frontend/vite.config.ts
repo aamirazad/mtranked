@@ -30,6 +30,9 @@ export default defineConfig({
       },
       // a static SPA: serve build/ from any CDN with 200.html as the fallback
       adapter: adapter({ fallback: "200.html" }),
+      // check _app/version.json for a new deploy every 5 minutes (and whenever the tab
+      // regains focus); the layout switches to it on the next navigation
+      version: { pollInterval: 5 * 60_000 },
     }),
   ],
   server: {

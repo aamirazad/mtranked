@@ -1,8 +1,8 @@
 <script lang="ts">
   import "../app.css";
   import { onDestroy, onMount } from "svelte";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/state";
+  import { beforeNavigate, goto } from "$app/navigation";
+  import { page, updated } from "$app/state";
   import { Crown, Info, Keyboard, Settings, Shield, Swords, UserRound, Users, LogIn, X } from "@lucide/svelte";
   import { session } from "#lib/session.svelte.ts";
   import { game } from "#lib/game.svelte.ts";
@@ -59,6 +59,13 @@
   $effect(() => {
     const m = game.match;
     if (m && (m.mode === "ranked" || m.mode === "casual") && page.url.pathname !== `/play/${m.mode}`) goto(`/play/${m.mode}`);
+  });
+
+  // a new version was deployed since this tab loaded: load it with a full page
+  // navigation, unless that would drop a queue, match, race or room on the socket
+  beforeNavigate(({ willUnload, to }) => {
+    const busy = game.queueMode || game.match || (game.race && !game.result) || game.room;
+    if (updated.current && !willUnload && to?.url && !busy) location.href = to.url.href;
   });
 
   // during a race keep the chrome quiet, like monkeytype's focus mode
