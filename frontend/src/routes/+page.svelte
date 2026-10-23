@@ -9,10 +9,13 @@
   import { ROOM_CODE_ALPHABET } from "@mtr/shared";
   import TierBadge from "#lib/components/TierBadge.svelte";
   import Note from "#lib/components/Note.svelte";
+  import GuestNameForm from "#lib/components/GuestNameForm.svelte";
 
   let season = $state<{ name: string; endsAt: string } | null>(null);
   let code = $state("");
   let creating = $state(false);
+  /** a guest picking their name before their room is made */
+  let askName = $state(false);
 
   onMount(async () => {
     const r = await api.season();
@@ -25,6 +28,10 @@
     goto(session.me ? "/play/ranked" : "/login?next=/play/ranked");
   }
 
+  function startCreate() {
+    if (session.me) void createRoom();
+    else askName = true;
+  }
   async function createRoom() {
     creating = true;
     game.room = null;
@@ -51,71 +58,82 @@
 
 <svelte:head><title>MT Ranked - Competitive Typing</title></svelte:head>
 
-<div class="mx-auto max-w-[1000px] pt-6">
-  <div class="mb-12 text-center">
-    <h1 class="font-logo text-4xl sm:text-5xl">race someone. <span class="text-main">right now.</span></h1>
-    <p class="mt-3 text-sub">
-      {#if season}{season.name} · {daysLeft} days left{:else}&nbsp;{/if}
-    </p>
-  </div>
+{#if askName}
+  <GuestNameForm
+    action={creating ? "creating…" : "create room"}
+    next="/"
+    busy={creating}
+    error={createRefused}
+    oncontinue={createRoom}
+    oncancel={() => (askName = false)}>create a private room</GuestNameForm
+  >
+{:else}
+  <div class="mx-auto max-w-[1000px] pt-6">
+    <div class="mb-12 text-center">
+      <h1 class="font-logo text-4xl sm:text-5xl">race someone. <span class="text-main">right now.</span></h1>
+      <p class="mt-3 text-sub">
+        {#if season}{season.name} · {daysLeft} days left{:else}&nbsp;{/if}
+      </p>
+    </div>
 
-  <div class="grid gap-5 md:grid-cols-3">
-    <!-- ranked -->
-    <button class="mode-card group" onclick={ranked}>
-      <div class="flex items-center justify-between">
-        <span class="icon-tile"><Swords size={30} /></span>
-        <span class="text-xs text-sub">1v1 · rated</span>
-      </div>
-      <div class="mt-8 font-logo text-3xl">ranked</div>
-      <div class="mt-2 min-h-12 text-sm text-sub">
-        {#if session.me}
-          <TierBadge rating={session.me.rating} races={session.me.races} />
-          {#if session.me.rankedBlock}<div class="mt-2 text-xs text-error">{session.me.rankedBlock}</div>{/if}
-        {:else}
-          sign in and climb from bronze to master.
-        {/if}
-      </div>
-      <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">find match <ArrowRight size={16} /></div>
-    </button>
+    <div class="grid gap-5 md:grid-cols-3">
+      <!-- ranked -->
+      <button class="mode-card group" onclick={ranked}>
+        <div class="flex items-center justify-between">
+          <span class="icon-tile"><Swords size={30} /></span>
+          <span class="text-xs text-sub">1v1 · rated</span>
+        </div>
+        <div class="mt-8 font-logo text-3xl">ranked</div>
+        <div class="mt-2 min-h-12 text-sm text-sub">
+          {#if session.me}
+            <TierBadge rating={session.me.rating} races={session.me.races} />
+            {#if session.me.rankedBlock}<div class="mt-2 text-xs text-error">{session.me.rankedBlock}</div>{/if}
+          {:else}
+            sign in and climb from bronze to master.
+          {/if}
+        </div>
+        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">find match <ArrowRight size={16} /></div>
+      </button>
 
-    <!-- casual -->
-    <button class="mode-card group" onclick={() => goto("/play/casual")}>
-      <div class="flex items-center justify-between">
-        <span class="icon-tile"><Zap size={30} /></span>
-        <span class="text-xs text-sub">1v1 · unrated</span>
-      </div>
-      <div class="mt-8 font-logo text-3xl">casual</div>
-      <div class="mt-2 min-h-12 text-sm text-sub">quick match against the first available player. no account needed.</div>
-      <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">quick match <ArrowRight size={16} /></div>
-    </button>
+      <!-- casual -->
+      <button class="mode-card group" onclick={() => goto("/play/casual")}>
+        <div class="flex items-center justify-between">
+          <span class="icon-tile"><Zap size={30} /></span>
+          <span class="text-xs text-sub">1v1 · unrated</span>
+        </div>
+        <div class="mt-8 font-logo text-3xl">casual</div>
+        <div class="mt-2 min-h-12 text-sm text-sub">quick match against the first available player. no account needed.</div>
+        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">quick match <ArrowRight size={16} /></div>
+      </button>
 
-    <!-- private -->
-    <div class="mode-card">
-      <div class="flex items-center justify-between">
-        <span class="icon-tile"><Users size={30} /></span>
-        <span class="text-xs text-sub">2–16 players</span>
+      <!-- private -->
+      <div class="mode-card">
+        <div class="flex items-center justify-between">
+          <span class="icon-tile"><Users size={30} /></span>
+          <span class="text-xs text-sub">2–16 players</span>
+        </div>
+        <div class="mt-8 font-logo text-3xl">private room</div>
+        <div class="mt-2 text-sm text-sub">race your friends.</div>
+        <button class="btn btn-main mt-5 w-full" onclick={startCreate} disabled={creating}>{creating ? "creating…" : "create room"}</button>
+        <Note note={createRefused ? { text: createRefused, kind: "error" } : null} class="mt-2 block" />
+        <form class="mt-2 flex gap-2" onsubmit={join}>
+          <input
+            class="input text-center tracking-[0.3em] uppercase"
+            placeholder="CODE"
+            aria-label="room code"
+            value={code}
+            oninput={(e) => (code = e.currentTarget.value = cleanCode(e.currentTarget.value))}
+          />
+          <button class="btn" disabled={code.length !== 6}>join</button>
+        </form>
       </div>
-      <div class="mt-8 font-logo text-3xl">private room</div>
-      <div class="mt-2 text-sm text-sub">race your friends.</div>
-      <button class="btn btn-main mt-5 w-full" onclick={createRoom} disabled={creating}>{creating ? "creating…" : "create room"}</button>
-      <Note note={createRefused ? { text: createRefused, kind: "error" } : null} class="mt-2 block" />
-      <form class="mt-2 flex gap-2" onsubmit={join}>
-        <input
-          class="input text-center tracking-[0.3em] uppercase"
-          placeholder="CODE"
-          aria-label="room code"
-          value={code}
-          oninput={(e) => (code = e.currentTarget.value = cleanCode(e.currentTarget.value))}
-        />
-        <button class="btn" disabled={code.length !== 6}>join</button>
-      </form>
+    </div>
+
+    <div class="mt-10 flex justify-center">
+      <a href="/practice" class="flex items-center gap-2 text-sub transition-colors hover:text-text"><Keyboard size={16} /> practice solo</a>
     </div>
   </div>
-
-  <div class="mt-10 flex justify-center">
-    <a href="/practice" class="flex items-center gap-2 text-sub transition-colors hover:text-text"><Keyboard size={16} /> practice solo</a>
-  </div>
-</div>
+{/if}
 
 <style>
   .mode-card {
