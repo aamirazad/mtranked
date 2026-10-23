@@ -29,6 +29,8 @@ export const SyncedPrefs = z
     liveAcc: pref(z.string().max(16)),
     liveBurst: pref(z.string().max(16)),
     liveProgress: pref(z.string().max(16)),
+    laneWpm: pref(z.boolean()),
+    laneAcc: pref(z.boolean()),
     fontFamily: pref(z.string().max(32)),
     soundOnClick: pref(z.string().max(32)),
     soundOnError: pref(z.string().max(32)),

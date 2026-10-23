@@ -220,6 +220,8 @@
     { id: "live-wpm", section: "live", title: "live speed", hint: "your wpm while typing.", options: LIVE_STYLES, tags: "wpm", ...pref("liveWpm") },
     { id: "live-acc", section: "live", title: "live accuracy", hint: "your accuracy while typing.", options: LIVE_STYLES, ...pref("liveAcc") },
     { id: "live-burst", section: "live", title: "live burst", hint: "the speed of your last word.", options: LIVE_STYLES, ...pref("liveBurst") },
+    { id: "lane-wpm", section: "live", title: "lane speed", hint: "your wpm next to your name in the race lanes while you type.", options: onOff, name: onOffName, tags: "wpm race", ...pref("laneWpm") },
+    { id: "lane-acc", section: "live", title: "lane accuracy", hint: "your accuracy next to your name in the race lanes.", options: onOff, name: onOffName, tags: "race", ...pref("laneAcc") },
   ];
 
   let query = $state("");

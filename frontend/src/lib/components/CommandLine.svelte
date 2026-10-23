@@ -114,6 +114,8 @@
     { id: "live-wpm", label: "Live speed", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveWpm, (v) => prefs.set("liveWpm", v)) },
     { id: "live-acc", label: "Live accuracy", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveAcc, (v) => prefs.set("liveAcc", v)) },
     { id: "live-burst", label: "Live burst", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveBurst, (v) => prefs.set("liveBurst", v)) },
+    { id: "lane-wpm", label: "Lane speed", icon: Gauge, options: onOff(prefs.laneWpm, (v) => prefs.set("laneWpm", v)) },
+    { id: "lane-acc", label: "Lane accuracy", icon: Gauge, options: onOff(prefs.laneAcc, (v) => prefs.set("laneAcc", v)) },
     { id: "tape-mode", label: "Tape mode", icon: AlignJustify, options: pick(TAPE_MODES, prefs.tapeMode, (v) => prefs.set("tapeMode", v)) },
     { id: "show-all-lines", label: "Show all lines", icon: AlignJustify, options: onOff(prefs.showAllLines, (v) => prefs.set("showAllLines", v)) },
     { id: "smooth-line-scroll", label: "Smooth line scroll", icon: AlignJustify, options: onOff(prefs.smoothLineScroll, (v) => prefs.set("smoothLineScroll", v)) },

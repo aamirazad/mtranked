@@ -18,6 +18,7 @@
   import { resolveEquipped } from "@mtr/shared";
   import { game, type RaceFeed } from "#lib/game.svelte.ts";
   import { session } from "#lib/session.svelte.ts";
+  import { prefs } from "#lib/prefs.svelte.ts";
   import TypingArea from "./TypingArea.svelte";
   import TierBadge from "./TierBadge.svelte";
   import LiveStats from "./LiveStats.svelte";
@@ -115,6 +116,19 @@
     return t < 300 ? 0 : Math.round(calculateWpm(correctChars(ts, true), t));
   });
   const myAcc = $derived.by(() => (void version, Math.round(accuracy(ts))));
+  // what's shown while typing is only resampled every so often: worked out every
+  // frame it flickers, and over the first few words it swings wildly
+  const SAMPLE_MS = 500;
+  const sample = $derived(done ? -1 : Math.floor(elapsed / SAMPLE_MS));
+  let shownWpm = $state(0);
+  let shownAcc = $state(100);
+  $effect(() => {
+    void sample;
+    untrack(() => {
+      shownWpm = elapsed < 1000 && !done ? 0 : myWpm;
+      shownAcc = myAcc;
+    });
+  });
   const myBurst = $derived.by(() => (void version, ts.lastBurst ?? 0));
   /** failed a room rule (the server decides min speed/accuracy) */
   const myFailed = $derived.by(() => (void version, ts.failed ?? (meId ? src.live[meId]?.failed : undefined) ?? null));
@@ -123,6 +137,8 @@
     void version;
     return race.timeLimit ? Math.min(1, elapsed / race.timeLimit) : caretIndex(ts) / Math.max(1, ts.textLength);
   });
+
+  const showLaneAcc = $derived(isRacer && prefs.laneAcc);
 
   const PRISM = "linear-gradient(90deg, #ff6b9a, #e2b714, #5ce0a0, #5cb8ff, #a78bfa)";
 
@@ -136,7 +152,7 @@
         p,
         mine,
         progress: Math.min(1, idx / Math.max(1, ts.textLength)),
-        wpm: mine ? myWpm : (live?.wpm ?? 0),
+        wpm: mine ? shownWpm : (live?.wpm ?? 0),
         done: mine ? done : !!live?.done,
         dc: !!live?.dc,
         out: !!live?.out,
@@ -170,6 +186,16 @@
   );
   // 0: 1v1/ranked look, 1: tighter rows, 2: also two columns on md+ (private rooms up to 16)
   const density = $derived(race.players.length > 8 ? 2 : race.players.length > 4 ? 1 : 0);
+  // your accuracy needs a wider stats column; every row keeps the same one so they line up
+  const laneCols = $derived(
+    density
+      ? showLaneAcc
+        ? "grid-cols-[minmax(0,8rem)_1fr_7rem] gap-3"
+        : "grid-cols-[minmax(0,8rem)_1fr_4rem] gap-3"
+      : showLaneAcc
+        ? "grid-cols-[minmax(0,11rem)_1fr_8rem] gap-4"
+        : "grid-cols-[minmax(0,11rem)_1fr_4.5rem] gap-4",
+  );
   // private-room host can call time once they're done
   const isHost = $derived(!feed && race.mode === "private" && !!meId && !!game.room?.hosts.includes(meId));
   const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !src.result);
@@ -198,8 +224,10 @@
     ]}
   >
     {#each lanes as l (l.p.id)}
+      <!-- your own speed can be hidden while you type; it's still shown once you finish -->
+      {@const showWpm = !l.mine || l.done || prefs.laneWpm}
       <div
-        class={["grid items-center", density ? "grid-cols-[minmax(0,8rem)_1fr_4rem] gap-3" : "grid-cols-[minmax(0,11rem)_1fr_4.5rem] gap-4"]}
+        class={["grid items-center", laneCols]}
         class:opacity-50={l.out}
       >
         <div class="flex min-w-0 items-center gap-2">
@@ -217,7 +245,10 @@
           ></div>
           {#if l.done}<Flag size={14} class="absolute -top-1 right-0 text-main" />{/if}
         </div>
-        <div class="text-right tabular-nums text-sub"><span class="text-text">{l.wpm}</span> wpm</div>
+        <div class="text-right tabular-nums text-sub">
+          {#if l.mine && showLaneAcc}<span class="text-text">{shownAcc}%</span>{#if showWpm}&nbsp;·{/if}{/if}
+          {#if showWpm}<span class="text-text">{l.wpm}</span> wpm{/if}
+        </div>
       </div>
     {/each}
   </div>
@@ -226,8 +257,8 @@
     show={started}
     counter={clock}
     progress={myProgress}
-    wpm={isRacer ? myWpm : undefined}
-    acc={isRacer ? myAcc : undefined}
+    wpm={isRacer ? shownWpm : undefined}
+    acc={isRacer ? shownAcc : undefined}
     burst={isRacer ? myBurst : undefined}
   >
     {#if ruleList.length && !race.deadline}<span class="ml-auto self-center text-xs text-sub" title="room rules">{ruleList.join(" · ")}</span>{/if}

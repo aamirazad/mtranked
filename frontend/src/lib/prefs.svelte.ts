@@ -31,6 +31,8 @@ type Values = {
   liveAcc: LiveStyle;
   liveBurst: LiveStyle;
   liveProgress: ProgressStyle;
+  laneWpm: boolean;
+  laneAcc: boolean;
   fontFamily: string;
   soundOnClick: string;
   soundOnError: string;
@@ -58,6 +60,8 @@ const DEFAULTS: Values = {
   liveAcc: "off",
   liveBurst: "off",
   liveProgress: "text",
+  laneWpm: true,
+  laneAcc: false,
   fontFamily: DEFAULT_FONT,
   soundOnClick: "off",
   soundOnError: "off",
@@ -104,6 +108,8 @@ const VALID: { [K in PrefKey]: (v: unknown) => boolean } = {
   liveAcc: oneOf(LIVE_STYLES),
   liveBurst: oneOf(LIVE_STYLES),
   liveProgress: oneOf(PROGRESS_STYLES),
+  laneWpm: bool,
+  laneAcc: bool,
   fontFamily: (v) => FONTS.some((f) => f.id === v),
   soundOnClick: (v) => typeof v === "string" && v in CLICK_SOUNDS,
   soundOnError: (v) => typeof v === "string" && v in ERROR_SOUNDS,
@@ -163,6 +169,9 @@ class Prefs {
   liveAcc = $state<LiveStyle>(DEFAULTS.liveAcc);
   liveBurst = $state<LiveStyle>(DEFAULTS.liveBurst);
   liveProgress = $state<ProgressStyle>(DEFAULTS.liveProgress);
+  /** your own speed and accuracy next to your name in the race lanes */
+  laneWpm = $state(DEFAULTS.laneWpm);
+  laneAcc = $state(DEFAULTS.laneAcc);
   fontFamily = $state(DEFAULTS.fontFamily);
   soundOnClick = $state(DEFAULTS.soundOnClick);
   soundOnError = $state(DEFAULTS.soundOnError);
