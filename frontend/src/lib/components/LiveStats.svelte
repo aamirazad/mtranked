@@ -2,7 +2,7 @@
   // The row above the words while typing: timer/word count, live speed,
   // accuracy and burst, each shown big ("text"), small ("mini") or not at all
   // per the player's settings. Progress can also be a thin bar.
-  import type { Snippet } from "svelte";
+  import { untrack, type Snippet } from "svelte";
   import { prefs, type LiveStyle } from "#lib/prefs.svelte.ts";
 
   let {
@@ -24,10 +24,22 @@
     children?: Snippet;
   } = $props();
 
+  // wpm is sampled once a second (like monkeytype) rather than every key, since
+  // a few keys into a test it swings wildly and is unreadable
+  const WPM_TICK_MS = 1000;
+  let shownWpm = $state<number>();
+  $effect(() => {
+    if (!show) return void (shownWpm = undefined);
+    const sample = () => (shownWpm = untrack(() => wpm));
+    sample();
+    const id = setInterval(sample, WPM_TICK_MS);
+    return () => clearInterval(id);
+  });
+
   const stats = $derived(
     (
       [
-        [prefs.liveWpm, wpm, " wpm"],
+        [prefs.liveWpm, wpm === undefined ? undefined : shownWpm, " wpm"],
         [prefs.liveAcc, acc, "%"],
         [prefs.liveBurst, burst, " burst"],
       ] as [LiveStyle, number | undefined, string][]
