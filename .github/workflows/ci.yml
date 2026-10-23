@@ -16,7 +16,9 @@ concurrency:
   # a new push, retitle or base change supersedes the run in progress; edits that
   # change neither (e.g. the description) get their own group so they can't cancel it
   group: ci-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'edited' && !github.event.changes.title && !github.event.changes.base && format('-noop-{0}', github.run_id) || '' }}
-  cancel-in-progress: true
+  # only pull requests cancel: when called from publish.yml a cancelled run would mark
+  # the commit on main as failed (see publish.yml)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:
