@@ -57,7 +57,7 @@ realtime/                 WebSocket server (ws): matchmaking, rooms, races, rati
 packages/engine           typing engine shared by browser and server (seeded text, keystroke replay, wpm/acc)
 packages/race-protocol    Zod schemas for every WebSocket message
 packages/contracts        ts-rest HTTP contract
-packages/shared           tiers, Glicko-2, XP/levels, cosmetics catalogue
+packages/shared           tiers, Glicko-2, XP/levels, cosmetics catalog
 packages/db               Postgres client, SQL migrations, seed and maintenance scripts
 ```
 
@@ -120,7 +120,7 @@ The simplest setup is one VPS running everything with Docker Compose. Caddy term
 
 ### 2. DNS
 
-Create an `A` record (and `AAAA` if you have IPv6) for your domain pointing at the VPS IP. If you use Cloudflare, start with the proxy **off** (grey cloud) so Caddy can get its certificate. You can turn it on later with SSL mode "Full (strict)"; WebSockets work through Cloudflare's proxy.
+Create an `A` record (and `AAAA` if you have IPv6) for your domain pointing at the VPS IP. If you use Cloudflare, start with the proxy **off** (gray cloud) so Caddy can get its certificate. You can turn it on later with SSL mode "Full (strict)"; WebSockets work through Cloudflare's proxy.
 
 ### 3. Deploy
 
@@ -166,7 +166,7 @@ For now every new account is an **early supporter**: supporter perks for life, a
 4. Selling outside the US: turn on Stripe Tax and set `STRIPE_AUTOMATIC_TAX=true`.
 5. Restart: `docker compose … up -d`.
 
-Perks follow `users.is_subscriber`, which the webhook keeps in sync. Cancelled plans stay active until the paid period ends.
+Perks follow `users.is_subscriber`, which the webhook keeps in sync. Canceled plans stay active until the paid period ends.
 
 ### 5. Backups
 

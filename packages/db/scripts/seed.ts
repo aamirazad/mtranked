@@ -1,4 +1,4 @@
-// Idempotent seed: Season 0 (beta), the cosmetics catalogue and a set of
+// Idempotent seed: Season 0 (beta), the cosmetics catalog and a set of
 // "ghost" bot replays so ghost races work before real players exist.
 import { randomUUID } from "node:crypto";
 import { BACKSPACE, RANKED_SETTINGS, finalStats, generateText, replay, seededRandom, type Keystroke } from "@mtr/engine";

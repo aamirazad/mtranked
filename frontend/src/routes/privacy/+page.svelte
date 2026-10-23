@@ -56,7 +56,7 @@
     <h2 class="mb-3 text-xl">how long we keep it</h2>
     <p class="text-sub">
       account and race data is kept while your account exists. sign-in sessions are removed when you sign out or they expire.
-      when you delete your account we remove your personal details; we may keep anonymised race results so other players' ratings and
+      when you delete your account we remove your personal details; we may keep anonymized race results so other players' ratings and
       history stay correct, and records needed to enforce bans or meet legal obligations.
     </p>
   </section>

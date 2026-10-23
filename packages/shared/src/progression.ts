@@ -34,13 +34,13 @@ export type Cosmetic = {
   name: string;
   /** shown instead of name while supporter isn't for sale, if the name gives the tier away */
   quietName?: string;
-  /** colour, gradient or shape key, interpreted by the frontend */
+  /** color, gradient or shape key, interpreted by the frontend */
   value: string;
   unlock: UnlockRule;
 };
 
 export const COSMETICS: Cosmetic[] = [
-  // caret colours
+  // caret colors
   { id: "caret-gold", type: "caret_color", name: "Classic", value: "#e2b714", unlock: { type: "default" } },
   { id: "caret-mint", type: "caret_color", name: "Mint", value: "#5ce0a0", unlock: { type: "level", level: 3 } },
   { id: "caret-sky", type: "caret_color", name: "Sky", value: "#5cb8ff", unlock: { type: "level", level: 5 } },

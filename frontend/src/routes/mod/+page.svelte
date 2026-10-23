@@ -34,7 +34,7 @@
   const BAN_CONFIRM = "Ban this player and reverse their recent opponents' rating losses?";
   const FLAG_LABELS: Record<string, string> = { possible_ban_evader: "possible ban-evader", shared_ip: "shared ip" };
 
-  /** Ask for the reason the player sees; null if the moderator cancelled. */
+  /** Ask for the reason the player sees; null if the moderator canceled. */
   const askReason = () => prompt("Reason shown to the player (optional):", "");
 
   async function resolve(id: number, action: "dismiss" | "ban" | "timeout" | "flag", hours?: number) {

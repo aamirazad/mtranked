@@ -67,5 +67,5 @@
   </div>
 {/if}
 {#if memory && active && !hide && memoryLeft > 0}
-  <div class="pointer-events-none absolute top-full right-0 mt-2 text-sm text-sub">memorise · {memoryLeft}s</div>
+  <div class="pointer-events-none absolute top-full right-0 mt-2 text-sm text-sub">memorize · {memoryLeft}s</div>
 {/if}

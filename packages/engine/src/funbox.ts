@@ -67,7 +67,7 @@ type FunboxProperty =
   | "nospace"
   | "changesWordsVisibility"
   | "changesWordsFrequency"
-  | "changesCapitalisation"
+  | "changesCapitalization"
   | "conflictsWithSymmetricChars"
   | "symmetricChars"
   | "speaks"
@@ -253,18 +253,18 @@ const META: FunboxMeta[] = [
     name: "rAnDoMcAsE",
     description: "raNdomIze ThE CApitaLizatIon Of EveRY LeTtEr.",
     kind: "text",
-    props: ["changesCapitalisation"],
+    props: ["changesCapitalization"],
     fns: ["alterText"],
   },
-  { id: "sPoNgEcAsE", name: "sPoNgEcAsE", description: "I kInDa LiKe HoW iNeFfIcIeNt QwErTy Is.", kind: "text", props: ["changesCapitalisation"], fns: ["alterText"] },
-  { id: "capitals", name: "capitals", description: "Capitalize Every Word.", kind: "text", props: ["changesCapitalisation"], fns: ["alterText"] },
-  { id: "ALL_CAPS", name: "ALL CAPS", description: "WHY ARE WE SHOUTING?", kind: "text", props: ["changesCapitalisation"], fns: ["alterText"] },
+  { id: "sPoNgEcAsE", name: "sPoNgEcAsE", description: "I kInDa LiKe HoW iNeFfIcIeNt QwErTy Is.", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
+  { id: "capitals", name: "capitals", description: "Capitalize Every Word.", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
+  { id: "ALL_CAPS", name: "ALL CAPS", description: "WHY ARE WE SHOUTING?", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
   {
     id: "instant_messaging",
     name: "instant messaging",
     description: "who needs shift anyway",
     kind: "text",
-    props: ["changesCapitalisation"],
+    props: ["changesCapitalization"],
     fns: ["alterText"],
   },
   { id: "rot13", name: "rot13", description: "Vg znl abg or frpher, ohg vg vf sha gb glcr!", kind: "text", fns: ["alterText"] },
@@ -330,13 +330,13 @@ export function checkFunboxCompatibility(ids: readonly string[], adding?: string
     count((f) => has(f, "changesWordsVisibility")) <= 1 &&
     count((f) => has(f, "changesWordsFrequency")) <= 1 &&
     (none((f) => has(f, "changesWordsFrequency")) || none((f) => has(f, "ignoresLanguage"))) &&
-    (none((f) => has(f, "noLetters")) || none((f) => has(f, "changesCapitalisation"))) &&
+    (none((f) => has(f, "noLetters")) || none((f) => has(f, "changesCapitalization"))) &&
     (none((f) => has(f, "conflictsWithSymmetricChars")) || none((f) => has(f, "symmetricChars"))) &&
     count((f) => has(f, "speaks")) <= 1 &&
     (none((f) => has(f, "speaks")) || none((f) => has(f, "unspeakable"))) &&
     count((f) => hasFn(f, "punctuateWord")) <= 1 &&
     count((f) => hasFn(f, "getEmulatedChar") || has(f, "changesLayout")) <= 1 &&
-    count((f) => has(f, "changesCapitalisation")) <= 1 &&
+    count((f) => has(f, "changesCapitalization")) <= 1 &&
     Object.values(cssCounts).every((c) => c <= 1)
   );
 }

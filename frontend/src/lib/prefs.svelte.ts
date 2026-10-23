@@ -142,11 +142,11 @@ export function themeVars(t: Theme): Record<string, string> {
     "--color-error": t.error,
     "--color-error-extra": t.errorExtra,
     "--font-logo": t.look ? `"${t.look.font}", "Lexend Deca", sans-serif` : `"Lexend Deca", "Roboto Mono", sans-serif`,
-    // filled icon tiles (see .icon-tile in app.css); without them icons sit bare in the main colour
+    // filled icon tiles (see .icon-tile in app.css); without them icons sit bare in the main color
     "--tile-bg": t.look?.tiles ? t.main : "transparent",
     "--tile-fg": t.look?.tiles ? t.bg : t.main,
     "--tile-pad": t.look?.tiles ? "0.8rem" : "0px",
-    // hovered cards get a faint main-coloured edge instead of a solid one
+    // hovered cards get a faint main-colored edge instead of a solid one
     "--edge-hover": t.look ? `${t.main}40` : t.main,
     "color-scheme": t.light ? "light" : "dark",
   };

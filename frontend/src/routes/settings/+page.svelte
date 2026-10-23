@@ -137,7 +137,7 @@
   }
 
   const groups: { type: CosmeticType; label: string }[] = [
-    { type: "caret_color", label: "caret colour" },
+    { type: "caret_color", label: "caret color" },
     { type: "caret_shape", label: "caret shape" },
     { type: "finish", label: "win animation" },
     { type: "banner", label: "profile banner" },
@@ -187,20 +187,20 @@
 
   const SECTIONS: { id: string; label: string; note?: string }[] = [
     {
-      id: "behaviour",
-      label: "behaviour",
+      id: "behavior",
+      label: "behavior",
       note: 'gameplay rules like stop on error, confidence mode or minimum speed are set per test under <b>rules</b> in <a class="link" href="/practice">practice</a>, or by the host of a private room. ranked and casual always race without them.',
     },
     { id: "input", label: "input" },
     { id: "sound", label: "sound" },
-    { id: "caret", label: "caret", note: 'caret colour and shape are cosmetics you unlock by playing (see <a class="link" href="#cosmetics">cosmetics</a>).' },
+    { id: "caret", label: "caret", note: 'caret color and shape are cosmetics you unlock by playing (see <a class="link" href="#cosmetics">cosmetics</a>).' },
     { id: "appearance", label: "appearance" },
     { id: "live", label: "live stats" },
   ];
 
   const SETTINGS: Setting[] = [
-    { id: "quick-restart", section: "behaviour", title: "quick restart", hint: "restart a practice test with a single key.", options: QUICK_RESTARTS, ...pref("quickRestart") },
-    { id: "layout", section: "input", title: "layout emulation", hint: "type as if your keyboard had this layout, whatever your system layout is (e.g. practise dvorak on a qwerty board).", options: LAYOUT_IDS, name: layoutName, kind: "select", tags: "keyboard dvorak colemak workman azerty qwertz", ...pref("layout") },
+    { id: "quick-restart", section: "behavior", title: "quick restart", hint: "restart a practice test with a single key.", options: QUICK_RESTARTS, ...pref("quickRestart") },
+    { id: "layout", section: "input", title: "layout emulation", hint: "type as if your keyboard had this layout, whatever your system layout is (e.g. practice dvorak on a qwerty board).", options: LAYOUT_IDS, name: layoutName, kind: "select", tags: "keyboard dvorak colemak workman azerty qwertz", ...pref("layout") },
     { id: "sound-click", section: "sound", title: "sound on click", hint: "play a sound on every key.", options: Object.keys(CLICK_SOUNDS), name: (v: string) => CLICK_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnClick, set: (v: string) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)) },
     { id: "sound-error", section: "sound", title: "sound on error", hint: "play a sound when you make a mistake (instead of the click).", options: Object.keys(ERROR_SOUNDS), name: (v: string) => ERROR_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnError, set: (v: string) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)) },
     { id: "sound-volume", section: "sound", title: "sound volume", hint: "how loud typing sounds are.", options: VOLUMES, name: (v: number) => `${v * 100}%`, tags: "audio", value: () => prefs.soundVolume, set: (v: number) => (prefs.set("soundVolume", v), playClick(prefs.soundOnClick === "off" ? "click" : prefs.soundOnClick, v)) },
@@ -210,12 +210,12 @@
     { id: "tape-mode", section: "appearance", title: "tape mode", hint: "show the words on one scrolling line. letter scrolls every letter, word every word.", options: TAPE_MODES, ...pref("tapeMode") },
     { id: "show-all-lines", section: "appearance", title: "show all lines", hint: "show the whole text instead of three lines (not in time mode).", options: onOff, name: onOffName, ...pref("showAllLines") },
     { id: "smooth-line-scroll", section: "appearance", title: "smooth line scroll", hint: "slide to the next line instead of jumping.", options: onOff, name: onOffName, ...pref("smoothLineScroll") },
-    { id: "highlight-mode", section: "appearance", title: "highlight mode", hint: "letter colours each typed letter, word lights up the whole current word, off only shows mistakes.", options: HIGHLIGHT_MODES, ...pref("highlightMode") },
+    { id: "highlight-mode", section: "appearance", title: "highlight mode", hint: "letter colors each typed letter, word lights up the whole current word, off only shows mistakes.", options: HIGHLIGHT_MODES, ...pref("highlightMode") },
     { id: "indicate-typos", section: "appearance", title: "indicate typos", hint: "show the letter you actually typed below the word, or in place of the right one.", options: INDICATE_TYPOS, ...pref("indicateTypos") },
     { id: "blind-mode", section: "appearance", title: "blind mode", hint: "hide mistakes while you type. they still count.", options: onOff, name: onOffName, ...pref("blindMode") },
     { id: "hide-extra", section: "appearance", title: "hide extra letters", hint: "don't show letters typed past the end of a word.", options: onOff, name: onOffName, ...pref("hideExtraLetters") },
     { id: "flip-colors", section: "appearance", title: "flip test colors", hint: "untyped words bright, typed words dim.", options: onOff, name: onOffName, ...pref("flipColors") },
-    { id: "colorful-mode", section: "appearance", title: "colorful mode", hint: "typed letters use the theme's main colour.", options: onOff, name: onOffName, ...pref("colorfulMode") },
+    { id: "colorful-mode", section: "appearance", title: "colorful mode", hint: "typed letters use the theme's main color.", options: onOff, name: onOffName, ...pref("colorfulMode") },
     { id: "live-progress", section: "live", title: "live progress", hint: "the timer or word count while typing: big, small, a bar, or hidden.", options: PROGRESS_STYLES, tags: "timer", ...pref("liveProgress") },
     { id: "live-wpm", section: "live", title: "live speed", hint: "your wpm while typing.", options: LIVE_STYLES, tags: "wpm", ...pref("liveWpm") },
     { id: "live-acc", section: "live", title: "live accuracy", hint: "your accuracy while typing.", options: LIVE_STYLES, ...pref("liveAcc") },

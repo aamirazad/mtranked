@@ -1,5 +1,5 @@
 // Typing state machine shared by the browser (local rendering) and the race
-// server (authoritative replay of the keystroke log). Behaviour follows
+// server (authoritative replay of the keystroke log). Behavior follows
 // monkeytype's defaults: space submits a word even with mistakes, and you may
 // backspace into the previous word only if it was typed incorrectly. Optional
 // rules (see rules.ts) change that the same way on both sides.
@@ -159,7 +159,7 @@ export function checkLiveFail(s: TypingState, elapsedMs: number): FailReason | n
   return s.failed;
 }
 
-/** Characters credited towards WPM: correct words plus their spaces (monkeytype's formula). */
+/** Characters credited toward WPM: correct words plus their spaces (monkeytype's formula). */
 export function correctChars(s: TypingState, creditPartial: boolean): number {
   let chars = 0;
   for (let i = 0; i < s.wi; i++) {

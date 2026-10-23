@@ -27,7 +27,7 @@ export function tierIndex(id: string): number {
   return TIERS.findIndex((t) => t.id === id);
 }
 
-/** Display info for a player's rating, honouring placements. */
+/** Display info for a player's rating, honoring placements. */
 export function rankLabel(rating: number, races: number): {
   placed: boolean;
   tier: Tier | null;
