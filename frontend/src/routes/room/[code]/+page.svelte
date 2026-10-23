@@ -17,6 +17,7 @@
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
   import FunboxPicker from "#lib/components/FunboxPicker.svelte";
   import RulesPicker from "#lib/components/RulesPicker.svelte";
+  import GuestNameForm from "#lib/components/GuestNameForm.svelte";
 
   // fixed per instance: the layout remounts this page when the code changes
   const code = (page.params.code ?? "").toUpperCase();
@@ -24,7 +25,6 @@
   let joinError = $state<string | null>(null);
   /** the join failed because the room has closed */
   let joinClosed = $state(false);
-  let guestName = $state("");
   let needsName = $state(false);
 
   onMount(async () => {
@@ -35,34 +35,16 @@
     }
     if (!session.me) {
       needsName = true;
-      guestName = session.guest?.name ?? "";
       return;
     }
     await join();
   });
 
-  async function join(e?: SubmitEvent) {
-    e?.preventDefault();
+  async function join() {
     joinError = null;
     joinClosed = false;
     hadRoom = false;
     game.roomClosed = null;
-    if (!session.me && guestName && guestName !== session.guest?.name) {
-      if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(guestName)) {
-        joinError = "Names are 3–20 letters, numbers, _ . or -";
-        return;
-      }
-      if (isOffensiveName(guestName)) {
-        joinError = OFFENSIVE_NAME_MESSAGE;
-        return;
-      }
-      await game.reconnect(guestName).catch(() => {});
-      await session.refresh();
-      if (game.guestNameError) {
-        joinError = game.guestNameError;
-        return;
-      }
-    }
     needsName = false;
     await game.connect().catch(() => {});
     game.send({ type: "room.join", code });
@@ -217,16 +199,9 @@
 <svelte:head><title>{room?.name ?? `Room ${code}`} · MT Ranked</title></svelte:head>
 
 {#if needsName}
-  <form class="card mx-auto mt-10 max-w-sm space-y-4 animate-rise" onsubmit={join}>
-    <div class="text-lg">join room <span class="tracking-widest text-main">{code}</span></div>
-    <label class="block space-y-1">
-      <span class="label">your name for this room</span>
-      <input class="input" bind:value={guestName} maxlength="20" placeholder="guest name" />
-    </label>
-    {#if joinError}<div class="text-sm text-error">{joinError}</div>{/if}
-    <button class="btn btn-main w-full">join as guest</button>
-    <div class="text-center text-sm text-sub">or <a class="link" href="/login?next=/room/{code}">sign in</a> to keep your stats</div>
-  </form>
+  <GuestNameForm action="join as guest" next="/room/{code}" oncontinue={join}>
+    join room <span class="tracking-widest text-main">{code}</span>
+  </GuestNameForm>
 {:else if closed}
   <div class="mx-auto max-w-md pt-16 text-center animate-rise">
     <div class="text-xl">{closed.reason}</div>
