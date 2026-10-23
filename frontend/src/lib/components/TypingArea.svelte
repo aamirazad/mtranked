@@ -8,6 +8,7 @@
   // updates with CSS transitions. Everything the player can tweak here is
   // cosmetic (see prefs); it never changes which keys count.
   import { tick, untrack } from "svelte";
+  import { ArrowBigUpDash } from "@lucide/svelte";
   import { BACKSPACE, WORD_DELETE, type TypingState } from "@mtr/engine";
   import Caret from "./Caret.svelte";
   import { CARET_MS, prefs } from "#lib/prefs.svelte.ts";
@@ -59,6 +60,8 @@
   let focused = $state(false);
   let typing = $state(false);
   let typingTimer: ReturnType<typeof setTimeout> | undefined;
+  /** caps lock is on (as of the last key), so every letter would come out wrong */
+  let capsLock = $state(false);
 
   let caretPos = $state({ x: 0, y: 0, h: 0 });
   let scroll = $state(0);
@@ -246,8 +249,21 @@
 
   const block = (e: Event) => e.preventDefault();
 
+  // macs report the new state on the Caps Lock key's own events; elsewhere
+  // they can still report the old one, so toggle there (any other key corrects it)
+  const isMac = /mac/i.test(navigator.platform);
+  function readCapsLock(e: KeyboardEvent) {
+    if (typeof e.getModifierState !== "function") return;
+    if (e.key === "CapsLock" && !isMac) {
+      if (e.type === "keydown" && !e.repeat) capsLock = !capsLock;
+      return;
+    }
+    capsLock = e.getModifierState("CapsLock");
+  }
+
   // press any key to refocus (like monkeytype)
   function onwindowkeydown(e: KeyboardEvent) {
+    readCapsLock(e);
     if (!active || focused || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target as HTMLElement;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
@@ -264,7 +280,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onwindowkeydown} onresize={() => void tick().then(measure)} />
+<svelte:window onkeydown={onwindowkeydown} onkeyup={readCapsLock} onresize={() => void tick().then(measure)} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
@@ -349,6 +365,14 @@
     {#key ts}
       <FunboxLayer {funbox} word={ts.words[wi]} input={inputs[wi] ?? ""} {wi} words={ts.words.length} active={active && !blurred} bind:hide={fbHide} />
     {/key}
+  {/if}
+  {#if active && focused && capsLock}
+    <div
+      class="pointer-events-none absolute bottom-full left-1/2 mb-3 flex -translate-x-1/2 items-center gap-1.5 rounded-lg bg-main px-3 py-1 text-sm text-bg animate-pop"
+      role="status"
+    >
+      <ArrowBigUpDash size={16} /> caps lock is on
+    </div>
   {/if}
   {#if active && !focused && !blurred}
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center text-sub animate-fade">
