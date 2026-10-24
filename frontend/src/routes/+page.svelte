@@ -10,7 +10,9 @@
   import TierBadge from "#lib/components/TierBadge.svelte";
   import Note from "#lib/components/Note.svelte";
   import GuestNameForm from "#lib/components/GuestNameForm.svelte";
+  import { greeting } from "#lib/greeting.ts";
 
+  const [headline, accent] = greeting();
   let season = $state<{ name: string; endsAt: string } | null>(null);
   let code = $state("");
   let creating = $state(false);
@@ -70,7 +72,7 @@
 {:else}
   <div class="mx-auto max-w-[1000px] pt-6">
     <div class="mb-12 text-center">
-      <h1 class="font-logo text-4xl sm:text-5xl">race someone. <span class="text-main">right now.</span></h1>
+      <h1 class="font-logo text-4xl sm:text-5xl">{headline}{#if accent}<span class="text-main">{accent}</span>{/if}</h1>
       <p class="mt-3 text-sub">
         {#if season}{season.name} · {daysLeft} days left{:else}&nbsp;{/if}
       </p>
