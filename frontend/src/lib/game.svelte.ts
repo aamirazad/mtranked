@@ -9,7 +9,6 @@ import {
   type Mode,
   type PlayerPublic,
   type QueueMode,
-  type RaceResultRow,
   type RaceStart,
   type RoomPublic,
   type ServerMsg,

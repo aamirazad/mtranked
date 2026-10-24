@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    // flags `for (const x of [...map.values()])`, but those copies are deliberate:
+    // the loop bodies delete from the map they iterate
+    "unicorn/no-useless-spread": "off"
+  },
+  "ignorePatterns": ["packages/engine/data"]
+}

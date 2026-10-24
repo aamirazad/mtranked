@@ -34,7 +34,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Formatting (prettier, run `pnpm format` to fix)
+      - name: Prettier and oxlint (`pnpm format` fixes formatting)
         run: pnpm lint
 
   frontend:

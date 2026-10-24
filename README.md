@@ -98,7 +98,7 @@ You can also open a second browser profile (or a private window) and play agains
 | `pnpm build`           | production builds of every package                  |
 | `pnpm check`           | type-check everything                               |
 | `pnpm test`            | engine unit tests                                   |
-| `pnpm lint`            | check formatting (prettier), as CI does             |
+| `pnpm lint`            | check formatting (prettier) and lint (oxlint)       |
 | `pnpm format`          | fix formatting                                      |
 | `pnpm season:rollover` | end the current season, start the next (soft reset) |
 | `pnpm services:down`   | stop the local Docker services                      |
