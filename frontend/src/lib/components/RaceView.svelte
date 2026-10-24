@@ -155,7 +155,12 @@
         color: p.caretColor,
         shape: p.caretShape,
         // labels help tell a few opponents apart; past ~6 they just bury the text
-        name: (race.players.length > 2 && race.players.length <= 6) || p.ghost ? (p.ghost ? `ghost · ${p.name}` : p.name) : undefined,
+        name:
+          (race.players.length > 2 && race.players.length <= 6) || p.ghost
+            ? p.ghost
+              ? `ghost · ${p.name}`
+              : p.name
+            : undefined,
       })),
   );
 
@@ -166,14 +171,20 @@
   });
   const waitingFor = $derived(lanes.filter((l) => !l.mine && !l.done && !l.out).map((l) => l.p.name));
   const waitingText = $derived(
-    waitingFor.length > 4 ? `${waitingFor.slice(0, 3).join(", ")} and ${waitingFor.length - 3} more` : waitingFor.join(", "),
+    waitingFor.length > 4
+      ? `${waitingFor.slice(0, 3).join(", ")} and ${waitingFor.length - 3} more`
+      : waitingFor.join(", "),
   );
   // 0: 1v1/ranked look, 1: tighter rows, 2: also two columns on md+ (private rooms up to 16)
   const density = $derived(race.players.length > 8 ? 2 : race.players.length > 4 ? 1 : 0);
   // private-room host can call time once they're done
   const isHost = $derived(!feed && race.mode === "private" && !!meId && !!game.room?.hosts.includes(meId));
-  const canHurry = $derived(isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !src.result);
-  const hurryLeft = $derived((void now, race.deadline ? Math.max(0, Math.ceil((race.deadline - game.serverNow()) / 1000)) : 0));
+  const canHurry = $derived(
+    isHost && !race.timeLimit && !race.deadline && done && waitingFor.length > 0 && !src.result,
+  );
+  const hurryLeft = $derived(
+    (void now, race.deadline ? Math.max(0, Math.ceil((race.deadline - game.serverNow()) / 1000)) : 0),
+  );
   const timeUp = $derived(!!race.deadline && hurryLeft === 0);
 
   let confirmLeave = $state(false);
@@ -199,7 +210,10 @@
   >
     {#each lanes as l (l.p.id)}
       <div
-        class={["grid items-center", density ? "grid-cols-[minmax(0,8rem)_1fr_4rem] gap-3" : "grid-cols-[minmax(0,11rem)_1fr_4.5rem] gap-4"]}
+        class={[
+          "grid items-center",
+          density ? "grid-cols-[minmax(0,8rem)_1fr_4rem] gap-3" : "grid-cols-[minmax(0,11rem)_1fr_4.5rem] gap-4",
+        ]}
         class:opacity-50={l.out}
       >
         <div class="flex min-w-0 items-center gap-2">
@@ -208,7 +222,9 @@
           {/if}
           <span class="truncate" class:text-main={l.mine}>{l.p.ghost ? `ghost · ${l.p.name}` : l.p.name}</span>
           {#if l.dc}<WifiOff size={14} class="shrink-0 text-error" />{/if}
-          {#if l.failed}<span class="text-xs text-error">failed</span>{:else if l.out}<span class="text-xs text-error">left</span>{/if}
+          {#if l.failed}<span class="text-xs text-error">failed</span>{:else if l.out}<span class="text-xs text-error"
+              >left</span
+            >{/if}
         </div>
         <div class="relative h-2 rounded-full bg-sub-alt">
           <div
@@ -230,14 +246,20 @@
     acc={isRacer ? myAcc : undefined}
     burst={isRacer ? myBurst : undefined}
   >
-    {#if ruleList.length && !race.deadline}<span class="ml-auto self-center text-xs text-sub" title="room rules">{ruleList.join(" · ")}</span>{/if}
+    {#if ruleList.length && !race.deadline}<span class="ml-auto self-center text-xs text-sub" title="room rules"
+        >{ruleList.join(" · ")}</span
+      >{/if}
     {#if race.deadline && !src.result}
       <span class="ml-auto flex items-center gap-2 text-xl text-error tabular-nums animate-pop">
         <Timer size={20} />{timeUp ? "time's up" : `finish in ${hurryLeft}s`}
       </span>
     {/if}
-    {#if !isRacer}<span class="text-sub">{feed ? `watching ${watching ?? "the race"}` : "spectating — you'll join the next race"}</span>{/if}
-    {#if funbox.length}<span class="self-center text-sm text-sub" class:ml-auto={!ruleList.length || !!race.deadline}>funbox · <span class="text-main">{funbox.map((id) => id.replaceAll("_", " ")).join(", ")}</span></span>{/if}
+    {#if !isRacer}<span class="text-sub"
+        >{feed ? `watching ${watching ?? "the race"}` : "spectating — you'll join the next race"}</span
+      >{/if}
+    {#if funbox.length}<span class="self-center text-sm text-sub" class:ml-auto={!ruleList.length || !!race.deadline}
+        >funbox · <span class="text-main">{funbox.map((id) => id.replaceAll("_", " ")).join(", ")}</span></span
+      >{/if}
   </LiveStats>
 
   <!-- tall enough for the finished card even when the text is short -->
@@ -263,7 +285,10 @@
       </div>
     {/if}
     {#if isRacer && done && !src.result && !docked}
-      <div class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade" out:fade={{ duration: 250 }}>
+      <div
+        class="absolute inset-0 flex items-center justify-center bg-bg/80 backdrop-blur-[2px] animate-fade"
+        out:fade={{ duration: 250 }}
+      >
         <div class="flex flex-col items-center gap-3 text-center animate-pop">
           <div class="flex items-center gap-2 font-logo text-4xl text-main"><Flag size={28} /> finished!</div>
           {@render finishedInfo()}
@@ -312,7 +337,9 @@
       {#if race.source}<span class="ml-2">— {race.source}</span>{/if}
     </div>
     {#if !src.result && !iAmOut}
-      <button class="btn btn-ghost text-sm" onclick={leave}>{feed ? "stop watching" : confirmLeave ? "click again to forfeit" : "leave"}</button>
+      <button class="btn btn-ghost text-sm" onclick={leave}
+        >{feed ? "stop watching" : confirmLeave ? "click again to forfeit" : "leave"}</button
+      >
     {/if}
   </div>
 </div>

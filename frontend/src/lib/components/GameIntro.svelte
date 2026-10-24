@@ -12,7 +12,13 @@
 
   const s = $derived(race.settings);
   const format = $derived(
-    s.mode === "time" ? `${s.time} seconds` : s.mode === "words" ? `${s.words} words` : s.mode === "quote" ? `${s.quoteLength} quote` : "custom text",
+    s.mode === "time"
+      ? `${s.time} seconds`
+      : s.mode === "words"
+        ? `${s.words} words`
+        : s.mode === "quote"
+          ? `${s.quoteLength} quote`
+          : "custom text",
   );
   const details = $derived(
     [

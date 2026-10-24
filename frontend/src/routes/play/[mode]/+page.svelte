@@ -84,9 +84,13 @@
     return () => clearTimeout(t);
   });
   // `now` ticks so the timer re-renders
-  const waited = $derived((void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0));
+  const waited = $derived(
+    (void now, game.queue ? Math.max(0, Math.floor((game.serverNow() - game.queue.since) / 1000)) : 0),
+  );
   const rematch = $derived(game.rematch && game.rematch.matchId === game.result?.matchId ? game.rematch : null);
-  const rematchLeft = $derived((void now, rematch ? Math.max(0, Math.ceil((rematch.expiresAt - game.serverNow()) / 1000)) : 0));
+  const rematchLeft = $derived(
+    (void now, rematch ? Math.max(0, Math.ceil((rematch.expiresAt - game.serverNow()) / 1000)) : 0),
+  );
   const opponent = $derived(game.result?.results.find((r) => r.id !== game.you?.id));
   const iAsked = $derived(!!rematch && !!game.you && rematch.requested.includes(game.you.id));
   const theyAsked = $derived(!!rematch && !!opponent && rematch.requested.includes(opponent.id));
@@ -165,7 +169,9 @@
   {#if reporting}
     <ReportDialog
       matchId={game.result.matchId}
-      players={game.result.results.filter((r) => r.id !== game.you?.id && !r.guest).map((r) => ({ id: r.id, name: r.name }))}
+      players={game.result.results
+        .filter((r) => r.id !== game.you?.id && !r.guest)
+        .map((r) => ({ id: r.id, name: r.name }))}
       onclose={() => (reporting = false)}
     />
   {/if}
@@ -180,7 +186,9 @@
       </svg>
       <div class="text-center">
         <div class="text-5xl text-main tabular-nums">{fmt(waited)}</div>
-        <div class="mt-1 text-sm text-sub">{game.queue ? "searching" : game.status === "online" ? "joining queue" : "connecting"}</div>
+        <div class="mt-1 text-sm text-sub">
+          {game.queue ? "searching" : game.status === "online" ? "joining queue" : "connecting"}
+        </div>
       </div>
     </div>
     <div class="mt-8 font-logo text-2xl">{mode} match</div>
@@ -203,7 +211,9 @@
       <Note note={asNote(game.errorFrom("ghost"))} class="mt-1" />
     {/if}
     {#if notifier.offer}
-      <div class="mt-8 flex max-w-md flex-col items-center gap-3 rounded-xl bg-sub-alt px-6 py-4 text-center text-sm animate-rise">
+      <div
+        class="mt-8 flex max-w-md flex-col items-center gap-3 rounded-xl bg-sub-alt px-6 py-4 text-center text-sm animate-rise"
+      >
         {#if notifier.refused}
           <div>
             {#if notifier.permission === "denied"}

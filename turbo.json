@@ -4,17 +4,9 @@
   "ui": "stream",
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        "build/**",
-        ".svelte-kit/**"
-      ],
-      "passThroughEnv": [
-        "SENTRY_AUTH_TOKEN"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "build/**", ".svelte-kit/**"],
+      "passThroughEnv": ["SENTRY_AUTH_TOKEN"]
     },
     "dev": {
       "cache": false,
@@ -23,9 +15,7 @@
     "start": {
       "cache": false,
       "persistent": true,
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "check": {},
     "test": {}

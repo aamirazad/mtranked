@@ -13,7 +13,10 @@ export class Notes {
   set(key: string, text: string, kind: Note["kind"] = "info", ms = 5000) {
     this.map[key] = { text, kind };
     clearTimeout(this.timers.get(key));
-    this.timers.set(key, setTimeout(() => this.clear(key), ms));
+    this.timers.set(
+      key,
+      setTimeout(() => this.clear(key), ms),
+    );
   }
   clear(key: string) {
     clearTimeout(this.timers.get(key));

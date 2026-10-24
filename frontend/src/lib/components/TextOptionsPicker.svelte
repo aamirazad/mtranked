@@ -38,9 +38,15 @@
     <span class="rounded px-1 {numbers ? 'bg-main/20 text-main' : 'bg-bg/60'}">#</span>
   </button>
   {#if open}
-    <div class="absolute top-full left-1/2 z-40 mt-2 flex w-56 -translate-x-1/2 flex-col gap-1 rounded-xl bg-bg p-3 text-left shadow-2xl ring-2 ring-sub-alt animate-fade">
-      <button class="toggle text-left" class:on={punctuation} onclick={() => onchange("punctuation", !punctuation)}>@ punctuation</button>
-      <button class="toggle text-left" class:on={numbers} onclick={() => onchange("numbers", !numbers)}># numbers</button>
+    <div
+      class="absolute top-full left-1/2 z-40 mt-2 flex w-56 -translate-x-1/2 flex-col gap-1 rounded-xl bg-bg p-3 text-left shadow-2xl ring-2 ring-sub-alt animate-fade"
+    >
+      <button class="toggle text-left" class:on={punctuation} onclick={() => onchange("punctuation", !punctuation)}
+        >@ punctuation</button
+      >
+      <button class="toggle text-left" class:on={numbers} onclick={() => onchange("numbers", !numbers)}
+        ># numbers</button
+      >
       <div class="label mt-2 px-2">language</div>
       <select
         class="cursor-pointer rounded-md bg-sub-alt px-2 py-1 text-text outline-none"

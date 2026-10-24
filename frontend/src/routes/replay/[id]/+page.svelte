@@ -23,7 +23,15 @@
   import TypingArea from "#lib/components/TypingArea.svelte";
   import ResultStats from "#lib/components/ResultStats.svelte";
 
-  type Track = { slot: number; name: string; color: string; caret: string; keys: Keystroke[]; state: TypingState; i: number };
+  type Track = {
+    slot: number;
+    name: string;
+    color: string;
+    caret: string;
+    keys: Keystroke[];
+    state: TypingState;
+    i: number;
+  };
 
   let match = $state<MatchDetail | null>(null);
   let error = $state<string | null>(null);
@@ -156,10 +164,18 @@
     <div class="mb-6 flex flex-col gap-2">
       {#each stats as s (s.slot)}
         {@const p = match.players.find((x) => x.slot === s.slot)!}
-        <button class="grid grid-cols-[2rem_minmax(0,12rem)_1fr_5rem] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-sub-alt" class:bg-sub-alt={s.slot === focusSlot} onclick={() => setFocus(s.slot)}>
+        <button
+          class="grid grid-cols-[2rem_minmax(0,12rem)_1fr_5rem] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-sub-alt"
+          class:bg-sub-alt={s.slot === focusSlot}
+          onclick={() => setFocus(s.slot)}
+        >
           <span class="text-sub">#{p.placement}</span>
           <span class="truncate" style="color: {s.slot === focusSlot ? s.color : 'inherit'}">{s.name}</span>
-          <span class="text-xs text-sub">{Math.round(p.wpm)} wpm final · {Math.round(p.acc)}% acc {p.delta !== null ? `· ${p.delta >= 0 ? "+" : ""}${Math.round(p.delta)}` : ""}</span>
+          <span class="text-xs text-sub"
+            >{Math.round(p.wpm)} wpm final · {Math.round(p.acc)}% acc {p.delta !== null
+              ? `· ${p.delta >= 0 ? "+" : ""}${Math.round(p.delta)}`
+              : ""}</span
+          >
           <span class="text-right tabular-nums">{s.wpm} <span class="text-sub">wpm</span></span>
         </button>
       {/each}
@@ -168,10 +184,23 @@
     <TypingArea bind:this={area} {ts} {carets} active={false} caretColor={focusColor} />
 
     <div class="mt-8 flex items-center gap-4">
-      <button class="btn" onclick={() => (t >= duration ? (seek(0), (playing = true)) : (playing = !playing))} aria-label={playing ? "pause" : "play"}>
+      <button
+        class="btn"
+        onclick={() => (t >= duration ? (seek(0), (playing = true)) : (playing = !playing))}
+        aria-label={playing ? "pause" : "play"}
+      >
         {#if playing}<Pause size={16} />{:else if t >= duration}<RotateCcw size={16} />{:else}<Play size={16} />{/if}
       </button>
-      <input type="range" class="flex-1 accent-[var(--color-main)]" min="0" max={duration} step="10" value={t} oninput={(e) => seek(Number(e.currentTarget.value))} aria-label="seek" />
+      <input
+        type="range"
+        class="flex-1 accent-[var(--color-main)]"
+        min="0"
+        max={duration}
+        step="10"
+        value={t}
+        oninput={(e) => seek(Number(e.currentTarget.value))}
+        aria-label="seek"
+      />
       <span class="w-16 text-right text-sm text-sub tabular-nums">{(t / 1000).toFixed(1)}s</span>
       <select class="bg-transparent text-sm text-sub outline-none" bind:value={speed} aria-label="speed">
         {#each [0.5, 1, 2, 4] as s (s)}<option value={s}>{s}x</option>{/each}

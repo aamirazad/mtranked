@@ -5,5 +5,12 @@
 </script>
 
 {#if note}
-  <span role={note.kind === "error" ? "alert" : "status"} class="text-xs animate-fade {note.kind === 'error' ? 'text-error' : note.kind === 'success' ? 'text-main' : 'text-sub'} {cls}">{note.text}</span>
+  <span
+    role={note.kind === "error" ? "alert" : "status"}
+    class="text-xs animate-fade {note.kind === 'error'
+      ? 'text-error'
+      : note.kind === 'success'
+        ? 'text-main'
+        : 'text-sub'} {cls}">{note.text}</span
+  >
 {/if}

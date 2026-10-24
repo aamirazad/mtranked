@@ -67,14 +67,26 @@
     list.map((v) => ({ label: name(v), active: value === v, run: () => set(v) }));
 
   const room = $derived(game.room);
-  const canThemeRoom = $derived(!!room && !!game.you && room.hosts.includes(game.you.id) && room.hostSubscriber && page.url.pathname.startsWith("/room/"));
+  const canThemeRoom = $derived(
+    !!room &&
+      !!game.you &&
+      room.hosts.includes(game.you.id) &&
+      room.hostSubscriber &&
+      page.url.pathname.startsWith("/room/"),
+  );
 
   const groups = $derived.by<Group[]>(() => [
     {
       id: "theme",
       label: "Theme",
       icon: Palette,
-      options: THEMES.map((t) => ({ label: t.name, active: prefs.theme === t.id, theme: t, preview: t.id, run: () => prefs.set("theme", t.id) })),
+      options: THEMES.map((t) => ({
+        label: t.name,
+        active: prefs.theme === t.id,
+        theme: t,
+        preview: t.id,
+        run: () => prefs.set("theme", t.id),
+      })),
     },
     ...(canThemeRoom
       ? [
@@ -99,44 +111,162 @@
       id: "quick-restart",
       label: "Quick restart",
       icon: RotateCcw,
-      options: QUICK_RESTARTS.map((q) => ({ label: q, active: prefs.quickRestart === q, run: () => prefs.set("quickRestart", q) })),
+      options: QUICK_RESTARTS.map((q) => ({
+        label: q,
+        active: prefs.quickRestart === q,
+        run: () => prefs.set("quickRestart", q),
+      })),
     },
-    { id: "room-themes", label: "Room themes", icon: Paintbrush, options: onOff(prefs.roomThemes, (v) => prefs.set("roomThemes", v)) },
+    {
+      id: "room-themes",
+      label: "Room themes",
+      icon: Paintbrush,
+      options: onOff(prefs.roomThemes, (v) => prefs.set("roomThemes", v)),
+    },
     {
       id: "font-size",
       label: "Font size",
       icon: Type,
-      options: FONT_SIZES.map((s) => ({ label: fontSizeName(s), active: prefs.fontSize === s, run: () => prefs.set("fontSize", s) })),
+      options: FONT_SIZES.map((s) => ({
+        label: fontSizeName(s),
+        active: prefs.fontSize === s,
+        run: () => prefs.set("fontSize", s),
+      })),
     },
-    { id: "font-family", label: "Font family", icon: Type, options: pick(FONTS.map((f) => f.id), prefs.fontFamily, (v) => prefs.set("fontFamily", v), (v) => fontLabel(fontById(v)!)) },
-    { id: "smooth-caret", label: "Smooth caret", icon: TextCursor, options: pick(CARET_SPEEDS, prefs.smoothCaret, (v) => prefs.set("smoothCaret", v)) },
-    { id: "live-progress", label: "Live progress", icon: Gauge, options: pick(PROGRESS_STYLES, prefs.liveProgress, (v) => prefs.set("liveProgress", v)) },
-    { id: "live-wpm", label: "Live speed", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveWpm, (v) => prefs.set("liveWpm", v)) },
-    { id: "live-acc", label: "Live accuracy", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveAcc, (v) => prefs.set("liveAcc", v)) },
-    { id: "live-burst", label: "Live burst", icon: Gauge, options: pick(LIVE_STYLES, prefs.liveBurst, (v) => prefs.set("liveBurst", v)) },
-    { id: "tape-mode", label: "Tape mode", icon: AlignJustify, options: pick(TAPE_MODES, prefs.tapeMode, (v) => prefs.set("tapeMode", v)) },
-    { id: "show-all-lines", label: "Show all lines", icon: AlignJustify, options: onOff(prefs.showAllLines, (v) => prefs.set("showAllLines", v)) },
-    { id: "smooth-line-scroll", label: "Smooth line scroll", icon: AlignJustify, options: onOff(prefs.smoothLineScroll, (v) => prefs.set("smoothLineScroll", v)) },
-    { id: "highlight-mode", label: "Highlight mode", icon: Highlighter, options: pick(HIGHLIGHT_MODES, prefs.highlightMode, (v) => prefs.set("highlightMode", v)) },
-    { id: "indicate-typos", label: "Indicate typos", icon: Highlighter, options: pick(INDICATE_TYPOS, prefs.indicateTypos, (v) => prefs.set("indicateTypos", v)) },
-    { id: "blind-mode", label: "Blind mode", icon: Eye, options: onOff(prefs.blindMode, (v) => prefs.set("blindMode", v)) },
-    { id: "hide-extra", label: "Hide extra letters", icon: Eye, options: onOff(prefs.hideExtraLetters, (v) => prefs.set("hideExtraLetters", v)) },
-    { id: "flip-colors", label: "Flip test colors", icon: Paintbrush, options: onOff(prefs.flipColors, (v) => prefs.set("flipColors", v)) },
-    { id: "colorful-mode", label: "Colorful mode", icon: Paintbrush, options: onOff(prefs.colorfulMode, (v) => prefs.set("colorfulMode", v)) },
+    {
+      id: "font-family",
+      label: "Font family",
+      icon: Type,
+      options: pick(
+        FONTS.map((f) => f.id),
+        prefs.fontFamily,
+        (v) => prefs.set("fontFamily", v),
+        (v) => fontLabel(fontById(v)!),
+      ),
+    },
+    {
+      id: "smooth-caret",
+      label: "Smooth caret",
+      icon: TextCursor,
+      options: pick(CARET_SPEEDS, prefs.smoothCaret, (v) => prefs.set("smoothCaret", v)),
+    },
+    {
+      id: "live-progress",
+      label: "Live progress",
+      icon: Gauge,
+      options: pick(PROGRESS_STYLES, prefs.liveProgress, (v) => prefs.set("liveProgress", v)),
+    },
+    {
+      id: "live-wpm",
+      label: "Live speed",
+      icon: Gauge,
+      options: pick(LIVE_STYLES, prefs.liveWpm, (v) => prefs.set("liveWpm", v)),
+    },
+    {
+      id: "live-acc",
+      label: "Live accuracy",
+      icon: Gauge,
+      options: pick(LIVE_STYLES, prefs.liveAcc, (v) => prefs.set("liveAcc", v)),
+    },
+    {
+      id: "live-burst",
+      label: "Live burst",
+      icon: Gauge,
+      options: pick(LIVE_STYLES, prefs.liveBurst, (v) => prefs.set("liveBurst", v)),
+    },
+    {
+      id: "tape-mode",
+      label: "Tape mode",
+      icon: AlignJustify,
+      options: pick(TAPE_MODES, prefs.tapeMode, (v) => prefs.set("tapeMode", v)),
+    },
+    {
+      id: "show-all-lines",
+      label: "Show all lines",
+      icon: AlignJustify,
+      options: onOff(prefs.showAllLines, (v) => prefs.set("showAllLines", v)),
+    },
+    {
+      id: "smooth-line-scroll",
+      label: "Smooth line scroll",
+      icon: AlignJustify,
+      options: onOff(prefs.smoothLineScroll, (v) => prefs.set("smoothLineScroll", v)),
+    },
+    {
+      id: "highlight-mode",
+      label: "Highlight mode",
+      icon: Highlighter,
+      options: pick(HIGHLIGHT_MODES, prefs.highlightMode, (v) => prefs.set("highlightMode", v)),
+    },
+    {
+      id: "indicate-typos",
+      label: "Indicate typos",
+      icon: Highlighter,
+      options: pick(INDICATE_TYPOS, prefs.indicateTypos, (v) => prefs.set("indicateTypos", v)),
+    },
+    {
+      id: "blind-mode",
+      label: "Blind mode",
+      icon: Eye,
+      options: onOff(prefs.blindMode, (v) => prefs.set("blindMode", v)),
+    },
+    {
+      id: "hide-extra",
+      label: "Hide extra letters",
+      icon: Eye,
+      options: onOff(prefs.hideExtraLetters, (v) => prefs.set("hideExtraLetters", v)),
+    },
+    {
+      id: "flip-colors",
+      label: "Flip test colors",
+      icon: Paintbrush,
+      options: onOff(prefs.flipColors, (v) => prefs.set("flipColors", v)),
+    },
+    {
+      id: "colorful-mode",
+      label: "Colorful mode",
+      icon: Paintbrush,
+      options: onOff(prefs.colorfulMode, (v) => prefs.set("colorfulMode", v)),
+    },
     {
       id: "sound-click",
       label: "Sound on click",
       icon: Volume2,
-      options: pick(Object.keys(CLICK_SOUNDS), prefs.soundOnClick, (v) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)), (v) => CLICK_SOUNDS[v]!.name),
+      options: pick(
+        Object.keys(CLICK_SOUNDS),
+        prefs.soundOnClick,
+        (v) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)),
+        (v) => CLICK_SOUNDS[v]!.name,
+      ),
     },
     {
       id: "sound-error",
       label: "Sound on error",
       icon: Volume2,
-      options: pick(Object.keys(ERROR_SOUNDS), prefs.soundOnError, (v) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)), (v) => ERROR_SOUNDS[v]!.name),
+      options: pick(
+        Object.keys(ERROR_SOUNDS),
+        prefs.soundOnError,
+        (v) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)),
+        (v) => ERROR_SOUNDS[v]!.name,
+      ),
     },
-    { id: "sound-volume", label: "Sound volume", icon: Volume2, options: pick(VOLUMES, prefs.soundVolume, (v) => prefs.set("soundVolume", v), (v) => `${v * 100}%`) },
-    { id: "layout", label: "Layout emulation", icon: Keyboard, options: pick(LAYOUT_IDS, prefs.layout, (v) => prefs.set("layout", v), layoutName) },
+    {
+      id: "sound-volume",
+      label: "Sound volume",
+      icon: Volume2,
+      options: pick(
+        VOLUMES,
+        prefs.soundVolume,
+        (v) => prefs.set("soundVolume", v),
+        (v) => `${v * 100}%`,
+      ),
+    },
+    {
+      id: "layout",
+      label: "Layout emulation",
+      icon: Keyboard,
+      options: pick(LAYOUT_IDS, prefs.layout, (v) => prefs.set("layout", v), layoutName),
+    },
   ]);
 
   const opened = $derived(groups.find((g) => g.id === openId) ?? null);
@@ -185,7 +315,10 @@
     openId = g.id;
     query = "";
     // start on the current value, like monkeytype
-    sel = Math.max(0, g.options.findIndex((o) => o.active));
+    sel = Math.max(
+      0,
+      g.options.findIndex((o) => o.active),
+    );
     input?.focus();
   }
 
@@ -193,7 +326,10 @@
     const id = openId;
     openId = null;
     query = "";
-    sel = Math.max(0, groups.findIndex((g) => g.id === id));
+    sel = Math.max(
+      0,
+      groups.findIndex((g) => g.id === id),
+    );
     input?.focus();
   }
 
@@ -238,7 +374,12 @@
     // esc already means something in these places
     if ((game.queueMode && page.url.pathname.startsWith("/play/")) || game.match) return;
     const t = e.target as HTMLElement | null;
-    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") && !t.closest("[role=textbox]")) return;
+    if (
+      t &&
+      (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") &&
+      !t.closest("[role=textbox]")
+    )
+      return;
     e.preventDefault();
     show();
   }
@@ -256,8 +397,15 @@
 
 {#if commandLine.open}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-start justify-center bg-bg/80 px-4 pt-[10vh] animate-fade" onmousedown={(e) => e.target === e.currentTarget && hide()}>
-    <div class="flex max-h-[75vh] w-[min(760px,100%)] flex-col overflow-hidden rounded-xl bg-bg shadow-2xl ring-2 ring-sub-alt" role="dialog" aria-label="command line">
+  <div
+    class="fixed inset-0 z-50 flex items-start justify-center bg-bg/80 px-4 pt-[10vh] animate-fade"
+    onmousedown={(e) => e.target === e.currentTarget && hide()}
+  >
+    <div
+      class="flex max-h-[75vh] w-[min(760px,100%)] flex-col overflow-hidden rounded-xl bg-bg shadow-2xl ring-2 ring-sub-alt"
+      role="dialog"
+      aria-label="command line"
+    >
       <div class="flex items-center gap-4 px-5 py-4">
         {#if opened}
           <button class="flex shrink-0 items-center gap-1 text-sub hover:text-text" onclick={back} title="back (esc)">
@@ -302,7 +450,9 @@
                 <span class="shrink-0">{r.group.label}</span>
                 <ChevronRight size={14} class="shrink-0" />
               {/if}
-              <span class="w-4 shrink-0">{#if r.option.active}<Check size={14} />{/if}</span>
+              <span class="w-4 shrink-0"
+                >{#if r.option.active}<Check size={14} />{/if}</span
+              >
               <span class="truncate">{r.option.label}</span>
               {#if r.option.theme?.note}<span class="shrink-0 text-xs text-sub">{r.option.theme.note}</span>{/if}
               {#if r.option.theme}<span class="ml-auto">{@render swatch(r.option.theme)}</span>{/if}
@@ -313,7 +463,9 @@
         {/each}
       </ul>
       <div class="border-t-2 border-sub-alt px-5 py-2 text-xs text-sub">
-        <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> {opened ? "apply" : "open"} · <kbd>esc</kbd> {opened ? "back" : "close"}
+        <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd>
+        {opened ? "apply" : "open"} · <kbd>esc</kbd>
+        {opened ? "back" : "close"}
         {#if prefs.preview && themeById(prefs.preview)}· previewing {themeById(prefs.preview)!.name}{/if}
       </div>
     </div>

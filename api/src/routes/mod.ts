@@ -17,7 +17,8 @@ async function mod(req: object, res: Response) {
 async function cannotSuspend(userId: string) {
   const [u] = await sql`select is_moderator from users where id = ${userId}`;
   if (!u) return { status: 404 as const, body: { message: "No such player." } };
-  if (u.is_moderator) return { status: 400 as const, body: { message: "Moderators can't be banned or timed out here." } };
+  if (u.is_moderator)
+    return { status: 400 as const, body: { message: "Moderators can't be banned or timed out here." } };
   return null;
 }
 
@@ -128,7 +129,9 @@ export const modRouter = s.router(contract.mod, {
       where m.status = 'held' group by m.id order by m.finished_at`;
     return {
       status: 200,
-      body: { matches: rows.map((r) => ({ matchId: r.id, finishedAt: r.finished_at.toISOString(), players: r.players })) },
+      body: {
+        matches: rows.map((r) => ({ matchId: r.id, finishedAt: r.finished_at.toISOString(), players: r.players })),
+      },
     };
   },
 
@@ -159,7 +162,8 @@ export const modRouter = s.router(contract.mod, {
 
   flags: async ({ req, res }) => {
     if (!(await mod(req, res))) return forbidden;
-    const rows = await sql`select f.*, u.display_name, u.banned_at, u.timed_out_until from flags f join users u on u.id = f.user_id
+    const rows =
+      await sql`select f.*, u.display_name, u.banned_at, u.timed_out_until from flags f join users u on u.id = f.user_id
       order by f.created_at desc limit 200`;
     return {
       status: 200,
@@ -269,7 +273,13 @@ export const modRouter = s.router(contract.mod, {
         flagged: n(u?.flagged),
         withFriends: n(u?.with_friends),
       },
-      tests: { total: n(t?.total), today: n(t?.today), last7d: n(t?.last7d), fromGuests: n(t?.guests), hoursTyped: n(t?.hours) },
+      tests: {
+        total: n(t?.total),
+        today: n(t?.today),
+        last7d: n(t?.last7d),
+        fromGuests: n(t?.guests),
+        hoursTyped: n(t?.hours),
+      },
       modes: MOD_STAT_MODES.map((mode) => {
         const r = modes.find((x) => x.mode === mode);
         return {
@@ -289,9 +299,17 @@ export const modRouter = s.router(contract.mod, {
         signups: n(d.signups),
         users: n(d.users),
         active: n(d.active),
-        tests: { ...zero, ...Object.fromEntries(Object.entries(d.tests as Record<string, unknown>).map(([k, v]) => [k, n(v)])) },
+        tests: {
+          ...zero,
+          ...Object.fromEntries(Object.entries(d.tests as Record<string, unknown>).map(([k, v]) => [k, n(v)])),
+        },
       })),
-      moderation: { openReports: n(m?.open_reports), held: n(m?.held), flags7d: n(m?.flags7d), resolved30d: n(m?.resolved30d) },
+      moderation: {
+        openReports: n(m?.open_reports),
+        held: n(m?.held),
+        flags7d: n(m?.flags7d),
+        resolved30d: n(m?.resolved30d),
+      },
     };
     return { status: 200, body };
   },
@@ -389,7 +407,8 @@ export const modRouter = s.router(contract.mod, {
   unsuspend: async ({ req, res, params }) => {
     if (!(await mod(req, res))) return forbidden;
     // voided races and refunded rating from a ban stay as they are
-    const r = await sql`update users set banned_at = null, timed_out_until = null, suspension_reason = null, ban_ips = '{}'
+    const r =
+      await sql`update users set banned_at = null, timed_out_until = null, suspension_reason = null, ban_ips = '{}'
       where id = ${params.id} returning id`;
     if (!r.length) return { status: 404, body: { message: "No such player." } };
     return { status: 200, body: { ok: true } };

@@ -3,8 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "check": "tsc -p ." },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p ."
+  },
   "dependencies": {
     "@mtr/shared": "workspace:*",
     "@ts-rest/core": "3.52.1",

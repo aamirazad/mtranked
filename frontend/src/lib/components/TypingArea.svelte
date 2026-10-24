@@ -128,7 +128,16 @@
 
   // font, size and view preferences change every position
   $effect(() => {
-    void [prefs.fontSize, prefs.fontFamily, prefs.tapeMode, prefs.showAllLines, prefs.hideExtraLetters, prefs.blindMode, prefs.indicateTypos, boxW];
+    void [
+      prefs.fontSize,
+      prefs.fontFamily,
+      prefs.tapeMode,
+      prefs.showAllLines,
+      prefs.hideExtraLetters,
+      prefs.blindMode,
+      prefs.indicateTypos,
+      boxW,
+    ];
     void tick().then(measure);
   });
   // web fonts arrive after first layout
@@ -147,7 +156,10 @@
     }
     const input = inputs[wi] ?? "";
     const word = ts.words[wi] ?? "";
-    caretPos = letterPos(el, ts.finished ? el.children.length : hideExtra ? Math.min(input.length, word.length) : input.length);
+    caretPos = letterPos(
+      el,
+      ts.finished ? el.children.length : hideExtra ? Math.min(input.length, word.length) : input.length,
+    );
     if (tape) {
       scroll = 0;
       const at = prefs.tapeMode === "word" ? el.offsetLeft : caretPos.x;
@@ -266,7 +278,8 @@
     readCapsLock(e);
     if (!active || focused || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target as HTMLElement;
-    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable))
+      return;
     if (e.key.length === 1 || e.key === "Backspace") {
       focus();
       onkeydown(e);
@@ -307,7 +320,12 @@
     onfocus={() => (focused = true)}
     onblur={() => (focused = false)}
   />
-  <div class="h-full transition-[filter] duration-300" class:overflow-hidden={!allLines} class:tape-mask={tape} class:blur-sm={blurred || (active && !focused)}>
+  <div
+    class="h-full transition-[filter] duration-300"
+    class:overflow-hidden={!allLines}
+    class:tape-mask={tape}
+    class:blur-sm={blurred || (active && !focused)}
+  >
     <div
       bind:this={wrapper}
       class="words relative flex content-start"
@@ -329,7 +347,9 @@
           {#each { length: isTyped ? Math.max(word.length, input.length) : word.length } as _, j (j)}
             {@const cls = letterClass(word, input, j, isTyped)}
             <span class={cls}
-              >{j >= word.length || (cls === "incorrect" && prefs.indicateTypos === "replace" && !prefs.blindMode) ? input[j] : word[j]}{#if cls === "incorrect" && prefs.indicateTypos === "below" && !prefs.blindMode}<span
+              >{j >= word.length || (cls === "incorrect" && prefs.indicateTypos === "replace" && !prefs.blindMode)
+                ? input[j]
+                : word[j]}{#if cls === "incorrect" && prefs.indicateTypos === "below" && !prefs.blindMode}<span
                   class="typo">{input[j]}</span
                 >{/if}</span
             >
@@ -363,7 +383,15 @@
   </div>
   {#if funbox.length}
     {#key ts}
-      <FunboxLayer {funbox} word={ts.words[wi]} input={inputs[wi] ?? ""} {wi} words={ts.words.length} active={active && !blurred} bind:hide={fbHide} />
+      <FunboxLayer
+        {funbox}
+        word={ts.words[wi]}
+        input={inputs[wi] ?? ""}
+        {wi}
+        words={ts.words.length}
+        active={active && !blurred}
+        bind:hide={fbHide}
+      />
     {/key}
   {/if}
   {#if active && focused && capsLock}

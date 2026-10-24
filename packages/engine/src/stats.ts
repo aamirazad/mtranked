@@ -65,7 +65,13 @@ export type WordStat = { w: string; i: string; b: number };
  * Per-word input history. A word's burst runs from the moment the previous word was
  * submitted (or the first key) to the moment this one was submitted (or finished).
  */
-export function wordHistory(text: string, keys: Keystroke[], untilMs = Infinity, rules?: Rules, opts?: TypingOptions): WordStat[] {
+export function wordHistory(
+  text: string,
+  keys: Keystroke[],
+  untilMs = Infinity,
+  rules?: Rules,
+  opts?: TypingOptions,
+): WordStat[] {
   const s = createState(text, rules, opts);
   const startAt: number[] = [];
   const endAt: number[] = [];
@@ -91,7 +97,8 @@ export function wordHistory(text: string, keys: Keystroke[], untilMs = Infinity,
     const start = startAt[i];
     const end = endAt[i] ?? keys.findLast((k) => k.t <= untilMs)?.t;
     const chars = input.length + (i < s.wi && !s.nospace ? 1 : 0);
-    const b = start !== undefined && end !== undefined && end > start ? Math.round(calculateWpm(chars, end - start)) : 0;
+    const b =
+      start !== undefined && end !== undefined && end > start ? Math.round(calculateWpm(chars, end - start)) : 0;
     out.push({ w: s.words[i]!, i: input, b });
   }
   return out;

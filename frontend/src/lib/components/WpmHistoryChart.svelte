@@ -29,7 +29,14 @@
 
   const innerW = $derived(Math.max(0, width - pad.left - pad.right));
   const innerH = H - pad.top - pad.bottom;
-  const avg = $derived(points ? movingAverage(points.map((p) => p.wpm), AVG) : []);
+  const avg = $derived(
+    points
+      ? movingAverage(
+          points.map((p) => p.wpm),
+          AVG,
+        )
+      : [],
+  );
   const domain = $derived.by(() => {
     if (!points?.length) return { lo: 0, hi: 100, step: 25 };
     const ws = points.map((p) => p.wpm);
@@ -45,7 +52,14 @@
     for (let v = domain.lo; v <= domain.hi + 1e-9; v += domain.step) out.push(Math.round(v * 10) / 10);
     return out;
   });
-  const avgLine = $derived(points && width ? monotonePath(points.map((_, i) => x(i)), avg.map(y)) : "");
+  const avgLine = $derived(
+    points && width
+      ? monotonePath(
+          points.map((_, i) => x(i)),
+          avg.map(y),
+        )
+      : "",
+  );
   const best = $derived(points?.length ? Math.max(...points.map((p) => p.wpm)) : 0);
   const hp = $derived(hover.index !== null && points ? points[hover.index] : null);
 
@@ -86,16 +100,34 @@
     >
       {#each ticks as t (t)}
         <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/15" stroke-width="1" />
-        <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{t}</text>
+        <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums"
+          >{t}</text
+        >
       {/each}
       <text x={pad.left} y={H - 6} class="fill-sub text-[11px]">{fmtDate(points[0]!.at)}</text>
-      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.length} results</text>
+      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.length} results</text
+      >
       {#each points as p, i (i)}
         <circle cx={x(i)} cy={y(p.wpm)} r={points.length > 150 ? 2 : 2.75} class="fill-sub" fill-opacity="0.55" />
       {/each}
-      <path d={avgLine} fill="none" class="stroke-main" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <path
+        d={avgLine}
+        fill="none"
+        class="stroke-main"
+        stroke-width="2.5"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
       <g class="pointer-events-none" style="opacity: {hover.shown ? 1 : 0}; transition: opacity 0.15s ease-out">
-        <line x1={hover.x.current} x2={hover.x.current} y1={pad.top} y2={pad.top + innerH} class="stroke-sub/60" stroke-width="1" stroke-dasharray="3 3" />
+        <line
+          x1={hover.x.current}
+          x2={hover.x.current}
+          y1={pad.top}
+          y2={pad.top + innerH}
+          class="stroke-sub/60"
+          stroke-width="1"
+          stroke-dasharray="3 3"
+        />
         <circle cx={hover.x.current} cy={hover.y2.current} r="4" class="fill-main stroke-sub-alt" stroke-width="2" />
         <circle cx={hover.x.current} cy={hover.y.current} r="4.5" class="fill-text stroke-sub-alt" stroke-width="2" />
       </g>
@@ -103,9 +135,15 @@
     <ChartTooltip {hover} {width} top={pad.top}>
       {#if hp}
         <div class="mb-1 whitespace-nowrap text-sub">{fmtDate(hp.at)} · {hp.kind}</div>
-        <div class="flex gap-3 whitespace-nowrap text-text"><span>wpm</span><span class="ml-auto tabular-nums">{Math.round(hp.wpm)}</span></div>
-        <div class="flex gap-3 whitespace-nowrap text-text"><span>acc</span><span class="ml-auto tabular-nums">{Math.round(hp.acc)}%</span></div>
-        <div class="flex gap-3 whitespace-nowrap text-main"><span>avg {AVG}</span><span class="ml-auto tabular-nums">{Math.round(avg[hover.index!]!)}</span></div>
+        <div class="flex gap-3 whitespace-nowrap text-text">
+          <span>wpm</span><span class="ml-auto tabular-nums">{Math.round(hp.wpm)}</span>
+        </div>
+        <div class="flex gap-3 whitespace-nowrap text-text">
+          <span>acc</span><span class="ml-auto tabular-nums">{Math.round(hp.acc)}%</span>
+        </div>
+        <div class="flex gap-3 whitespace-nowrap text-main">
+          <span>avg {AVG}</span><span class="ml-auto tabular-nums">{Math.round(avg[hover.index!]!)}</span>
+        </div>
       {/if}
     </ChartTooltip>
   {/if}

@@ -30,6 +30,8 @@ for (const [name, url, defaultPort] of services) {
 }
 
 if (down.length) {
-  console.error(`\nCan't reach ${down.join(" or ")}.\nStart the dev services with \`pnpm services:up\`, then run \`pnpm dev\` again.\n`);
+  console.error(
+    `\nCan't reach ${down.join(" or ")}.\nStart the dev services with \`pnpm services:up\`, then run \`pnpm dev\` again.\n`,
+  );
   process.exit(1);
 }

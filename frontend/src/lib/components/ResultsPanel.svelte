@@ -73,7 +73,9 @@
       : false,
   );
   // one wpm scale for every graph so the small ones compare against yours
-  const chartMax = $derived(Math.max(1, ...result.results.flatMap((r) => r.timeline ?? []).map((p) => Math.max(p.wpm, p.raw))));
+  const chartMax = $derived(
+    Math.max(1, ...result.results.flatMap((r) => r.timeline ?? []).map((p) => Math.max(p.wpm, p.raw))),
+  );
   const showMinis = $derived(result.results.some((r) => r.id !== meId && r.timeline?.length));
   const opponent = $derived(result.results.find((r) => r.id !== meId));
   const fmtTime = (ms: number | null) => (ms === null ? "—" : `${(ms / 1000).toFixed(2)}s`);
@@ -138,7 +140,9 @@
           {#if result.results.length > 1}
             <div>
               <div class="label text-sm">place</div>
-              <div class="text-3xl text-main tabular-nums">{me.placement}<span class="text-xl text-sub">/{result.results.length}</span></div>
+              <div class="text-3xl text-main tabular-nums">
+                {me.placement}<span class="text-xl text-sub">/{result.results.length}</span>
+              </div>
             </div>
           {/if}
           {#if me.xp}
@@ -153,53 +157,62 @@
   {/if}
 
   {#if result.results.length > 1}
-  <div class="label mb-1 text-sm">players</div>
-  <table class="w-full text-left text-sm">
-    <thead class="text-sub">
-      <tr>
-        <th class="py-2 font-normal">#</th>
-        <th class="font-normal">player</th>
-        {#if showMinis}<th class="w-[200px] font-normal"><span class="sr-only">graph</span></th>{/if}
-        <th class="text-right font-normal">wpm</th>
-        <th class="text-right font-normal">raw</th>
-        <th class="text-right font-normal">acc</th>
-        <th class="text-right font-normal">time</th>
-        {#if result.mode === "ranked"}<th class="text-right font-normal">rating</th>{/if}
-      </tr>
-    </thead>
-    <tbody>
-      {#each result.results as r (r.id)}
-        <tr class="border-t border-sub-alt transition-colors hover:bg-sub-alt/40" class:text-main={r.id === meId}>
-          <td class="py-2.5">{r.placement}</td>
-          <td>
-            <span class="inline-flex items-center gap-2">
-              {#if r.ghost}<Ghost size={14} class="text-sub" />{/if}
-              {#if !r.guest && !r.ghost}<a href="/u/{r.name}" class="hover:underline">{r.name}</a>{:else}{r.name}{/if}
-              {#if r.ghostRating}<TierBadge rating={r.ghostRating.rating} races={r.ghostRating.races} size="sm" />{/if}
-              {#if r.guest}<span class="text-xs text-sub">guest</span>{/if}
-              {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if r.failed}<span class="text-xs text-error" title={r.failed}>failed</span>{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
-            </span>
-          </td>
-          {#if showMinis}
-            <td class="py-1.5 pr-4">
-              {#if r.id !== meId && r.timeline?.length}
-                <SpeedChart points={r.timeline} max={chartMax} compact label="{r.name}'s speed over time" />
-              {/if}
-            </td>
-          {/if}
-          <td class="text-right tabular-nums">{Math.round(r.wpm)}</td>
-          <td class="text-right tabular-nums text-sub">{Math.round(r.raw)}</td>
-          <td class="text-right tabular-nums">{Math.round(r.acc)}%</td>
-          <td class="text-right tabular-nums">{fmtTime(r.timeMs)}</td>
-          {#if result.mode === "ranked"}
-            <td class="text-right tabular-nums {r.delta === undefined ? '' : r.delta >= 0 ? 'text-win' : 'text-error'}">
-              {r.delta === undefined ? "—" : `${r.delta >= 0 ? "+" : ""}${r.delta}`}
-            </td>
-          {/if}
+    <div class="label mb-1 text-sm">players</div>
+    <table class="w-full text-left text-sm">
+      <thead class="text-sub">
+        <tr>
+          <th class="py-2 font-normal">#</th>
+          <th class="font-normal">player</th>
+          {#if showMinis}<th class="w-[200px] font-normal"><span class="sr-only">graph</span></th>{/if}
+          <th class="text-right font-normal">wpm</th>
+          <th class="text-right font-normal">raw</th>
+          <th class="text-right font-normal">acc</th>
+          <th class="text-right font-normal">time</th>
+          {#if result.mode === "ranked"}<th class="text-right font-normal">rating</th>{/if}
         </tr>
-      {/each}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {#each result.results as r (r.id)}
+          <tr class="border-t border-sub-alt transition-colors hover:bg-sub-alt/40" class:text-main={r.id === meId}>
+            <td class="py-2.5">{r.placement}</td>
+            <td>
+              <span class="inline-flex items-center gap-2">
+                {#if r.ghost}<Ghost size={14} class="text-sub" />{/if}
+                {#if !r.guest && !r.ghost}<a href="/u/{r.name}" class="hover:underline">{r.name}</a>{:else}{r.name}{/if}
+                {#if r.ghostRating}<TierBadge
+                    rating={r.ghostRating.rating}
+                    races={r.ghostRating.races}
+                    size="sm"
+                  />{/if}
+                {#if r.guest}<span class="text-xs text-sub">guest</span>{/if}
+                {#if r.forfeit}<span class="text-xs text-error">forfeit</span>{:else if r.failed}<span
+                    class="text-xs text-error"
+                    title={r.failed}>failed</span
+                  >{:else if !r.finished}<span class="text-xs text-sub">{r.progress}%</span>{/if}
+              </span>
+            </td>
+            {#if showMinis}
+              <td class="py-1.5 pr-4">
+                {#if r.id !== meId && r.timeline?.length}
+                  <SpeedChart points={r.timeline} max={chartMax} compact label="{r.name}'s speed over time" />
+                {/if}
+              </td>
+            {/if}
+            <td class="text-right tabular-nums">{Math.round(r.wpm)}</td>
+            <td class="text-right tabular-nums text-sub">{Math.round(r.raw)}</td>
+            <td class="text-right tabular-nums">{Math.round(r.acc)}%</td>
+            <td class="text-right tabular-nums">{fmtTime(r.timeMs)}</td>
+            {#if result.mode === "ranked"}
+              <td
+                class="text-right tabular-nums {r.delta === undefined ? '' : r.delta >= 0 ? 'text-win' : 'text-error'}"
+              >
+                {r.delta === undefined ? "—" : `${r.delta >= 0 ? "+" : ""}${r.delta}`}
+              </td>
+            {/if}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
   {/if}
   {#if !result.saved}
     <div class="mt-4 text-sm text-error">We couldn't save this race. It won't count toward your stats.</div>

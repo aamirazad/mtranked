@@ -42,8 +42,17 @@
   const x = (i: number) => pad.left + (points && points.length > 1 ? (i / (points.length - 1)) * innerW : innerW / 2);
   const y = (r: number) => pad.top + innerH - ((r - domain[0]) / (domain[1] - domain[0])) * innerH;
 
-  const line = $derived(points && width ? monotonePath(points.map((_, i) => x(i)), points.map((p) => y(p.rating))) : "");
-  const area = $derived(points && points.length > 1 ? areaPath(line, x(0), x(points.length - 1), pad.top + innerH) : "");
+  const line = $derived(
+    points && width
+      ? monotonePath(
+          points.map((_, i) => x(i)),
+          points.map((p) => y(p.rating)),
+        )
+      : "",
+  );
+  const area = $derived(
+    points && points.length > 1 ? areaPath(line, x(0), x(points.length - 1), pad.top + innerH) : "",
+  );
   const ticks = $derived.by(() => {
     const [lo, hi] = domain;
     const step = hi - lo > 600 ? 200 : hi - lo > 300 ? 100 : 50;
@@ -55,7 +64,11 @@
   const change = $derived(points && points.length > 1 ? points.at(-1)!.rating - points[0]!.rating : 0);
 
   const hp = $derived(hover.index !== null && points ? points[hover.index] : null);
-  const hDelta = $derived(hover.index !== null && hover.index > 0 && points ? points[hover.index]!.rating - points[hover.index - 1]!.rating : null);
+  const hDelta = $derived(
+    hover.index !== null && hover.index > 0 && points
+      ? points[hover.index]!.rating - points[hover.index - 1]!.rating
+      : null,
+  );
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
 
   const show = (i: number) => hover.move(i, x(i), y(points![i]!.rating));
@@ -111,17 +124,38 @@
         </defs>
         {#each ticks as t (t)}
           <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/15" stroke-width="1" />
-          <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{t}</text>
+          <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums"
+            >{t}</text
+          >
         {/each}
         {#each tierLines as t (t.id)}
-          <line x1={pad.left} x2={pad.left + innerW} y1={y(t.min)} y2={y(t.min)} stroke={t.color} stroke-opacity="0.45" stroke-dasharray="3 4" />
-          <text x={pad.left + innerW + 8} y={y(t.min)} dy="0.32em" class="fill-sub text-[11px]">{t.name.toLowerCase()}</text>
+          <line
+            x1={pad.left}
+            x2={pad.left + innerW}
+            y1={y(t.min)}
+            y2={y(t.min)}
+            stroke={t.color}
+            stroke-opacity="0.45"
+            stroke-dasharray="3 4"
+          />
+          <text x={pad.left + innerW + 8} y={y(t.min)} dy="0.32em" class="fill-sub text-[11px]"
+            >{t.name.toLowerCase()}</text
+          >
         {/each}
         <text x={pad.left} y={H - 6} class="fill-sub text-[11px]">season start</text>
-        <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.at(-1)!.races} races</text>
+        <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]"
+          >{points.at(-1)!.races} races</text
+        >
 
         <path d={area} fill="url(#elo-fill)" />
-        <path d={line} fill="none" class="stroke-main" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+        <path
+          d={line}
+          fill="none"
+          class="stroke-main"
+          stroke-width="2.5"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
 
         <circle
           cx={x(points.length - 1)}
@@ -132,7 +166,15 @@
           style="opacity: {hover.shown ? 0 : 1}; transition: opacity 0.15s"
         />
         <g class="pointer-events-none" style="opacity: {hover.shown ? 1 : 0}; transition: opacity 0.15s ease-out">
-          <line x1={hover.x.current} x2={hover.x.current} y1={pad.top} y2={pad.top + innerH} class="stroke-sub/60" stroke-width="1" stroke-dasharray="3 3" />
+          <line
+            x1={hover.x.current}
+            x2={hover.x.current}
+            y1={pad.top}
+            y2={pad.top + innerH}
+            class="stroke-sub/60"
+            stroke-width="1"
+            stroke-dasharray="3 3"
+          />
           <circle cx={hover.x.current} cy={hover.y.current} r="5" class="fill-main stroke-sub-alt" stroke-width="2" />
         </g>
       </svg>
@@ -141,7 +183,9 @@
         {#if hp}
           <div class="text-base tabular-nums text-text">
             {hp.rating}
-            {#if hDelta !== null}<span class="ml-1 text-xs {hDelta >= 0 ? 'text-win' : 'text-error'}">{signed(hDelta)}</span>{/if}
+            {#if hDelta !== null}<span class="ml-1 text-xs {hDelta >= 0 ? 'text-win' : 'text-error'}"
+                >{signed(hDelta)}</span
+              >{/if}
           </div>
           <div class="whitespace-nowrap text-sub">
             {hp.races ? `race ${hp.races}` : "season start"} · {new Date(hp.at).toLocaleDateString()}

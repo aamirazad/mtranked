@@ -40,7 +40,9 @@ createExpressEndpoints(contract, router, app, {
     const issue = err.body?.issues[0] ?? err.query?.issues[0] ?? err.pathParams?.issues[0];
     const fields: Record<string, string> = {};
     for (const i of err.body?.issues ?? []) fields[String(i.path[0])] = i.message;
-    res.status(400).json({ message: issue ? `${issue.path.join(".") || "input"}: ${issue.message}` : "Invalid request", fields });
+    res
+      .status(400)
+      .json({ message: issue ? `${issue.path.join(".") || "input"}: ${issue.message}` : "Invalid request", fields });
   },
 });
 

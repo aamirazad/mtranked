@@ -47,23 +47,36 @@
     <span class="flex items-center gap-1 text-sub"><PartyPopper size={14} /> funbox</span>
     {#if active.length}
       {#each active as id (id)}
-        <span class="tip tip-wrap rounded-md bg-bg/50 px-2 py-0.5 text-main" data-tip={FUNBOXES[id].description}>{FUNBOXES[id].name}</span>
+        <span class="tip tip-wrap rounded-md bg-bg/50 px-2 py-0.5 text-main" data-tip={FUNBOXES[id].description}
+          >{FUNBOXES[id].name}</span
+        >
       {/each}
     {:else}
       <span class="text-sub">none</span>
     {/if}
   {:else}
-    <button class="toggle flex items-center gap-1" class:on={active.length > 0} onclick={() => (open = !open)} aria-expanded={open}>
+    <button
+      class="toggle flex items-center gap-1"
+      class:on={active.length > 0}
+      onclick={() => (open = !open)}
+      aria-expanded={open}
+    >
       <PartyPopper size={14} class="shrink-0" />
       <!-- capped so a long selection doesn't push the settings bar onto a second line -->
-      <span class="max-w-56 truncate">funbox{#if active.length}: {active.map((id) => FUNBOXES[id].name).join(", ")}{/if}</span>
+      <span class="max-w-56 truncate"
+        >funbox{#if active.length}: {active.map((id) => FUNBOXES[id].name).join(", ")}{/if}</span
+      >
     </button>
     {#if open}
-      <div class="absolute top-full left-1/2 z-40 mt-2 w-[min(640px,90vw)] -translate-x-1/2 rounded-xl bg-bg p-4 text-left shadow-2xl ring-2 ring-sub-alt animate-fade">
+      <div
+        class="absolute top-full left-1/2 z-40 mt-2 w-[min(640px,90vw)] -translate-x-1/2 rounded-xl bg-bg p-4 text-left shadow-2xl ring-2 ring-sub-alt animate-fade"
+      >
         <div class="mb-3 flex items-center gap-2">
           <span class="label">funbox · practice and private rooms only</span>
           <button class="btn btn-ghost ml-auto px-2 py-1 text-sm" onclick={random}><Dices size={14} /> random</button>
-          <button class="btn btn-ghost px-2 py-1 text-sm" onclick={() => onchange?.([])} disabled={!active.length}><X size={14} /> clear</button>
+          <button class="btn btn-ghost px-2 py-1 text-sm" onclick={() => onchange?.([])} disabled={!active.length}
+            ><X size={14} /> clear</button
+          >
         </div>
         {#each groups as g (g.label)}
           <div class="label mt-2 mb-1">{g.label}</div>
@@ -72,7 +85,11 @@
               {@const on = active.includes(f.id)}
               {@const ok = on || checkFunboxCompatibility(active, f.id)}
               <button
-                class="tip tip-wrap rounded-md px-2 py-1.5 text-left text-sm transition-colors {on ? 'bg-main text-bg' : ok ? 'bg-sub-alt text-text hover:bg-text hover:text-bg' : 'bg-sub-alt/40 text-sub/50'}"
+                class="tip tip-wrap rounded-md px-2 py-1.5 text-left text-sm transition-colors {on
+                  ? 'bg-main text-bg'
+                  : ok
+                    ? 'bg-sub-alt text-text hover:bg-text hover:text-bg'
+                    : 'bg-sub-alt/40 text-sub/50'}"
                 data-tip={ok ? f.description : `${f.description} (conflicts with the current selection)`}
                 disabled={!ok}
                 onclick={() => toggle(f.id)}>{f.name}</button

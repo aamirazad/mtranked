@@ -20,7 +20,15 @@
     <p class="text-sub">password updated. all devices were signed out.</p>
     <a class="btn btn-main" href="/login">sign in</a>
   {:else}
-    <input class="input" type="password" autocomplete="new-password" placeholder="new password (8+ characters)" minlength="8" bind:value={password} required />
+    <input
+      class="input"
+      type="password"
+      autocomplete="new-password"
+      placeholder="new password (8+ characters)"
+      minlength="8"
+      bind:value={password}
+      required
+    />
     {#if error}<div class="text-sm text-error">{error}</div>{/if}
     <button class="btn btn-main w-full">update password</button>
   {/if}

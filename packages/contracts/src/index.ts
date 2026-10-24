@@ -195,7 +195,14 @@ export type PracticeResult = {
 export type PlayerHit = { name: string; country: string | null; rating: number; races: number; subscriber: boolean };
 
 /** Another account on the friends page: a friend, or one side of a pending request. */
-export type FriendRow = { id: string; name: string; level: number; country: string | null; subscriber: boolean; since: string };
+export type FriendRow = {
+  id: string;
+  name: string;
+  level: number;
+  country: string | null;
+  subscriber: boolean;
+  since: string;
+};
 export type FriendsList = { friends: FriendRow[]; incoming: FriendRow[]; outgoing: FriendRow[] };
 /** How one player stands with another. */
 export type FriendStatus = "none" | "friends" | "incoming" | "outgoing";
@@ -357,7 +364,11 @@ const ok = c.type<{ ok: true }>();
 export const contract = c.router(
   {
     auth: {
-      me: { method: "GET", path: "/auth/me", responses: { 200: c.type<{ user: Me | null; guest: Guest | null; supporterSales: boolean }>() } },
+      me: {
+        method: "GET",
+        path: "/auth/me",
+        responses: { 200: c.type<{ user: Me | null; guest: Guest | null; supporterSales: boolean }>() },
+      },
       signup: {
         method: "POST",
         path: "/auth/signup",
@@ -400,7 +411,14 @@ export const contract = c.router(
         path: "/auth/sessions",
         responses: {
           200: c.type<{
-            sessions: { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string }[];
+            sessions: {
+              id: string;
+              current: boolean;
+              userAgent: string | null;
+              ip: string | null;
+              createdAt: string;
+              lastSeenAt: string;
+            }[];
           }>(),
           401: err,
         },
@@ -507,7 +525,13 @@ export const contract = c.router(
         method: "POST",
         path: "/friends/requests",
         body: z.object({ name: z.string().trim().min(1).max(MAX_DISPLAY_NAME) }),
-        responses: { 200: c.type<{ status: FriendStatus; already?: boolean }>(), 400: err, 401: err, 404: err, 429: err },
+        responses: {
+          200: c.type<{ status: FriendStatus; already?: boolean }>(),
+          400: err,
+          401: err,
+          404: err,
+          429: err,
+        },
       },
       accept: {
         method: "POST",
@@ -568,7 +592,11 @@ export const contract = c.router(
       responses: { 200: ok, 400: err, 401: err, 429: err },
     },
     mod: {
-      reports: { method: "GET", path: "/mod/reports", responses: { 200: c.type<{ reports: ReportRow[] }>(), 403: err } },
+      reports: {
+        method: "GET",
+        path: "/mod/reports",
+        responses: { 200: c.type<{ reports: ReportRow[] }>(), 403: err },
+      },
       resolveReport: {
         method: "POST",
         path: "/mod/reports/:id",

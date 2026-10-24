@@ -137,7 +137,9 @@ export async function ensureGuest(req: Request, res: Response, name?: string): P
 }
 
 /** Short-lived single-use ticket the realtime server redeems on WebSocket connect. */
-export async function issueTicket(payload: { kind: "user"; userId: string } | { kind: "guest"; id: string; name: string }) {
+export async function issueTicket(
+  payload: { kind: "user"; userId: string } | { kind: "guest"; id: string; name: string },
+) {
   const ticket = newToken();
   await redis.set(`ticket:${ticket}`, JSON.stringify(payload), "EX", 60);
   return ticket;

@@ -45,10 +45,18 @@ export function applyGlobalFunbox(ids: Ids): () => void {
 }
 
 const ARROWS: Record<string, string> = {
-  ArrowLeft: "←", a: "←", j: "←",
-  ArrowDown: "↓", s: "↓", k: "↓",
-  ArrowUp: "↑", w: "↑", i: "↑",
-  ArrowRight: "→", d: "→", l: "→",
+  ArrowLeft: "←",
+  a: "←",
+  j: "←",
+  ArrowDown: "↓",
+  s: "↓",
+  k: "↓",
+  ArrowUp: "↑",
+  w: "↑",
+  i: "↑",
+  ArrowRight: "→",
+  d: "→",
+  l: "→",
 };
 
 // physical key (e.code) -> what the mirrored qwerty layout types there

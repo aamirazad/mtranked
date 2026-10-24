@@ -39,7 +39,8 @@ export const billingRouter = s.router(contract.billing, {
   checkout: async ({ req, res, body }) => {
     const auth = await getAuth(req, res);
     if (!auth) return unauth;
-    if (!stripe || !env.supporterSales) return { status: 400, body: { message: "Payments aren't configured on this server." } };
+    if (!stripe || !env.supporterSales)
+      return { status: 400, body: { message: "Payments aren't configured on this server." } };
     const price = body.interval === "year" ? env.stripe.priceYearly : env.stripe.priceMonthly;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

@@ -30,7 +30,13 @@ type TestSettings = {
 export function testType(s: TestSettings | null | undefined): string[] {
   if (!s) return [];
   const main =
-    s.mode === "time" ? `time ${s.time}` : s.mode === "words" ? `words ${s.words}` : s.mode === "quote" ? `quote ${s.quoteLength}` : s.mode;
+    s.mode === "time"
+      ? `time ${s.time}`
+      : s.mode === "words"
+        ? `words ${s.words}`
+        : s.mode === "quote"
+          ? `quote ${s.quoteLength}`
+          : s.mode;
   const out = [main];
   if (s.language && s.mode !== "custom") out.push(s.language.replace("_", " "));
   if (s.punctuation) out.push("punctuation");

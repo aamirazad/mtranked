@@ -210,7 +210,13 @@ export function correctPrefix(s: TypingState): number {
   return n + j;
 }
 
-export function replay(text: string, keys: Keystroke[], untilMs = Infinity, rules?: Rules, opts?: TypingOptions): TypingState {
+export function replay(
+  text: string,
+  keys: Keystroke[],
+  untilMs = Infinity,
+  rules?: Rules,
+  opts?: TypingOptions,
+): TypingState {
   const s = createState(text, rules, opts);
   for (const ks of keys) {
     if (ks.t > untilMs) break;
@@ -240,7 +246,13 @@ export function finalStats(s: TypingState, durationMs: number): FinalStats {
 export type TimelinePoint = { wpm: number; raw: number; err: number };
 
 /** Per-second speed/mistake samples for the results graph (the last bucket may be partial). */
-export function raceTimeline(text: string, keys: Keystroke[], durationMs: number, rules?: Rules, opts?: TypingOptions): TimelinePoint[] {
+export function raceTimeline(
+  text: string,
+  keys: Keystroke[],
+  durationMs: number,
+  rules?: Rules,
+  opts?: TypingOptions,
+): TimelinePoint[] {
   const s = createState(text, rules, opts);
   const out: TimelinePoint[] = [];
   const buckets = Math.max(1, Math.ceil(durationMs / 1000));

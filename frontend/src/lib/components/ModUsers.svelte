@@ -37,7 +37,13 @@
     void reload;
     const t = setTimeout(() => {
       void api.mod.users({ query }).then((r) => {
-        if (query.q !== (q.trim() || undefined) || query.filter !== filter || query.sort !== sort || query.page !== page) return;
+        if (
+          query.q !== (q.trim() || undefined) ||
+          query.filter !== filter ||
+          query.sort !== sort ||
+          query.page !== page
+        )
+          return;
         if (r.status === 200) {
           users = r.body.users;
           total = r.body.total;
@@ -100,11 +106,21 @@
 <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
   <div class="relative w-64">
     <Search size={14} class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sub" />
-    <input class="input pl-8" placeholder="search by name" autocomplete="off" spellcheck="false" maxlength="64" bind:value={q} oninput={reset} />
+    <input
+      class="input pl-8"
+      placeholder="search by name"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="64"
+      bind:value={q}
+      oninput={reset}
+    />
   </div>
   <div class="flex flex-wrap gap-1 text-sm">
     {#each FILTERS as f (f.value)}
-      <button class="toggle" class:on={filter === f.value} onclick={() => ((filter = f.value), reset())}>{f.label}</button>
+      <button class="toggle" class:on={filter === f.value} onclick={() => ((filter = f.value), reset())}
+        >{f.label}</button
+      >
     {/each}
   </div>
   <label class="ml-auto flex items-center gap-2 text-sm text-sub">
@@ -148,7 +164,9 @@
             <td class="text-right tabular-nums">{u.rating ?? "—"}</td>
             <td class="pl-4 text-xs">
               {#if u.bannedAt}<span class="text-error">banned</span>
-              {:else if u.timedOutUntil}<span class="text-main">timed out until {new Date(u.timedOutUntil).toLocaleString()}</span>
+              {:else if u.timedOutUntil}<span class="text-main"
+                  >timed out until {new Date(u.timedOutUntil).toLocaleString()}</span
+                >
               {:else if u.flagged}<span class="text-main">shadow queue</span>
               {:else if !u.verified}<span class="text-sub">unverified</span>
               {:else}<span class="text-sub">active</span>{/if}
@@ -167,7 +185,11 @@
                   <button class="text-sub hover:text-text" onclick={() => act(unsuspend(u.id))}>lift</button>
                 {/if}
                 {#if !u.bannedAt}
-                  <select class="cursor-pointer bg-transparent text-sub outline-none hover:text-text" aria-label="time out {u.name}" onchange={(e) => pickTimeout(e, u.id)}>
+                  <select
+                    class="cursor-pointer bg-transparent text-sub outline-none hover:text-text"
+                    aria-label="time out {u.name}"
+                    onchange={(e) => pickTimeout(e, u.id)}
+                  >
                     <option value="">timeout…</option>
                     {#each timeouts as t (t.hours)}<option value={t.hours}>{t.label}</option>{/each}
                   </select>

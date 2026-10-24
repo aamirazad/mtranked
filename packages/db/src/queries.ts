@@ -12,7 +12,13 @@ import {
 } from "@mtr/shared";
 import { sql, type Sql } from "./client";
 
-export type Season = { id: number; name: string; starts_at: Date; ends_at: Date; reset_params: { pull: number; rd: number } };
+export type Season = {
+  id: number;
+  name: string;
+  starts_at: Date;
+  ends_at: Date;
+  reset_params: { pull: number; rd: number };
+};
 
 let seasonCache: { s: Season; at: number } | undefined;
 export async function currentSeason(): Promise<Season> {
@@ -114,9 +120,7 @@ export async function unlockedCosmetics(u: Pick<UserRow, "id" | "xp" | "is_subsc
 /** Grant tier cosmetics up to (and including) the given peak rating. */
 export async function grantTierCosmetics(tx: Sql, userId: string, peak: number) {
   const reached = tierIndex(tierFor(peak).id);
-  const ids = COSMETICS.filter((c) => c.unlock.type === "tier" && tierIndex(c.unlock.tier) <= reached).map(
-    (c) => c.id,
-  );
+  const ids = COSMETICS.filter((c) => c.unlock.type === "tier" && tierIndex(c.unlock.tier) <= reached).map((c) => c.id);
   for (const id of ids) {
     await tx`insert into user_cosmetics (user_id, cosmetic_id) values (${userId}, ${id}) on conflict do nothing`;
   }

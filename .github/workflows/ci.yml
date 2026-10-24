@@ -21,6 +21,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  lint:
+    name: Lint
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Formatting (prettier, run `pnpm format` to fix)
+        run: pnpm lint
+
   frontend:
     name: Frontend
     # edits other than the title or base don't change anything that's tested

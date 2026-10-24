@@ -157,7 +157,13 @@ export async function wpmHistory(u: StatsUser, kind?: StatKind): Promise<WpmPoin
       where user_id = ${u.id} and finished ${kind ? sql`and kind = ${kind}` : sql``}
       order by at desc limit ${WPM_HISTORY_POINTS}) t
     order by at`;
-  return rows.map((r) => ({ at: r.at.toISOString(), wpm: round1(r.wpm), raw: round1(r.raw), acc: round1(r.accuracy), kind: r.kind }));
+  return rows.map((r) => ({
+    at: r.at.toISOString(),
+    wpm: round1(r.wpm),
+    raw: round1(r.raw),
+    acc: round1(r.accuracy),
+    kind: r.kind,
+  }));
 }
 
 export async function activity(u: StatsUser, year?: number) {

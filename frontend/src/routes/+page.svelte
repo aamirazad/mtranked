@@ -24,7 +24,9 @@
     if (r.status === 200) season = r.body;
   });
 
-  const daysLeft = $derived(season ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / 86400_000)) : 0);
+  const daysLeft = $derived(
+    season ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / 86400_000)) : 0,
+  );
 
   function ranked() {
     goto(session.me ? "/play/ranked" : "/login?next=/play/ranked");
@@ -50,7 +52,10 @@
   });
 
   function cleanCode(v: string) {
-    return [...v.toUpperCase()].filter((c) => ROOM_CODE_ALPHABET.includes(c)).join("").slice(0, 6);
+    return [...v.toUpperCase()]
+      .filter((c) => ROOM_CODE_ALPHABET.includes(c))
+      .join("")
+      .slice(0, 6);
   }
   function join(e: SubmitEvent) {
     e.preventDefault();
@@ -72,7 +77,9 @@
 {:else}
   <div class="mx-auto max-w-[1000px] pt-6">
     <div class="mb-12 text-center">
-      <h1 class="font-logo text-4xl sm:text-5xl">{headline}{#if accent}<span class="text-main">{accent}</span>{/if}</h1>
+      <h1 class="font-logo text-4xl sm:text-5xl">
+        {headline}{#if accent}<span class="text-main">{accent}</span>{/if}
+      </h1>
       <p class="mt-3 text-sub">
         {#if season}{season.name} · {daysLeft} days left{:else}&nbsp;{/if}
       </p>
@@ -94,7 +101,9 @@
             sign in and climb from bronze to master.
           {/if}
         </div>
-        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">find match <ArrowRight size={16} /></div>
+        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">
+          find match <ArrowRight size={16} />
+        </div>
       </button>
 
       <!-- casual -->
@@ -104,8 +113,12 @@
           <span class="text-xs text-sub">1v1 · unrated</span>
         </div>
         <div class="mt-8 font-logo text-3xl">casual</div>
-        <div class="mt-2 min-h-12 text-sm text-sub">quick match against the first available player. no account needed.</div>
-        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">quick match <ArrowRight size={16} /></div>
+        <div class="mt-2 min-h-12 text-sm text-sub">
+          quick match against the first available player. no account needed.
+        </div>
+        <div class="mt-6 flex items-center gap-2 text-main transition-transform group-hover:translate-x-1">
+          quick match <ArrowRight size={16} />
+        </div>
       </button>
 
       <!-- private -->
@@ -116,7 +129,9 @@
         </div>
         <div class="mt-8 font-logo text-3xl">private room</div>
         <div class="mt-2 text-sm text-sub">race your friends.</div>
-        <button class="btn btn-main mt-5 w-full" onclick={startCreate} disabled={creating}>{creating ? "creating…" : "create room"}</button>
+        <button class="btn btn-main mt-5 w-full" onclick={startCreate} disabled={creating}
+          >{creating ? "creating…" : "create room"}</button
+        >
         <Note note={createRefused ? { text: createRefused, kind: "error" } : null} class="mt-2 block" />
         <form class="mt-2 flex gap-2" onsubmit={join}>
           <input
@@ -132,7 +147,9 @@
     </div>
 
     <div class="mt-10 flex justify-center">
-      <a href="/practice" class="flex items-center gap-2 text-sub transition-colors hover:text-text"><Keyboard size={16} /> practice solo</a>
+      <a href="/practice" class="flex items-center gap-2 text-sub transition-colors hover:text-text"
+        ><Keyboard size={16} /> practice solo</a
+      >
     </div>
   </div>
 {/if}

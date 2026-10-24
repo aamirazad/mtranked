@@ -25,10 +25,30 @@
     onchange(normalizeRules({ ...rules, [k]: v }));
   }
 
-  const ROWS: { key: "stopOnError" | "confidence" | "difficulty"; label: string; hint: string; options: readonly string[] }[] = [
-    { key: "stopOnError", label: "stop on error", hint: "letter: wrong letters aren't typed. word: you can't move past a wrong word.", options: STOP_ON_ERROR },
-    { key: "confidence", label: "confidence", hint: "on: no backspacing into the previous word. max: no backspace at all.", options: CONFIDENCE },
-    { key: "difficulty", label: "difficulty", hint: "expert: fail on a wrong word. master: fail on any wrong key.", options: DIFFICULTY },
+  const ROWS: {
+    key: "stopOnError" | "confidence" | "difficulty";
+    label: string;
+    hint: string;
+    options: readonly string[];
+  }[] = [
+    {
+      key: "stopOnError",
+      label: "stop on error",
+      hint: "letter: wrong letters aren't typed. word: you can't move past a wrong word.",
+      options: STOP_ON_ERROR,
+    },
+    {
+      key: "confidence",
+      label: "confidence",
+      hint: "on: no backspacing into the previous word. max: no backspace at all.",
+      options: CONFIDENCE,
+    },
+    {
+      key: "difficulty",
+      label: "difficulty",
+      hint: "expert: fail on a wrong word. master: fail on any wrong key.",
+      options: DIFFICULTY,
+    },
   ];
   const TOGGLES: { key: "freedom" | "strictSpace" | "lazy"; label: string; hint: string }[] = [
     { key: "freedom", label: "freedom", hint: "backspace into any previous word, even a correct one." },
@@ -36,7 +56,13 @@
     { key: "lazy", label: "lazy mode", hint: "type accented letters without their accents." },
   ];
   const MINS: { key: "minWpm" | "minAcc" | "minBurst"; label: string; hint: string; unit: string; max: number }[] = [
-    { key: "minWpm", label: "min speed", hint: "fail if your speed drops below this (from the 5th word).", unit: "wpm", max: 300 },
+    {
+      key: "minWpm",
+      label: "min speed",
+      hint: "fail if your speed drops below this (from the 5th word).",
+      unit: "wpm",
+      max: 300,
+    },
     { key: "minAcc", label: "min accuracy", hint: "fail if your accuracy drops below this.", unit: "%", max: 100 },
     { key: "minBurst", label: "min burst", hint: "fail if any word is typed slower than this.", unit: "wpm", max: 300 },
   ];
@@ -66,7 +92,9 @@
             </div>
             <div class="flex gap-1">
               {#each r.options as o (o)}
-                <button type="button" class="toggle" class:on={value === o} onclick={() => set(r.key, o as never)}>{o}</button>
+                <button type="button" class="toggle" class:on={value === o} onclick={() => set(r.key, o as never)}
+                  >{o}</button
+                >
               {/each}
             </div>
           </div>
@@ -80,7 +108,13 @@
             </div>
             <div class="flex gap-1">
               <button type="button" class="toggle" class:on={!on} onclick={() => set(r.key, false)}>off</button>
-              <button type="button" class="toggle" class:on onclick={() => set(r.key, true)} disabled={r.key === "freedom" && !!rules?.confidence}>on</button>
+              <button
+                type="button"
+                class="toggle"
+                class:on
+                onclick={() => set(r.key, true)}
+                disabled={r.key === "freedom" && !!rules?.confidence}>on</button
+              >
             </div>
           </div>
         {/each}
@@ -105,7 +139,14 @@
               />
               <span class="w-8 text-xs text-sub">{r.unit}</span>
               {#if r.key === "minBurst"}
-                <button type="button" class="toggle" class:on={!!rules?.burstFlex} disabled={!v} onclick={() => set("burstFlex", !rules?.burstFlex)} title="easier threshold for long words">flex</button>
+                <button
+                  type="button"
+                  class="toggle"
+                  class:on={!!rules?.burstFlex}
+                  disabled={!v}
+                  onclick={() => set("burstFlex", !rules?.burstFlex)}
+                  title="easier threshold for long words">flex</button
+                >
               {/if}
             </div>
           </div>
@@ -113,7 +154,9 @@
       </fieldset>
       <div class="mt-4 flex items-center justify-between gap-4 text-xs text-sub">
         <span>{note ?? ""}</span>
-        {#if active.length && !disabled}<button type="button" class="link" onclick={() => onchange(undefined)}>clear all</button>{/if}
+        {#if active.length && !disabled}<button type="button" class="link" onclick={() => onchange(undefined)}
+            >clear all</button
+          >{/if}
       </div>
     </div>
   {/if}

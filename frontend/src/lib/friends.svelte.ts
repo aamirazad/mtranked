@@ -60,9 +60,18 @@ class Friends {
     await this.load();
     const { status, already } = r.body;
     if (already) {
-      return { ok: true, kind: "info", text: status === "friends" ? `You're already friends with ${name}.` : `You already sent ${name} a friend request.` };
+      return {
+        ok: true,
+        kind: "info",
+        text:
+          status === "friends" ? `You're already friends with ${name}.` : `You already sent ${name} a friend request.`,
+      };
     }
-    return { ok: true, kind: "success", text: status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.` };
+    return {
+      ok: true,
+      kind: "success",
+      text: status === "friends" ? `You and ${name} are now friends.` : `Friend request sent to ${name}.`,
+    };
   }
 
   /** accept a request; resolves with why it failed, if it did, for the caller to show in place */

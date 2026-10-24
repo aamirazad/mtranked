@@ -28,7 +28,10 @@ async function account(name: string): Promise<string> {
   if (res.status !== 200) throw new Error(`auth failed: ${await res.text()}`);
   // dev only: skip email verification and account age for bots
   await sql`update users set email_verified_at = coalesce(email_verified_at, now()), created_at = least(created_at, now() - interval '2 days') where email = ${email}`;
-  return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  return res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
 }
 
 async function runBot(name: string, wpm: number) {
@@ -85,7 +88,9 @@ async function runBot(name: string, wpm: number) {
       case "race.result": {
         timers.forEach(clearInterval);
         const me = msg.results.find((r) => r.name === name);
-        log(`result: #${me?.placement} ${me?.wpm} wpm ${me?.acc}% ${me?.delta !== undefined ? `(${me.delta >= 0 ? "+" : ""}${me.delta})` : ""}`);
+        log(
+          `result: #${me?.placement} ${me?.wpm} wpm ${me?.acc}% ${me?.delta !== undefined ? `(${me.delta >= 0 ? "+" : ""}${me.delta})` : ""}`,
+        );
         if (--racesLeft <= 0) process.exit(0);
         if (!values.room) setTimeout(() => send({ type: "queue.join", mode: values.mode }), 2500);
         break;
@@ -105,5 +110,5 @@ const n = Number(values.count);
 const baseWpm = Number(values.wpm);
 for (let i = 0; i < n; i++) {
   const name = values.name ? (n > 1 ? `${values.name}${i + 1}` : values.name) : `bot_${baseWpm}_${i + 1}`;
-  void runBot(name, baseWpm + (i * 7) % 20);
+  void runBot(name, baseWpm + ((i * 7) % 20));
 }

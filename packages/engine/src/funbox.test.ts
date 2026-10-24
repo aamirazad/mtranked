@@ -48,7 +48,20 @@ describe("funbox text generation", () => {
       }
       const c = await generateText({ ...base, funbox: [id] }, "seed-b");
       const d = await generateText({ ...base, funbox: [id] }, "seed-c");
-      if (!["capitals", "sPoNgEcAsE", "ALL_CAPS", "instant_messaging", "rot13", "backwards", "ddoouubblleedd", "morse", "underscore_spaces", "nospace"].includes(id)) {
+      if (
+        ![
+          "capitals",
+          "sPoNgEcAsE",
+          "ALL_CAPS",
+          "instant_messaging",
+          "rot13",
+          "backwards",
+          "ddoouubblleedd",
+          "morse",
+          "underscore_spaces",
+          "nospace",
+        ].includes(id)
+      ) {
         expect(c.text).not.toBe(d.text);
       }
     });
@@ -109,7 +122,13 @@ describe("funbox typing rules", () => {
     applyKey(s, "\b");
     applyKey(s, "b");
     expect(s.wi).toBe(1);
-    const r = replay("ab cd", [..."abcd"].map((k, t) => ({ k, t })), Infinity, undefined, { nospace: true });
+    const r = replay(
+      "ab cd",
+      [..."abcd"].map((k, t) => ({ k, t })),
+      Infinity,
+      undefined,
+      { nospace: true },
+    );
     expect(r.finished).toBe(true);
   });
 
@@ -138,7 +157,10 @@ describe("funbox compatibility", () => {
   });
 
   it("sanitizes untrusted lists", () => {
-    expect(sanitizeFunbox(["mirror", "upside_down", "bogus", "mirror", 3, "gibberish"])).toEqual(["mirror", "gibberish"]);
+    expect(sanitizeFunbox(["mirror", "upside_down", "bogus", "mirror", 3, "gibberish"])).toEqual([
+      "mirror",
+      "gibberish",
+    ]);
     expect(sanitizeFunbox(undefined)).toEqual([]);
   });
 

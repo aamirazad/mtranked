@@ -32,7 +32,10 @@ describe("typing engine", () => {
   });
 
   it("uses monkeytype's wpm formula (correct chars incl. spaces / 5 per minute)", () => {
-    const s = replay("hello world", [..."hello world"].map((k, i) => ({ k, t: i * 100 })));
+    const s = replay(
+      "hello world",
+      [..."hello world"].map((k, i) => ({ k, t: i * 100 })),
+    );
     const st = finalStats(s, 6000);
     expect(st.chars).toBe(11);
     expect(st.wpm).toBe(22);

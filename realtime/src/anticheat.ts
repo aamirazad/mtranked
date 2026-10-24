@@ -15,7 +15,8 @@ export function analyzeTiming(keys: Keystroke[], recv: number[]): Flag[] {
     const sd = Math.sqrt(iv.reduce((a, b) => a + (b - mean) ** 2, 0) / iv.length);
     const cv = mean > 0 ? sd / mean : 0;
     // human typing has a coefficient of variation well above 0.3
-    if (cv < 0.15) flags.push({ reason: "uniform_timing", details: { cv: +cv.toFixed(3), mean: +mean.toFixed(1) }, shadow: true });
+    if (cv < 0.15)
+      flags.push({ reason: "uniform_timing", details: { cv: +cv.toFixed(3), mean: +mean.toFixed(1) }, shadow: true });
   }
 
   let run = 0;

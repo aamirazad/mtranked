@@ -15,8 +15,18 @@ describe("result stats", () => {
   });
 
   it("scores even typing as perfectly consistent", () => {
-    expect(consistency([{ wpm: 80, raw: 80, err: 0 }, { wpm: 80, raw: 80, err: 0 }, { wpm: 80, raw: 80, err: 0 }])).toBe(100);
-    const uneven = consistency([{ wpm: 80, raw: 20, err: 0 }, { wpm: 80, raw: 140, err: 0 }, { wpm: 80, raw: 60, err: 0 }]);
+    expect(
+      consistency([
+        { wpm: 80, raw: 80, err: 0 },
+        { wpm: 80, raw: 80, err: 0 },
+        { wpm: 80, raw: 80, err: 0 },
+      ]),
+    ).toBe(100);
+    const uneven = consistency([
+      { wpm: 80, raw: 20, err: 0 },
+      { wpm: 80, raw: 140, err: 0 },
+      { wpm: 80, raw: 60, err: 0 },
+    ]);
     expect(uneven).toBeGreaterThan(0);
     expect(uneven).toBeLessThan(70);
   });

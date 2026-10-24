@@ -78,20 +78,31 @@
             {#if m.status === "void"}<span class="ml-1 text-xs text-sub">(void)</span>{/if}
           </td>
           {#if kind === "casual"}<td class="text-sub">{m.mode}</td>{/if}
-          <td>{#if m.opponent}{m.opponent}{:else if m.players > 2}<span class="text-sub">{m.players} players</span>{/if}</td>
+          <td
+            >{#if m.opponent}{m.opponent}{:else if m.players > 2}<span class="text-sub">{m.players} players</span
+              >{/if}</td
+          >
           <td class="text-right tabular-nums">{Math.round(m.wpm)}</td>
           <td class="text-right tabular-nums text-sub">{Math.round(m.acc)}%</td>
           {#if kind === "ranked"}
-            <td class="text-right tabular-nums {m.delta === null ? 'text-sub' : m.delta >= 0 ? 'text-win' : 'text-error'}">
+            <td
+              class="text-right tabular-nums {m.delta === null ? 'text-sub' : m.delta >= 0 ? 'text-win' : 'text-error'}"
+            >
               {m.delta === null ? "—" : `${m.delta >= 0 ? "+" : ""}${Math.round(m.delta)}`}
             </td>
           {/if}
           <td class="text-right text-sub">{ago(m.finishedAt)}</td>
-          <td class="text-right"><a href="/replay/{m.matchId}" class="inline-flex text-sub hover:text-main" title="replay"><Play size={14} /></a></td>
+          <td class="text-right"
+            ><a href="/replay/{m.matchId}" class="inline-flex text-sub hover:text-main" title="replay"
+              ><Play size={14} /></a
+            ></td
+          >
         </tr>
       {/each}
     </tbody>
   </table>
   {#if more}<button class="btn btn-ghost mt-4" onclick={() => load(name, kind, matches.length)}>load more</button>{/if}
-  {#if limited && session.supporterSales}<div class="mt-4 text-xs text-sub">free accounts keep their last 50 races. supporters keep everything.</div>{/if}
+  {#if limited && session.supporterSales}<div class="mt-4 text-xs text-sub">
+      free accounts keep their last 50 races. supporters keep everything.
+    </div>{/if}
 {/if}

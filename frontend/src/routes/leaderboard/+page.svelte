@@ -82,7 +82,9 @@
     e.preventDefault();
   }
 
-  const daysLeft = $derived(season ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / 86400_000)) : 0);
+  const daysLeft = $derived(
+    season ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / 86400_000)) : 0,
+  );
 </script>
 
 <svelte:head><title>Leaderboard · MT Ranked</title></svelte:head>
@@ -91,7 +93,9 @@
   <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="font-logo text-4xl">leaderboard</h1>
-      <div class="mt-1 text-sm text-sub">{season ? `${season.name} · ends in ${daysLeft} days · top 100 placed players` : " "}</div>
+      <div class="mt-1 text-sm text-sub">
+        {season ? `${season.name} · ends in ${daysLeft} days · top 100 placed players` : " "}
+      </div>
     </div>
     <div class="flex flex-wrap gap-3">
       <div class="relative w-56">
@@ -114,7 +118,11 @@
           onkeydown={onsearchkey}
         />
         {#if open && q.trim() && hits.length}
-          <div id="player-hits" role="listbox" class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg">
+          <div
+            id="player-hits"
+            role="listbox"
+            class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg"
+          >
             {#each hits as h, i (h.name)}
               <button
                 type="button"
@@ -122,7 +130,9 @@
                 id="hit-{i}"
                 role="option"
                 aria-selected={i === active}
-                class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm {i === active ? 'bg-bg/60 text-text' : 'text-sub'}"
+                class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm {i === active
+                  ? 'bg-bg/60 text-text'
+                  : 'text-sub'}"
                 onmousedown={(e) => e.preventDefault()}
                 onmouseenter={() => (active = i)}
                 onclick={() => choose(h.name)}
@@ -163,16 +173,28 @@
           <div class="ml-auto grid grid-cols-4 gap-6 text-center">
             <div>
               <div class="label">rating</div>
-              <div class="text-2xl tabular-nums" style="color: {placed ? tierFor(player.rating).color : 'inherit'}">{placed ? player.rating : "—"}</div>
+              <div class="text-2xl tabular-nums" style="color: {placed ? tierFor(player.rating).color : 'inherit'}">
+                {placed ? player.rating : "—"}
+              </div>
             </div>
-            <div><div class="label">peak</div><div class="text-2xl tabular-nums">{player.peak || "—"}</div></div>
-            <div><div class="label">w / l</div><div class="text-2xl tabular-nums">{player.wins} / {player.losses}</div></div>
+            <div>
+              <div class="label">peak</div>
+              <div class="text-2xl tabular-nums">{player.peak || "—"}</div>
+            </div>
+            <div>
+              <div class="label">w / l</div>
+              <div class="text-2xl tabular-nums">{player.wins} / {player.losses}</div>
+            </div>
             <div>
               <div class="label">win rate</div>
-              <div class="text-2xl tabular-nums">{player.races ? Math.round((player.wins / player.races) * 100) + "%" : "—"}</div>
+              <div class="text-2xl tabular-nums">
+                {player.races ? Math.round((player.wins / player.races) * 100) + "%" : "—"}
+              </div>
             </div>
           </div>
-          <button class="btn btn-ghost self-start px-2" title="close" onclick={() => choose(null)}><X size={16} /></button>
+          <button class="btn btn-ghost self-start px-2" title="close" onclick={() => choose(null)}
+            ><X size={16} /></button
+          >
         </div>
         <div class="mt-4"><EloChart name={player.name} /></div>
         <div class="mt-6"><MatchHistory name={player.name} /></div>
@@ -183,19 +205,31 @@
   {#if rows === null}
     <div class="text-sub">loading…</div>
   {:else if rows.length === 0}
-    <div class="card text-center text-sub">nobody has finished placements{country ? " in this country" : ""} yet. <a class="link" href="/play/ranked">be the first</a>.</div>
+    <div class="card text-center text-sub">
+      nobody has finished placements{country ? " in this country" : ""} yet.
+      <a class="link" href="/play/ranked">be the first</a>.
+    </div>
   {:else}
     <table class="w-full border-separate border-spacing-0 text-left">
       <thead class="text-sm text-sub">
-        <tr><th class="py-2 pl-3 font-normal">#</th><th class="font-normal">player</th><th class="font-normal">tier</th><th class="text-right font-normal">rating</th><th class="pr-3 text-right font-normal">w / l</th></tr>
+        <tr
+          ><th class="py-2 pl-3 font-normal">#</th><th class="font-normal">player</th><th class="font-normal">tier</th
+          ><th class="text-right font-normal">rating</th><th class="pr-3 text-right font-normal">w / l</th></tr
+        >
       </thead>
       <tbody>
         {#each rows as r (r.id)}
           <tr
             class="[&>td]:border-t [&>td]:border-sub-alt [&:hover>td]:border-transparent [&:hover+tr>td]:border-transparent [&:hover>td]:bg-sub-alt/50 [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:first-child]:pl-3 [&>td:last-child]:rounded-r-lg [&>td:last-child]:pr-3"
-            class:text-main={r.id === session.me?.id}>
+            class:text-main={r.id === session.me?.id}
+          >
             <td class="py-2.5 tabular-nums {r.rank <= 3 ? 'text-main' : 'text-sub'}">{r.rank}</td>
-            <td><a href="/u/{r.name}" class="hover:underline">{flag(r.country)} {r.name}</a>{#if r.subscriber && session.supporterSales}<span class="ml-2 text-xs text-main" title="supporter">♥</span>{/if}</td>
+            <td
+              ><a href="/u/{r.name}" class="hover:underline">{flag(r.country)} {r.name}</a
+              >{#if r.subscriber && session.supporterSales}<span class="ml-2 text-xs text-main" title="supporter"
+                  >♥</span
+                >{/if}</td
+            >
             <td><TierBadge rating={r.rating} showRating={false} /></td>
             <td class="text-right tabular-nums">{r.rating}</td>
             <td class="text-right text-sm tabular-nums text-sub">{r.wins} / {r.races - r.wins}</td>

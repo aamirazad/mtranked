@@ -60,7 +60,9 @@
   {#if testType.length}
     <div>
       <div class="label text-sm">test type</div>
-      <div class="text-main">{#each testType as t (t)}<div>{t}</div>{/each}</div>
+      <div class="text-main">
+        {#each testType as t (t)}<div>{t}</div>{/each}
+      </div>
     </div>
   {/if}
   <div class="tip w-fit" aria-label="{r2(raw)} wpm">

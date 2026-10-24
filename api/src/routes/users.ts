@@ -1,7 +1,17 @@
 import { initServer } from "@ts-rest/express";
 import { contract, type MatchSummary, type SyncedPrefs } from "@mtr/contracts";
 import { sql, currentSeason, getRating, getUser, unlockedCosmetics } from "@mtr/db";
-import { COSMETICS, DEFAULT_EQUIPPED, DEFAULT_RATING, FREE_HISTORY_LIMIT, OFFENSIVE_NAME_MESSAGE, isOffensiveName, levelFromXp, resolveEquipped, type Equipped } from "@mtr/shared";
+import {
+  COSMETICS,
+  DEFAULT_EQUIPPED,
+  DEFAULT_RATING,
+  FREE_HISTORY_LIMIT,
+  OFFENSIVE_NAME_MESSAGE,
+  isOffensiveName,
+  levelFromXp,
+  resolveEquipped,
+  type Equipped,
+} from "@mtr/shared";
 import { buildMe, getAuth, nextNameChange } from "../auth";
 import { rateLimit } from "../redis";
 import { activity, profileStats, wpmHistory, type StatsUser } from "./stats";
@@ -21,7 +31,10 @@ export const meRouter = s.router(contract.me, {
     const renaming = !!name && name !== u.display_name;
     if (renaming) {
       if (isOffensiveName(name)) {
-        return { status: 400, body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } } };
+        return {
+          status: 400,
+          body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } },
+        };
       }
       const next = nextNameChange(u);
       if (next) {
@@ -78,13 +91,24 @@ export const meRouter = s.router(contract.me, {
     const unlocked = await unlockedCosmetics(auth.user);
     return {
       status: 200,
-      body: { unlocked: [...unlocked], equipped: { ...DEFAULT_EQUIPPED, ...(auth.user.equipped as Partial<Equipped>) } },
+      body: {
+        unlocked: [...unlocked],
+        equipped: { ...DEFAULT_EQUIPPED, ...(auth.user.equipped as Partial<Equipped>) },
+      },
     };
   },
 });
 
 async function userByName(name: string) {
-  const [u] = await sql<(StatsUser & { display_name: string; country: string | null; is_subscriber: boolean; xp: number; equipped: Partial<Equipped> })[]>`select id, display_name, country, created_at, is_subscriber, xp, equipped, is_bot, flagged_at
+  const [u] = await sql<
+    (StatsUser & {
+      display_name: string;
+      country: string | null;
+      is_subscriber: boolean;
+      xp: number;
+      equipped: Partial<Equipped>;
+    })[]
+  >`select id, display_name, country, created_at, is_subscriber, xp, equipped, is_bot, flagged_at
     from users where display_name = ${name} and banned_at is null`;
   return u;
 }
@@ -269,7 +293,12 @@ export const seasonRoute = s.route(contract.season, async () => {
   const season = await currentSeason();
   return {
     status: 200,
-    body: { id: season.id, name: season.name, startsAt: season.starts_at.toISOString(), endsAt: season.ends_at.toISOString() },
+    body: {
+      id: season.id,
+      name: season.name,
+      startsAt: season.starts_at.toISOString(),
+      endsAt: season.ends_at.toISOString(),
+    },
   };
 });
 

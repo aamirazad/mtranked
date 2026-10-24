@@ -35,7 +35,10 @@ type StoredActivity = FriendActivity & { tag: string };
 
 export async function presenceOf(ids: string[]): Promise<Record<string, FriendPresence>> {
   if (!ids.length) return {};
-  const [online, acts] = await Promise.all([redis.mget(ids.map((id) => `online:${id}`)), redis.mget(ids.map((id) => `act:${id}`))]);
+  const [online, acts] = await Promise.all([
+    redis.mget(ids.map((id) => `online:${id}`)),
+    redis.mget(ids.map((id) => `act:${id}`)),
+  ]);
   const out: Record<string, FriendPresence> = {};
   ids.forEach((id, i) => {
     const on = !!online[i];

@@ -39,7 +39,8 @@ export const MAX_MIN_WPM = 300;
 export function normalizeRules(r: Rules | undefined | null): Rules | undefined {
   if (!r) return undefined;
   const out: Rules = {};
-  if (r.stopOnError && r.stopOnError !== "off" && STOP_ON_ERROR.includes(r.stopOnError)) out.stopOnError = r.stopOnError;
+  if (r.stopOnError && r.stopOnError !== "off" && STOP_ON_ERROR.includes(r.stopOnError))
+    out.stopOnError = r.stopOnError;
   if (r.confidence && r.confidence !== "off" && CONFIDENCE.includes(r.confidence)) out.confidence = r.confidence;
   else if (r.freedom) out.freedom = true;
   if (r.strictSpace) out.strictSpace = true;

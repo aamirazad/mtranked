@@ -313,7 +313,8 @@ export class Room {
         .filter((r) => Date.now() - r.at < INVITE_MS)
         .map((r) => ({ id: r.id, name: r.name, level: r.level })),
       spectators: [...this.spectators.values()].map((x) => ({ id: x.id, name: x.name })),
-      status: this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
+      status:
+        this.status === "racing" || this.status === "countdown" ? this.status : this.racesRun ? "finished" : "waiting",
       scoreboard: this.scoreboard,
       races: this.racesRun,
     };
@@ -377,7 +378,11 @@ export class Room {
     const m = this.members.get(playerId);
     if (!m) return;
     m.ready = true;
-    this.broadcast({ type: "match.ready", matchId, ready: [...this.members.values()].filter((x) => x.ready).map((x) => x.idn.id) });
+    this.broadcast({
+      type: "match.ready",
+      matchId,
+      ready: [...this.members.values()].filter((x) => x.ready).map((x) => x.idn.id),
+    });
     if ([...this.members.values()].every((x) => x.ready)) void this.startRace();
   }
 
@@ -391,7 +396,10 @@ export class Room {
     for (const m of this.members.values()) {
       const isBad = bad.has(m.idn.id);
       const requeued = !isBad && (this.mode === "ranked" || this.mode === "casual");
-      const what = reason === "declined" ? "You declined the match and left the queue" : "You didn't ready up in time and left the queue";
+      const what =
+        reason === "declined"
+          ? "You declined the match and left the queue"
+          : "You didn't ready up in time and left the queue";
       // only ranked declines count as strikes; casual just leaves the queue
       const why = !isBad
         ? "Your opponent didn't accept."
@@ -428,7 +436,9 @@ export class Room {
     const timeLimit = this.settings.mode === "time" ? this.settings.time * 1000 : 0;
     const cap =
       timeLimit ||
-      (this.mode === "private" ? Math.min(300_000, Math.max(RACE_CAP_MS, (gen.text.length / 5 / 20) * 60_000)) : RACE_CAP_MS);
+      (this.mode === "private"
+        ? Math.min(300_000, Math.max(RACE_CAP_MS, (gen.text.length / 5 / 20) * 60_000))
+        : RACE_CAP_MS);
     // every private-room race (and rematch) is its own match
     if (this.mode === "private") this.matchId = randomUUID();
 
@@ -665,7 +675,8 @@ export class Room {
           name: r.info.name,
           guest: r.info.guest,
           ghost: !!r.ghost,
-          ghostRating: r.ghost && r.info.rating !== undefined ? { rating: r.info.rating, races: r.info.races } : undefined,
+          ghostRating:
+            r.ghost && r.info.rating !== undefined ? { rating: r.info.rating, races: r.info.races } : undefined,
           placement: 0,
           wpm: st.wpm,
           raw: st.raw,
@@ -788,7 +799,8 @@ export class Room {
 
     if (this.mode === "private") {
       const winner = rows[0];
-      if (winner && !winner.result.forfeit && !winner.result.failed) this.scoreboard[winner.r.id] = (this.scoreboard[winner.r.id] ?? 0) + 1;
+      if (winner && !winner.result.forfeit && !winner.result.failed)
+        this.scoreboard[winner.r.id] = (this.scoreboard[winner.r.id] ?? 0) + 1;
       this.racesRun++;
     }
     this.status = "finished";
@@ -854,7 +866,8 @@ export class Room {
     this.broadcastRoom();
     const rs = this.raceStart();
     // let late joiners spectate the race in progress
-    if (rs && (this.status === "countdown" || this.status === "racing")) sendTo(m.idn.id, { type: "race.resume", ...rs, keys: [] });
+    if (rs && (this.status === "countdown" || this.status === "racing"))
+      sendTo(m.idn.id, { type: "race.resume", ...rs, keys: [] });
     return null;
   }
 
@@ -900,7 +913,11 @@ export class Room {
   onDemote(playerId: string, target: string) {
     if (!this.isHost(playerId) || !this.isHost(target)) return;
     if (this.hosts.size === 1) {
-      sendTo(playerId, { type: "error", code: "last_host", message: "A room needs a host. Make someone else a host first." });
+      sendTo(playerId, {
+        type: "error",
+        code: "last_host",
+        message: "A room needs a host. Make someone else a host first.",
+      });
       return;
     }
     this.hosts.delete(target);
@@ -948,7 +965,8 @@ export class Room {
     if (this.closed) return no("There's nothing to watch right now.");
     if (this.members.has(sp.id)) return no("You're playing in that one.");
     if (this.mode === "private" && this.locked) return no("That room is locked, so it can't be watched.");
-    if (!this.spectators.has(sp.id) && this.spectators.size >= MAX_SPECTATORS) return no("Too many people are watching already.");
+    if (!this.spectators.has(sp.id) && this.spectators.size >= MAX_SPECTATORS)
+      return no("Too many people are watching already.");
     this.spectators.set(sp.id, sp);
     spectating.set(sp.id, this.id);
     void redis.set(`pspec:${sp.id}`, this.id, "EX", 3600);
@@ -982,7 +1000,8 @@ export class Room {
       return sendTo(req.id, { type: "room.admit", code: this.code!, playerId: req.via, by: "" });
     }
     if (this.members.size >= this.cap) return no(`That room is full (${this.cap} players).`);
-    if (!this.requests.has(req.id) && this.requests.size >= 20) return no("That room has a lot of requests waiting. Try again in a bit.");
+    if (!this.requests.has(req.id) && this.requests.size >= 20)
+      return no("That room has a lot of requests waiting. Try again in a bit.");
     this.requests.set(req.id, { ...req, at: Date.now() });
     sendTo(req.id, { type: "room.requested", playerId: req.via });
     this.broadcastRoom();
@@ -994,7 +1013,12 @@ export class Room {
     this.requests.delete(target);
     if (accept) {
       this.invites.set(target, { byHost: true, at: Date.now() });
-      sendTo(target, { type: "room.admit", code: this.code!, playerId: req.via, by: this.members.get(playerId)!.info.name });
+      sendTo(target, {
+        type: "room.admit",
+        code: this.code!,
+        playerId: req.via,
+        by: this.members.get(playerId)!.info.name,
+      });
     } else {
       sendTo(target, { type: "room.declined", playerId: req.via, message: "A host turned down your request to join." });
     }

@@ -17,8 +17,8 @@
     <CloudOff size={44} class="text-sub" />
     <h1 class="font-logo text-3xl">can't reach the server</h1>
     <p class="max-w-md text-sub">
-      there was a problem connecting to mt ranked. the server may be down for a moment. sorry about that, please try again
-      shortly.
+      there was a problem connecting to mt ranked. the server may be down for a moment. sorry about that, please try
+      again shortly.
     </p>
     <button class="btn btn-main" onclick={() => location.reload()}><RotateCcw size={16} /> try again</button>
   {/if}

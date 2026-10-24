@@ -1,0 +1,6 @@
+# .gitignore is also honored
+pnpm-lock.yaml
+# vendored word lists and quotes
+packages/engine/data
+# generated from monkeytype layouts, one layout per line
+frontend/src/lib/layouts.data.ts

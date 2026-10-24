@@ -73,5 +73,7 @@
   {#if nameError ?? error}<div class="text-sm text-error">{nameError ?? error}</div>{/if}
   <button class="btn btn-main w-full" disabled={busy || renaming}>{action}</button>
   {#if oncancel}<button type="button" class="btn btn-ghost w-full" onclick={oncancel}>cancel</button>{/if}
-  <div class="text-center text-sm text-sub">or <a class="link" href="/login?next={next}">sign in</a> to keep your stats</div>
+  <div class="text-center text-sm text-sub">
+    or <a class="link" href="/login?next={next}">sign in</a> to keep your stats
+  </div>
 </form>

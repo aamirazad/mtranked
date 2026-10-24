@@ -3,7 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "check": "tsc -p ." },
-  "dependencies": { "zod": "3.25.76", "@mtr/engine": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p ."
+  },
+  "dependencies": {
+    "zod": "3.25.76",
+    "@mtr/engine": "workspace:*"
+  }
 }

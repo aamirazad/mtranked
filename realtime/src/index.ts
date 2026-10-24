@@ -31,13 +31,26 @@ let draining = false;
 let exiting = false;
 const RESTARTING = "The server is restarting for an update. Try again in a moment.";
 /** Message types that would start something new; refused while draining. */
-const STARTS = new Set<ClientMsg["type"]>(["queue.join", "ghost.accept", "rematch.request", "room.create", "room.join", "room.start"]);
+const STARTS = new Set<ClientMsg["type"]>([
+  "queue.join",
+  "ghost.accept",
+  "rematch.request",
+  "room.create",
+  "room.join",
+  "room.start",
+]);
 
 const LEFT_FOR_ROOM = "You left the matchmaking queue to join a private room.";
 const NOT_IN_ROOM = "They're not in a private room right now.";
 const NOTHING_TO_WATCH = "They're not racing or in a room right now.";
 
-const member = (idn: Identity, info: PlayerPublic): Member => ({ idn, info, connected: true, dcAt: null, ready: false });
+const member = (idn: Identity, info: PlayerPublic): Member => ({
+  idn,
+  info,
+  connected: true,
+  dcAt: null,
+  ready: false,
+});
 
 /** Messages that act on the player's current room. */
 type RoomMsg = Extract<
@@ -199,7 +212,12 @@ async function handle(conn: Conn, msg: ClientMsg) {
       if (await resumeQueue(id, msg.mode)) return;
       // decline lockouts only apply to ranked
       const ban = msg.mode === "ranked" ? await queueBanLeft(id) : 0;
-      if (ban > 0) return err(id, "queue_timeout", `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`);
+      if (ban > 0)
+        return err(
+          id,
+          "queue_timeout",
+          `You declined too many matches. Queue opens again in ${Math.ceil(ban / 60)} min.`,
+        );
       if (await queueMeta(id)) await dequeue(id);
       const flagged = conn.idn.user?.flagged_at != null;
       if (msg.mode === "ranked") {
@@ -294,7 +312,8 @@ async function handle(conn: Conn, msg: ClientMsg) {
 
     case "room.request": {
       if (conn.idn.guest) return err(id, "room_request", "Sign in to ask friends to let you in.");
-      if (!(await friendsWith(id, [msg.playerId])).size) return err(id, "room_request", "You can only ask to join a friend's room.");
+      if (!(await friendsWith(id, [msg.playerId])).size)
+        return err(id, "room_request", "You can only ask to join a friend's room.");
       const req: JoinRequest = { id, name: conn.info.name, level: conn.info.level, via: msg.playerId };
       const local = roomOf(msg.playerId);
       if (local) return local.onJoinRequest(req);
@@ -361,7 +380,16 @@ function bucket(burst: number, rate: number) {
 }
 
 /** Messages that hit the DB or redis get a much tighter budget. */
-const EXPENSIVE = new Set<ClientMsg["type"]>(["room.create", "room.join", "queue.join", "ghost.accept", "rematch.request", "room.request", "room.invite", "spectate.start"]);
+const EXPENSIVE = new Set<ClientMsg["type"]>([
+  "room.create",
+  "room.join",
+  "queue.join",
+  "ghost.accept",
+  "rematch.request",
+  "room.request",
+  "room.invite",
+  "spectate.start",
+]);
 
 wss.on("connection", async (ws, req) => {
   // oversized/invalid frames emit 'error'; unhandled it would crash the process (ws closes the socket itself)
@@ -427,7 +455,11 @@ wss.on("connection", async (ws, req) => {
         await forward(node, { from: idn.id, rtt: conn.rtt(), msg: { type: "_rc" } });
       } else {
         await redis.del(`proom:${idn.id}`);
-        if (raw) conn.send({ type: "room.closed", reason: "The race server restarted, so that match was voided (no rating change)." });
+        if (raw)
+          conn.send({
+            type: "room.closed",
+            reason: "The race server restarted, so that match was voided (no rating change).",
+          });
       }
     }
   }

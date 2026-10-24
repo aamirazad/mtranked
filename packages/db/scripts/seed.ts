@@ -1,7 +1,15 @@
 // Idempotent seed: Season 0 (beta), the cosmetics catalog and a set of
 // "ghost" bot replays so ghost races work before real players exist.
 import { randomUUID } from "node:crypto";
-import { BACKSPACE, RANKED_SETTINGS, finalStats, generateText, replay, seededRandom, type Keystroke } from "@mtr/engine";
+import {
+  BACKSPACE,
+  RANKED_SETTINGS,
+  finalStats,
+  generateText,
+  replay,
+  seededRandom,
+  type Keystroke,
+} from "@mtr/engine";
 import { COSMETICS } from "@mtr/shared";
 import { sql } from "../src/client";
 
@@ -39,9 +47,18 @@ function synthesize(text: string, wpm: number, seed: string): Keystroke[] {
 }
 
 const BOTS = [
-  ["ghost_pebble", 38], ["ghost_quill", 47], ["ghost_ink", 55], ["ghost_fern", 62],
-  ["ghost_ember", 70], ["ghost_harbor", 78], ["ghost_lumen", 86], ["ghost_vale", 94],
-  ["ghost_comet", 103], ["ghost_onyx", 112], ["ghost_zephyr", 124], ["ghost_nova", 138],
+  ["ghost_pebble", 38],
+  ["ghost_quill", 47],
+  ["ghost_ink", 55],
+  ["ghost_fern", 62],
+  ["ghost_ember", 70],
+  ["ghost_harbor", 78],
+  ["ghost_lumen", 86],
+  ["ghost_vale", 94],
+  ["ghost_comet", 103],
+  ["ghost_onyx", 112],
+  ["ghost_zephyr", 124],
+  ["ghost_nova", 138],
 ] as const;
 
 const { id: seasonId } = (await sql`select id from seasons order by starts_at desc limit 1`)[0]!;

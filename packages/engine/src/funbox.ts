@@ -95,7 +95,13 @@ export type FunboxMeta = {
 
 const META: FunboxMeta[] = [
   { id: "mirror", name: "mirror", description: "Everything is mirrored!", kind: "visual", css: ["typingArea"] },
-  { id: "upside_down", name: "upside down", description: "Everything is upside down!", kind: "visual", css: ["typingArea"] },
+  {
+    id: "upside_down",
+    name: "upside down",
+    description: "Everything is upside down!",
+    kind: "visual",
+    css: ["typingArea"],
+  },
   { id: "nausea", name: "nausea", description: "I think I'm gonna be sick.", kind: "visual", css: ["typingArea"] },
   {
     id: "round_round_baby",
@@ -112,8 +118,20 @@ const META: FunboxMeta[] = [
     css: ["letters"],
     props: ["conflictsWithSymmetricChars"],
   },
-  { id: "earthquake", name: "earthquake", description: "Everybody get down! The words are shaking!", kind: "visual", css: ["letters"] },
-  { id: "space_balls", name: "space balls", description: "In a galaxy far far away.", kind: "visual", css: ["body", "typingArea"] },
+  {
+    id: "earthquake",
+    name: "earthquake",
+    description: "Everybody get down! The words are shaking!",
+    kind: "visual",
+    css: ["letters"],
+  },
+  {
+    id: "space_balls",
+    name: "space balls",
+    description: "In a galaxy far far away.",
+    kind: "visual",
+    css: ["body", "typingArea"],
+  },
   { id: "crt", name: "crt", description: "Go back to the 1980s.", kind: "visual", css: ["body"] },
   {
     id: "simon_says",
@@ -122,9 +140,27 @@ const META: FunboxMeta[] = [
     kind: "visual",
     props: ["changesWordsVisibility", "usesLayout"],
   },
-  { id: "tts", name: "tts", description: "Listen closely. Words are read out loud.", kind: "visual", props: ["changesWordsVisibility", "speaks"] },
-  { id: "read_ahead_easy", name: "read ahead easy", description: "Only the current word is invisible.", kind: "visual", props: ["changesWordsVisibility"] },
-  { id: "read_ahead", name: "read ahead", description: "Current and the next word are invisible!", kind: "visual", props: ["changesWordsVisibility"] },
+  {
+    id: "tts",
+    name: "tts",
+    description: "Listen closely. Words are read out loud.",
+    kind: "visual",
+    props: ["changesWordsVisibility", "speaks"],
+  },
+  {
+    id: "read_ahead_easy",
+    name: "read ahead easy",
+    description: "Only the current word is invisible.",
+    kind: "visual",
+    props: ["changesWordsVisibility"],
+  },
+  {
+    id: "read_ahead",
+    name: "read ahead",
+    description: "Current and the next word are invisible!",
+    kind: "visual",
+    props: ["changesWordsVisibility"],
+  },
   {
     id: "read_ahead_hard",
     name: "read ahead hard",
@@ -140,10 +176,34 @@ const META: FunboxMeta[] = [
     props: ["changesWordsVisibility"],
   },
   { id: "blind", name: "blind", description: "Mistakes are not shown. Trust your fingers.", kind: "visual" },
-  { id: "plus_zero", name: "plus zero", description: "React quickly! Only the current word is visible.", kind: "visual", props: ["changesWordsVisibility", "toPush"] },
-  { id: "plus_one", name: "plus one", description: "Only one future word is visible.", kind: "visual", props: ["changesWordsVisibility", "toPush"] },
-  { id: "plus_two", name: "plus two", description: "Only two future words are visible.", kind: "visual", props: ["changesWordsVisibility", "toPush"] },
-  { id: "plus_three", name: "plus three", description: "Only three future words are visible.", kind: "visual", props: ["changesWordsVisibility", "toPush"] },
+  {
+    id: "plus_zero",
+    name: "plus zero",
+    description: "React quickly! Only the current word is visible.",
+    kind: "visual",
+    props: ["changesWordsVisibility", "toPush"],
+  },
+  {
+    id: "plus_one",
+    name: "plus one",
+    description: "Only one future word is visible.",
+    kind: "visual",
+    props: ["changesWordsVisibility", "toPush"],
+  },
+  {
+    id: "plus_two",
+    name: "plus two",
+    description: "Only two future words are visible.",
+    kind: "visual",
+    props: ["changesWordsVisibility", "toPush"],
+  },
+  {
+    id: "plus_three",
+    name: "plus three",
+    description: "Only three future words are visible.",
+    kind: "visual",
+    props: ["changesWordsVisibility", "toPush"],
+  },
   {
     id: "layout_mirror",
     name: "layout mirror",
@@ -256,9 +316,30 @@ const META: FunboxMeta[] = [
     props: ["changesCapitalization"],
     fns: ["alterText"],
   },
-  { id: "sPoNgEcAsE", name: "sPoNgEcAsE", description: "I kInDa LiKe HoW iNeFfIcIeNt QwErTy Is.", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
-  { id: "capitals", name: "capitals", description: "Capitalize Every Word.", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
-  { id: "ALL_CAPS", name: "ALL CAPS", description: "WHY ARE WE SHOUTING?", kind: "text", props: ["changesCapitalization"], fns: ["alterText"] },
+  {
+    id: "sPoNgEcAsE",
+    name: "sPoNgEcAsE",
+    description: "I kInDa LiKe HoW iNeFfIcIeNt QwErTy Is.",
+    kind: "text",
+    props: ["changesCapitalization"],
+    fns: ["alterText"],
+  },
+  {
+    id: "capitals",
+    name: "capitals",
+    description: "Capitalize Every Word.",
+    kind: "text",
+    props: ["changesCapitalization"],
+    fns: ["alterText"],
+  },
+  {
+    id: "ALL_CAPS",
+    name: "ALL CAPS",
+    description: "WHY ARE WE SHOUTING?",
+    kind: "text",
+    props: ["changesCapitalization"],
+    fns: ["alterText"],
+  },
   {
     id: "instant_messaging",
     name: "instant messaging",
@@ -267,7 +348,13 @@ const META: FunboxMeta[] = [
     props: ["changesCapitalization"],
     fns: ["alterText"],
   },
-  { id: "rot13", name: "rot13", description: "Vg znl abg or frpher, ohg vg vf sha gb glcr!", kind: "text", fns: ["alterText"] },
+  {
+    id: "rot13",
+    name: "rot13",
+    description: "Vg znl abg or frpher, ohg vg vf sha gb glcr!",
+    kind: "text",
+    fns: ["alterText"],
+  },
   {
     id: "backwards",
     name: "backwards",
@@ -276,7 +363,13 @@ const META: FunboxMeta[] = [
     props: ["conflictsWithSymmetricChars", "wordOrder"],
     fns: ["alterText"],
   },
-  { id: "ddoouubblleedd", name: "ddoouubblleedd", description: "TTyyppee eevveerryytthhiinngg ttwwiiccee..", kind: "text", fns: ["alterText"] },
+  {
+    id: "ddoouubblleedd",
+    name: "ddoouubblleedd",
+    description: "TTyyppee eevveerryytthhiinngg ttwwiiccee..",
+    kind: "text",
+    fns: ["alterText"],
+  },
   {
     id: "morse",
     name: "morse",
@@ -293,13 +386,18 @@ const META: FunboxMeta[] = [
     props: ["ignoresLanguage", "ignoresLayout", "nospace"],
     fns: ["alterText"],
   },
-  { id: "nospace", name: "nospace", description: "Whoneedsspacesanyway? The next word starts on its own.", kind: "text", props: ["nospace"] },
+  {
+    id: "nospace",
+    name: "nospace",
+    description: "Whoneedsspacesanyway? The next word starts on its own.",
+    kind: "text",
+    props: ["nospace"],
+  },
 ];
 
-export const FUNBOXES: Readonly<Record<FunboxId, FunboxMeta>> = Object.fromEntries(META.map((m) => [m.id, m])) as Record<
-  FunboxId,
-  FunboxMeta
->;
+export const FUNBOXES: Readonly<Record<FunboxId, FunboxMeta>> = Object.fromEntries(
+  META.map((m) => [m.id, m]),
+) as Record<FunboxId, FunboxMeta>;
 export const FUNBOX_LIST: readonly FunboxMeta[] = META;
 
 export const isFunboxId = (id: unknown): id is FunboxId => typeof id === "string" && id in FUNBOXES;
@@ -493,7 +591,11 @@ function zipfIndex(rand: Rand, n: number) {
 }
 
 /** The word source for words/time mode, if a funbox replaces the language's words. */
-export function funboxWordSource(ids: readonly string[] | undefined, pool: string[], polyglot?: string[][]): WordSource | undefined {
+export function funboxWordSource(
+  ids: readonly string[] | undefined,
+  pool: string[],
+  polyglot?: string[][],
+): WordSource | undefined {
   const on = (id: FunboxId) => funboxActive(ids, id);
   if (on("58008"))
     return {
@@ -504,17 +606,33 @@ export function funboxWordSource(ids: readonly string[] | undefined, pool: strin
           if (rand() < 0.75) {
             const i = randInt(rand, 1, word.length - 2);
             const special = pickFrom(rand, ["/", "*", "-", "+"]);
-            if (word[i - 1] !== "." && word[i + 1] !== "." && word[i + 1] !== "0") word = replaceCharAt(word, i, special);
+            if (word[i - 1] !== "." && word[i + 1] !== "." && word[i + 1] !== "0")
+              word = replaceCharAt(word, i, special);
           }
         }
         return word;
       },
     };
   if (on("arrows")) return arrowsSource();
-  if (on("gibberish")) return { pick: (rand) => Array.from({ length: randInt(rand, 1, 7) }, () => String.fromCharCode(97 + randInt(rand, 0, 25))).join("") };
-  if (on("ascii")) return { pick: (rand) => Array.from({ length: randInt(rand, 1, 10) }, () => String.fromCharCode(33 + randInt(rand, 0, 93))).join("") };
-  if (on("specials")) return { pick: (rand) => Array.from({ length: randInt(rand, 1, 7) }, () => pickFrom(rand, SPECIALS)).join("") };
-  if (on("binary")) return { pick: (rand) => Math.floor(rand() * 256).toString(2).padStart(8, "0") };
+  if (on("gibberish"))
+    return {
+      pick: (rand) =>
+        Array.from({ length: randInt(rand, 1, 7) }, () => String.fromCharCode(97 + randInt(rand, 0, 25))).join(""),
+    };
+  if (on("ascii"))
+    return {
+      pick: (rand) =>
+        Array.from({ length: randInt(rand, 1, 10) }, () => String.fromCharCode(33 + randInt(rand, 0, 93))).join(""),
+    };
+  if (on("specials"))
+    return { pick: (rand) => Array.from({ length: randInt(rand, 1, 7) }, () => pickFrom(rand, SPECIALS)).join("") };
+  if (on("binary"))
+    return {
+      pick: (rand) =>
+        Math.floor(rand() * 256)
+          .toString(2)
+          .padStart(8, "0"),
+    };
   if (on("hexadecimal"))
     return {
       pick: (rand) =>
@@ -537,18 +655,69 @@ export function funboxWordSource(ids: readonly string[] | undefined, pool: strin
 export const POLYGLOT_LANGUAGES = ["english", "spanish", "french", "german", "portuguese", "italian", "dutch"] as const;
 
 /** Punctuation/numbers with the funbox's forced settings applied. */
-export function funboxForcedOptions(ids: readonly string[] | undefined, opts: { punctuation: boolean; numbers: boolean }) {
+export function funboxForcedOptions(
+  ids: readonly string[] | undefined,
+  opts: { punctuation: boolean; numbers: boolean },
+) {
   const off = new Set((ids ?? []).flatMap((id) => (isFunboxId(id) ? (FUNBOXES[id].forcesOff ?? []) : [])));
   return { punctuation: opts.punctuation && !off.has("punctuation"), numbers: opts.numbers && !off.has("numbers") };
 }
 
 const MORSE: Record<string, string> = {
-  a: ".-", b: "-...", c: "-.-.", d: "-..", e: ".", f: "..-.", g: "--.", h: "....", i: "..", j: ".---",
-  k: "-.-", l: ".-..", m: "--", n: "-.", o: "---", p: ".--.", q: "--.-", r: ".-.", s: "...", t: "-",
-  u: "..-", v: "...-", w: ".--", x: "-..-", y: "-.--", z: "--..",
-  "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
-  ".": ".-.-.-", ",": "--..--", "?": "..--..", "'": ".----.", "/": "-..-.", "(": "-.--.", ")": "-.--.-", "&": ".-...",
-  ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.", "-": "-....-", _: "..--.-", '"': ".-..-.", $: "...-..-", "!": "-.-.--", "@": ".--.-.",
+  a: ".-",
+  b: "-...",
+  c: "-.-.",
+  d: "-..",
+  e: ".",
+  f: "..-.",
+  g: "--.",
+  h: "....",
+  i: "..",
+  j: ".---",
+  k: "-.-",
+  l: ".-..",
+  m: "--",
+  n: "-.",
+  o: "---",
+  p: ".--.",
+  q: "--.-",
+  r: ".-.",
+  s: "...",
+  t: "-",
+  u: "..-",
+  v: "...-",
+  w: ".--",
+  x: "-..-",
+  y: "-.--",
+  z: "--..",
+  "0": "-----",
+  "1": ".----",
+  "2": "..---",
+  "3": "...--",
+  "4": "....-",
+  "5": ".....",
+  "6": "-....",
+  "7": "--...",
+  "8": "---..",
+  "9": "----.",
+  ".": ".-.-.-",
+  ",": "--..--",
+  "?": "..--..",
+  "'": ".----.",
+  "/": "-..-.",
+  "(": "-.--.",
+  ")": "-.--.-",
+  "&": ".-...",
+  ":": "---...",
+  ";": "-.-.-.",
+  "=": "-...-",
+  "+": ".-.-.",
+  "-": "-....-",
+  _: "..--.-",
+  '"': ".-..-.",
+  $: "...-..-",
+  "!": "-.-.--",
+  "@": ".--.-.",
 };
 
 const deaccent = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss");

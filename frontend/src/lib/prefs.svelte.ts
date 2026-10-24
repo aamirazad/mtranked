@@ -195,7 +195,8 @@ class Prefs {
     for (const k of KEYS) {
       // older saves stored bare values with no timestamp
       const e = saved[k];
-      const [raw, t] = e && typeof e === "object" ? [(e as { v: unknown }).v, Number((e as { t: unknown }).t) || 0] : [e, 0];
+      const [raw, t] =
+        e && typeof e === "object" ? [(e as { v: unknown }).v, Number((e as { t: unknown }).t) || 0] : [e, 0];
       const v = upgrade(k, raw);
       if (VALID[k](v)) this.assign(k, v as Values[PrefKey], t);
     }

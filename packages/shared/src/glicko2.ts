@@ -40,10 +40,7 @@ export function rate(player: Glicko, games: GameResult[]): Glicko {
   const a = Math.log(sigma * sigma);
   const f = (x: number) => {
     const ex = Math.exp(x);
-    return (
-      (ex * (delta * delta - phi * phi - v - ex)) / (2 * (phi * phi + v + ex) ** 2) -
-      (x - a) / (TAU * TAU)
-    );
+    return (ex * (delta * delta - phi * phi - v - ex)) / (2 * (phi * phi + v + ex) ** 2) - (x - a) / (TAU * TAU);
   };
   let A = a;
   let B: number;
@@ -82,10 +79,7 @@ export function rate(player: Glicko, games: GameResult[]): Glicko {
 }
 
 /** Season reset: pull rating partway to 1500 and raise uncertainty. */
-export function seasonReset(
-  p: Glicko,
-  params: { pull: number; rd: number } = { pull: 0.5, rd: 250 },
-): Glicko {
+export function seasonReset(p: Glicko, params: { pull: number; rd: number } = { pull: 0.5, rd: 250 }): Glicko {
   return {
     rating: 1500 + (p.rating - 1500) * (1 - params.pull),
     rd: Math.max(p.rd, params.rd),

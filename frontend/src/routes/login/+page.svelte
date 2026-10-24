@@ -29,7 +29,14 @@
 <form class="mx-auto mt-8 max-w-sm space-y-4 animate-rise" onsubmit={submit}>
   <h1 class="font-logo text-3xl">sign in</h1>
   <input class="input" type="email" autocomplete="email" placeholder="email" bind:value={email} required />
-  <input class="input" type="password" autocomplete="current-password" placeholder="password" bind:value={password} required />
+  <input
+    class="input"
+    type="password"
+    autocomplete="current-password"
+    placeholder="password"
+    bind:value={password}
+    required
+  />
   {#if error}<div class="text-sm text-error">{error}</div>{/if}
   <button class="btn btn-main w-full" disabled={busy}>{busy ? "signing in…" : "sign in"}</button>
   <div class="flex justify-between text-sm text-sub">

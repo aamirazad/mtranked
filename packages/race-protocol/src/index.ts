@@ -1,6 +1,17 @@
 // Every WebSocket message exchanged between the frontend and the realtime server.
 import { z } from "zod";
-import { CONFIDENCE, DIFFICULTY, FUNBOX_IDS, LANGUAGES, MAX_MIN_WPM, STOP_ON_ERROR, type CharStats, type FailReason, type TimelinePoint, type WordStat } from "@mtr/engine";
+import {
+  CONFIDENCE,
+  DIFFICULTY,
+  FUNBOX_IDS,
+  LANGUAGES,
+  MAX_MIN_WPM,
+  STOP_ON_ERROR,
+  type CharStats,
+  type FailReason,
+  type TimelinePoint,
+  type WordStat,
+} from "@mtr/engine";
 
 export const Mode = z.enum(["ranked", "casual", "private", "ghost"]);
 export type Mode = z.infer<typeof Mode>;
@@ -82,7 +93,11 @@ export const ClientMsg = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ready"), matchId: z.string() }),
   z.object({ type: z.literal("decline"), matchId: z.string() }),
   /** `invite`: friends to invite straight away (the "race a friend" button) */
-  z.object({ type: z.literal("room.create"), settings: TextSettings, invite: z.array(z.string().max(64)).max(16).optional() }),
+  z.object({
+    type: z.literal("room.create"),
+    settings: TextSettings,
+    invite: z.array(z.string().max(64)).max(16).optional(),
+  }),
   /** watch the race (or private room) this friend is in */
   z.object({ type: z.literal("spectate.start"), playerId: z.string().max(64) }),
   z.object({ type: z.literal("spectate.stop") }),

@@ -2,11 +2,8 @@
   import { untrack } from "svelte";
   import { api, errorMessage } from "#lib/api.ts";
 
-  let {
-    matchId,
-    players,
-    onclose,
-  }: { matchId: string; players: { id: string; name: string }[]; onclose: () => void } = $props();
+  let { matchId, players, onclose }: { matchId: string; players: { id: string; name: string }[]; onclose: () => void } =
+    $props();
 
   let target = $state(untrack(() => players[0]?.id ?? ""));
   let reason = $state("suspected cheating");
@@ -33,7 +30,10 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 backdrop-blur-sm animate-fade" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div
+  class="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 backdrop-blur-sm animate-fade"
+  onclick={(e) => e.target === e.currentTarget && onclose()}
+>
   {#if sent}
     <div class="card w-[min(440px,92vw)] animate-pop space-y-4" role="status">
       <div class="text-lg">report sent</div>

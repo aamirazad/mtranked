@@ -48,7 +48,8 @@ async function performanceJump(userId: string, wpm: number): Promise<Flag | null
       select mp.wpm from match_players mp join matches m on m.id = mp.match_id
       where mp.user_id = ${userId} and m.mode = 'ranked' and mp.finished order by m.finished_at desc limit 10) t`;
   if (!h || h.n < 8) return null;
-  if (wpm > h.avg * 1.35 + 15) return { reason: "performance_jump", details: { wpm, recentAvg: Math.round(h.avg) }, shadow: false };
+  if (wpm > h.avg * 1.35 + 15)
+    return { reason: "performance_jump", details: { wpm, recentAvg: Math.round(h.avg) }, shadow: false };
   return null;
 }
 
@@ -75,7 +76,8 @@ export async function saveRace(input: SaveInput) {
         values (${input.matchId}, ${slot}, ${row.userId ?? null}, ${row.guestName ?? null}, ${r.placement}, ${r.wpm}, ${r.raw},
           ${r.acc}, ${r.timeMs}, ${r.finished}, ${r.forfeit}, ${r.ratingBefore ?? null}, ${r.ratingAfter ?? null},
           ${r.delta ?? null}, ${r.xp ?? 0}, ${row.durationMs ?? r.timeMs}, ${r.consistency ?? null}, ${r.chars ? intArray(tx, r.chars) : null})`;
-      if (row.keys) await tx`insert into replays (match_id, slot, keystrokes) values (${input.matchId}, ${slot}, ${tx.json(row.keys)})`;
+      if (row.keys)
+        await tx`insert into replays (match_id, slot, keystrokes) values (${input.matchId}, ${slot}, ${tx.json(row.keys)})`;
       if (row.userId) {
         if (r.xp) await tx`update users set xp = xp + ${r.xp} where id = ${row.userId}`;
         for (const f of row.flags) {

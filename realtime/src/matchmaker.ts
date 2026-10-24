@@ -48,7 +48,11 @@ export async function enqueue(
 ) {
   const key: QueueKey = mode === "casual" ? "q:casual" : flagged ? "q:ranked:shadow" : "q:ranked";
   const meta: Meta = { key, mode, since, idn: { id: idn.id, guest: idn.guest, name: idn.name }, info, rating };
-  await redis.multi().zadd(key, rating?.rating ?? 1500, idn.id).hset(META, idn.id, JSON.stringify(meta)).exec();
+  await redis
+    .multi()
+    .zadd(key, rating?.rating ?? 1500, idn.id)
+    .hset(META, idn.id, JSON.stringify(meta))
+    .exec();
   sendStatus(meta, 1);
   setActivity(idn.id, { kind: "queue", mode }, "queue");
 }

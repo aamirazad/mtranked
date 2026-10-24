@@ -23,10 +23,7 @@ export function xpForRace(o: { wpm: number; won: boolean; finished: boolean; mod
 
 export type CosmeticType = "caret_color" | "caret_shape" | "finish" | "banner";
 export type UnlockRule =
-  | { type: "default" }
-  | { type: "level"; level: number }
-  | { type: "tier"; tier: TierId }
-  | { type: "subscriber" };
+  { type: "default" } | { type: "level"; level: number } | { type: "tier"; tier: TierId } | { type: "subscriber" };
 
 export type Cosmetic = {
   id: string;
@@ -39,6 +36,7 @@ export type Cosmetic = {
   unlock: UnlockRule;
 };
 
+// prettier-ignore
 export const COSMETICS: Cosmetic[] = [
   // caret colors
   { id: "caret-gold", type: "caret_color", name: "Classic", value: "#e2b714", unlock: { type: "default" } },
@@ -84,8 +82,7 @@ export const cosmeticById = (id: string) => COSMETICS.find((c) => c.id === id);
 
 /** Resolve equipped ids to values, falling back to defaults. */
 export function resolveEquipped(e: Partial<Equipped> | null | undefined) {
-  const get = (k: keyof Equipped) =>
-    (cosmeticById(e?.[k] ?? "") ?? cosmeticById(DEFAULT_EQUIPPED[k])!).value;
+  const get = (k: keyof Equipped) => (cosmeticById(e?.[k] ?? "") ?? cosmeticById(DEFAULT_EQUIPPED[k])!).value;
   return {
     caretColor: get("caret_color"),
     caretShape: get("caret_shape"),

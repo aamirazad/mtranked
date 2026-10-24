@@ -23,7 +23,11 @@
           {#if inv.admitted}
             <div><span class="text-main">{inv.from.name}</span> let you into their room</div>
           {:else}
-            <div><span class="text-main">{inv.from.name}</span> invited you to {inv.roomName ? `“${inv.roomName}”` : "their room"}</div>
+            <div>
+              <span class="text-main">{inv.from.name}</span> invited you to {inv.roomName
+                ? `“${inv.roomName}”`
+                : "their room"}
+            </div>
             <div class="text-xs text-sub">{inv.players} player{inv.players === 1 ? "" : "s"} in the room</div>
           {/if}
           <div class="mt-3 flex gap-2">
@@ -31,7 +35,9 @@
             <button class="btn btn-ghost py-1 text-sm" onclick={() => game.dismissInvite(inv.code)}>not now</button>
           </div>
         </div>
-        <button class="text-sub hover:text-text" aria-label="dismiss" onclick={() => game.dismissInvite(inv.code)}><X size={14} /></button>
+        <button class="text-sub hover:text-text" aria-label="dismiss" onclick={() => game.dismissInvite(inv.code)}
+          ><X size={14} /></button
+        >
       </div>
     </div>
   {/each}

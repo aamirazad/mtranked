@@ -36,7 +36,15 @@
 <form class="mx-auto mt-8 max-w-sm space-y-4 animate-rise" onsubmit={submit}>
   <h1 class="font-logo text-3xl">create account</h1>
   <div>
-    <input class="input" placeholder="display name" autocomplete="username" bind:value={displayName} required minlength="3" maxlength="20" />
+    <input
+      class="input"
+      placeholder="display name"
+      autocomplete="username"
+      bind:value={displayName}
+      required
+      minlength="3"
+      maxlength="20"
+    />
     {#if fields.displayName}<div class="mt-1 text-xs text-error">{fields.displayName}</div>{/if}
   </div>
   <div>
@@ -44,12 +52,23 @@
     {#if fields.email}<div class="mt-1 text-xs text-error">{fields.email}</div>{/if}
   </div>
   <div>
-    <input class="input" type="password" autocomplete="new-password" placeholder="password (8+ characters)" bind:value={password} required minlength="8" />
+    <input
+      class="input"
+      type="password"
+      autocomplete="new-password"
+      placeholder="password (8+ characters)"
+      bind:value={password}
+      required
+      minlength="8"
+    />
     {#if fields.password}<div class="mt-1 text-xs text-error">{fields.password}</div>{/if}
   </div>
   {#if error}<div class="text-sm text-error">{error}</div>{/if}
   <button class="btn btn-main w-full" disabled={busy}>{busy ? "creating…" : "create account"}</button>
   <div class="text-sm text-sub">
-    we'll email you a link to verify your address (needed for ranked). already have an account? <a class="link" href="/login?next={encodeURIComponent(next)}">sign in</a>
+    we'll email you a link to verify your address (needed for ranked). already have an account? <a
+      class="link"
+      href="/login?next={encodeURIComponent(next)}">sign in</a
+    >
   </div>
 </form>

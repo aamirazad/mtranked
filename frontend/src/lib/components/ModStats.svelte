@@ -38,7 +38,9 @@
   const fmt = (v: number) => Math.round(v).toLocaleString();
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
   const days = $derived(stats?.daily.map((d) => d.date) ?? []);
-  const userValues = $derived(stats?.daily.map((d) => (userView === "users" ? d.users : userView === "signups" ? d.signups : d.active)) ?? []);
+  const userValues = $derived(
+    stats?.daily.map((d) => (userView === "users" ? d.users : userView === "signups" ? d.signups : d.active)) ?? [],
+  );
   const dayTotal = (t: Record<ModStatMode, number>) => MOD_STAT_MODES.reduce((a, m) => a + t[m], 0);
   const testValues = $derived(stats?.daily.map((d) => (testMode ? d.tests[testMode] : dayTotal(d.tests))) ?? []);
   const rangeTests = $derived(testValues.reduce((a, v) => a + v, 0));
@@ -88,16 +90,24 @@
         <div class="label text-sm">players</div>
         <div class="flex flex-wrap gap-1 text-sm">
           {#each Object.entries(USER_VIEWS) as [v, l] (v)}
-            <button class="toggle" class:on={userView === v} onclick={() => (userView = v as typeof userView)}>{l}</button>
+            <button class="toggle" class:on={userView === v} onclick={() => (userView = v as typeof userView)}
+              >{l}</button
+            >
           {/each}
         </div>
       </div>
       <DailyChart {days} values={userValues} kind={userView === "users" ? "line" : "bars"} label={USER_VIEWS[userView]}>
         {#snippet tooltip(i)}
           {@const d = stats!.daily[i]!}
-          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "users"}><span>accounts</span><span class="ml-auto tabular-nums">{fmt(d.users)}</span></div>
-          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "signups"}><span>signups</span><span class="ml-auto tabular-nums">{fmt(d.signups)}</span></div>
-          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "active"}><span>active</span><span class="ml-auto tabular-nums">{fmt(d.active)}</span></div>
+          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "users"}>
+            <span>accounts</span><span class="ml-auto tabular-nums">{fmt(d.users)}</span>
+          </div>
+          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "signups"}>
+            <span>signups</span><span class="ml-auto tabular-nums">{fmt(d.signups)}</span>
+          </div>
+          <div class="flex gap-3 whitespace-nowrap" class:text-main={userView === "active"}>
+            <span>active</span><span class="ml-auto tabular-nums">{fmt(d.active)}</span>
+          </div>
         {/snippet}
       </DailyChart>
     </section>
@@ -118,11 +128,15 @@
           {@const d = stats!.daily[i]!}
           {#each MOD_STAT_MODES as m (m)}
             {#if !testMode || testMode === m}
-              <div class="flex gap-3 whitespace-nowrap text-text"><span>{MODE_LABELS[m]}</span><span class="ml-auto tabular-nums">{fmt(d.tests[m])}</span></div>
+              <div class="flex gap-3 whitespace-nowrap text-text">
+                <span>{MODE_LABELS[m]}</span><span class="ml-auto tabular-nums">{fmt(d.tests[m])}</span>
+              </div>
             {/if}
           {/each}
           {#if !testMode}
-            <div class="flex gap-3 whitespace-nowrap text-main"><span>total</span><span class="ml-auto tabular-nums">{fmt(dayTotal(d.tests))}</span></div>
+            <div class="flex gap-3 whitespace-nowrap text-main">
+              <span>total</span><span class="ml-auto tabular-nums">{fmt(dayTotal(d.tests))}</span>
+            </div>
           {/if}
         {/snippet}
       </DailyChart>
@@ -150,7 +164,9 @@
                   <div class="h-2 flex-1 rounded-full bg-bg/60">
                     <div class="h-2 rounded-full bg-main" style="width: {(m.tests / maxMode) * 100}%"></div>
                   </div>
-                  <span class="w-20 text-right tabular-nums">{fmt(m.tests)} <span class="text-xs text-sub">{pct(m.tests, t.total)}</span></span>
+                  <span class="w-20 text-right tabular-nums"
+                    >{fmt(m.tests)} <span class="text-xs text-sub">{pct(m.tests, t.total)}</span></span
+                  >
                 </div>
               </td>
               <td class="text-right tabular-nums">{fmt(m.races)}</td>
@@ -187,8 +203,14 @@
       <div class="label mb-4 text-sm">tests by hour of day <span class="normal-case">(utc)</span></div>
       <div class="flex h-28 items-end gap-[2px]">
         {#each stats.hours as h, i (i)}
-          <div class="group relative flex h-full flex-1 items-end" title="{String(i).padStart(2, '0')}:00 utc · {fmt(h)} tests">
-            <div class="w-full rounded-t-sm bg-main transition-opacity group-hover:opacity-70" style="height: {(h / maxHour) * 100}%"></div>
+          <div
+            class="group relative flex h-full flex-1 items-end"
+            title="{String(i).padStart(2, '0')}:00 utc · {fmt(h)} tests"
+          >
+            <div
+              class="w-full rounded-t-sm bg-main transition-opacity group-hover:opacity-70"
+              style="height: {(h / maxHour) * 100}%"
+            ></div>
           </div>
         {/each}
       </div>
@@ -200,19 +222,54 @@
     <section class="grid gap-6 md:grid-cols-2">
       <div class="card grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
         <div class="label col-span-2 text-sm">accounts</div>
-        <div><div class="text-sub">verified email</div><div class="text-xl tabular-nums">{fmt(u.verified)} <span class="text-xs text-sub">{pct(u.verified, u.total)}</span></div></div>
-        <div><div class="text-sub">supporters</div><div class="text-xl tabular-nums">{fmt(u.supporters)} <span class="text-xs text-sub">{fmt(u.earlySupporters)} early</span></div></div>
-        <div><div class="text-sub">have a friend</div><div class="text-xl tabular-nums">{fmt(u.withFriends)} <span class="text-xs text-sub">{pct(u.withFriends, u.total)}</span></div></div>
-        <div><div class="text-sub">moderators</div><div class="text-xl tabular-nums">{fmt(u.moderators)}</div></div>
+        <div>
+          <div class="text-sub">verified email</div>
+          <div class="text-xl tabular-nums">
+            {fmt(u.verified)} <span class="text-xs text-sub">{pct(u.verified, u.total)}</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-sub">supporters</div>
+          <div class="text-xl tabular-nums">
+            {fmt(u.supporters)} <span class="text-xs text-sub">{fmt(u.earlySupporters)} early</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-sub">have a friend</div>
+          <div class="text-xl tabular-nums">
+            {fmt(u.withFriends)} <span class="text-xs text-sub">{pct(u.withFriends, u.total)}</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-sub">moderators</div>
+          <div class="text-xl tabular-nums">{fmt(u.moderators)}</div>
+        </div>
       </div>
       <div class="card grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
         <div class="label col-span-2 text-sm">moderation</div>
-        <div><div class="text-sub">open reports</div><div class="text-xl tabular-nums">{fmt(stats.moderation.openReports)} <span class="text-xs text-sub">{fmt(stats.moderation.resolved30d)} resolved this month</span></div></div>
-        <div><div class="text-sub">held results</div><div class="text-xl tabular-nums">{fmt(stats.moderation.held)}</div></div>
-        <div><div class="text-sub">auto flags this week</div><div class="text-xl tabular-nums">{fmt(stats.moderation.flags7d)} <span class="text-xs text-sub">{fmt(u.flagged)} in shadow queue</span></div></div>
+        <div>
+          <div class="text-sub">open reports</div>
+          <div class="text-xl tabular-nums">
+            {fmt(stats.moderation.openReports)}
+            <span class="text-xs text-sub">{fmt(stats.moderation.resolved30d)} resolved this month</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-sub">held results</div>
+          <div class="text-xl tabular-nums">{fmt(stats.moderation.held)}</div>
+        </div>
+        <div>
+          <div class="text-sub">auto flags this week</div>
+          <div class="text-xl tabular-nums">
+            {fmt(stats.moderation.flags7d)} <span class="text-xs text-sub">{fmt(u.flagged)} in shadow queue</span>
+          </div>
+        </div>
         <div>
           <div class="text-sub">suspended</div>
-          <div class="text-xl tabular-nums">{fmt(u.banned + u.timedOut)} <span class="text-xs text-sub">{fmt(u.banned)} banned · {fmt(u.timedOut)} timed out</span></div>
+          <div class="text-xl tabular-nums">
+            {fmt(u.banned + u.timedOut)}
+            <span class="text-xs text-sub">{fmt(u.banned)} banned · {fmt(u.timedOut)} timed out</span>
+          </div>
         </div>
       </div>
     </section>

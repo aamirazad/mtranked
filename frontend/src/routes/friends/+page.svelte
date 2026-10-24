@@ -131,23 +131,42 @@
         onblur={() => (open = false)}
         onkeydown={onsearchkey}
       />
-      <button class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-sub hover:text-main" title="send friend request" disabled={!q.trim() || adding} onclick={() => add(q)}>
+      <button
+        class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-sub hover:text-main"
+        title="send friend request"
+        disabled={!q.trim() || adding}
+        onclick={() => add(q)}
+      >
         <UserPlus size={16} />
       </button>
       {#if note && !(open && hits.length)}
-        <div role="status" class="absolute z-20 mt-1 w-full rounded-lg bg-sub-alt px-3 py-1.5 text-sm shadow-lg animate-fade {note.kind === 'error' ? 'text-error' : note.kind === 'success' ? 'text-main' : 'text-text'}">
+        <div
+          role="status"
+          class="absolute z-20 mt-1 w-full rounded-lg bg-sub-alt px-3 py-1.5 text-sm shadow-lg animate-fade {note.kind ===
+          'error'
+            ? 'text-error'
+            : note.kind === 'success'
+              ? 'text-main'
+              : 'text-text'}"
+        >
           {note.text}
         </div>
       {/if}
       {#if open && q.trim().length >= MIN_SUGGEST && hits.length}
-        <div id="friend-hits" role="listbox" class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg">
+        <div
+          id="friend-hits"
+          role="listbox"
+          class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-sub-alt py-1 shadow-lg"
+        >
           {#each hits as h, i (h.name)}
             <button
               type="button"
               tabindex="-1"
               role="option"
               aria-selected={i === active}
-              class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm {i === active ? 'bg-bg/60 text-text' : 'text-sub'}"
+              class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm {i === active
+                ? 'bg-bg/60 text-text'
+                : 'text-sub'}"
               onmousedown={(e) => e.preventDefault()}
               onmouseenter={() => (active = i)}
               onclick={() => add(h.name)}
@@ -174,7 +193,9 @@
               <span class="text-xs text-sub">lv {f.level}</span>
               <span class="ml-auto flex gap-2">
                 <button class="btn btn-main py-1 text-sm" onclick={() => accept(f)}><Check size={14} /> accept</button>
-                <button class="btn btn-ghost py-1 text-sm" onclick={() => friends.remove(f)}><X size={14} /> decline</button>
+                <button class="btn btn-ghost py-1 text-sm" onclick={() => friends.remove(f)}
+                  ><X size={14} /> decline</button
+                >
               </span>
               <Note note={notes.get(f.id)} class="w-full text-right" />
             </li>
@@ -185,37 +206,55 @@
 
     <section class="card">
       {#if !list.friends.length}
-        <div class="py-6 text-center text-sub">
-          no friends yet. add someone by name above, or from their profile.
-        </div>
+        <div class="py-6 text-center text-sub">no friends yet. add someone by name above, or from their profile.</div>
       {:else}
         <ul class="space-y-1">
           {#each friends.sorted as f (f.id)}
             <li class="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-2 hover:bg-bg/40">
-              <span class="h-2 w-2 shrink-0 rounded-full {f.presence.online ? 'bg-main' : 'bg-sub/40'}" aria-hidden="true"></span>
+              <span
+                class="h-2 w-2 shrink-0 rounded-full {f.presence.online ? 'bg-main' : 'bg-sub/40'}"
+                aria-hidden="true"
+              ></span>
               <div class="min-w-0">
                 <a href="/u/{f.name}" class="truncate hover:text-main">{flag(f.country)} {f.name}</a>
                 <div class="text-xs text-sub">{describeActivity(f.presence)}</div>
               </div>
               <span class="ml-auto flex items-center gap-2">
                 {#if f.presence.online && (f.presence.activity?.kind === "match" || (f.presence.activity?.kind === "room" && !f.presence.activity.locked))}
-                  <a class="btn py-1 text-sm" title="watch their race" href="/watch/{f.name}"><Eye size={14} /> watch</a>
+                  <a class="btn py-1 text-sm" title="watch their race" href="/watch/{f.name}"><Eye size={14} /> watch</a
+                  >
                 {/if}
                 {#if f.presence.activity?.kind === "room"}
                   {#if game.hasAsked(f.id)}
-                    <span class="text-xs text-sub" title="you'll be let in as soon as a host accepts">asked to join · waiting for a host</span>
+                    <span class="text-xs text-sub" title="you'll be let in as soon as a host accepts"
+                      >asked to join · waiting for a host</span
+                    >
                   {:else}
-                    <button class="btn py-1 text-sm" title="ask the room's hosts to let you in" onclick={() => game.askToJoin(f.id, `friend:${f.id}`)}>
+                    <button
+                      class="btn py-1 text-sm"
+                      title="ask the room's hosts to let you in"
+                      onclick={() => game.askToJoin(f.id, `friend:${f.id}`)}
+                    >
                       <DoorOpen size={14} /> ask to join
                     </button>
                   {/if}
                 {/if}
                 {#if f.presence.online}
-                  <button class="btn btn-main py-1 text-sm" title="open a private room and invite them" disabled={!!starting} onclick={() => race(f.id)}>
-                    <Swords size={14} /> {starting === f.id ? "opening…" : "race"}
+                  <button
+                    class="btn btn-main py-1 text-sm"
+                    title="open a private room and invite them"
+                    disabled={!!starting}
+                    onclick={() => race(f.id)}
+                  >
+                    <Swords size={14} />
+                    {starting === f.id ? "opening…" : "race"}
                   </button>
                 {/if}
-                <button class="rounded p-1.5 text-sub opacity-0 transition-opacity group-hover:opacity-100 hover:text-error focus:opacity-100" title="remove friend" onclick={() => unfriend(f)}>
+                <button
+                  class="rounded p-1.5 text-sub opacity-0 transition-opacity group-hover:opacity-100 hover:text-error focus:opacity-100"
+                  title="remove friend"
+                  onclick={() => unfriend(f)}
+                >
                   <UserMinus size={16} />
                 </button>
               </span>

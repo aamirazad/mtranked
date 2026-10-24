@@ -21,6 +21,7 @@ export type Theme = {
 export const DEFAULT_THEME = "mt_ranked";
 
 // the site's own theme and monkeytype's lead the list, the rest are alphabetical
+// prettier-ignore
 export const THEMES: Theme[] = [
   { id: "mt_ranked", name: "mt ranked", look: { font: "Montserrat", tiles: true }, bg: "#141414", main: "#f8c630", caret: "#f8c630", sub: "#6e6e6e", subAlt: "#1f1f1f", text: "#ededed", error: "#e5484d", errorExtra: "#8a2a2e" },
   { id: "serika_dark", name: "serika dark", note: "monkeytype.com's default look", bg: "#323437", main: "#e2b714", caret: "#e2b714", sub: "#646669", subAlt: "#2c2e31", text: "#d1d0c5", error: "#ca4754", errorExtra: "#7e2a33" },

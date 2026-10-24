@@ -92,7 +92,8 @@
       {#if watch.ended}
         <div class="text-xl">{watch.ended}</div>
         <div class="mt-2 text-sm text-sub">
-          {#if presence?.online}{who} is {describeActivity(presence)}. their next race will show up here.{:else}{who} went offline.{/if}
+          {#if presence?.online}{who} is {describeActivity(presence)}. their next race will show up here.{:else}{who} went
+            offline.{/if}
         </div>
       {:else if watch.target.mode === "private" && watch.room}
         <div class="text-xl">{watch.room.name ?? "private room"}</div>
@@ -112,7 +113,8 @@
         <ul class="space-y-1">
           {#each watch.room.players as p (p.id)}
             <li class="flex items-center gap-2 px-2 py-1">
-              {#if watch.room.hosts.includes(p.id)}<Crown size={14} class="text-main" />{:else}<span class="w-3.5"></span>{/if}
+              {#if watch.room.hosts.includes(p.id)}<Crown size={14} class="text-main" />{:else}<span class="w-3.5"
+                ></span>{/if}
               <span class:text-main={p.id === friendId}>{p.name}</span>
               <span class="ml-auto text-main tabular-nums">{watch.room.scoreboard[p.id] ?? 0}</span>
             </li>
@@ -123,7 +125,9 @@
             {#if game.hasAsked(friendId)}
               <span class="text-sm text-sub">asked to join · waiting for a host</span>
             {:else}
-              <button class="btn" onclick={() => game.askToJoin(friendId!, "watch-ask")}><DoorOpen size={16} /> ask to join</button>
+              <button class="btn" onclick={() => game.askToJoin(friendId!, "watch-ask")}
+                ><DoorOpen size={16} /> ask to join</button
+              >
             {/if}
           </div>
           <Note note={askRefused ? { text: askRefused, kind: "error" } : null} class="mt-2 block text-center" />

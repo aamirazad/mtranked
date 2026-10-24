@@ -14,13 +14,22 @@
     compact = false,
     height,
     label = "speed over time",
-  }: { points: TimelinePoint[]; max?: number; pb?: number | null; compact?: boolean; height?: number; label?: string } = $props();
+  }: {
+    points: TimelinePoint[];
+    max?: number;
+    pb?: number | null;
+    compact?: boolean;
+    height?: number;
+    label?: string;
+  } = $props();
 
   let width = $state(0);
   const hover = new ChartHover();
 
   const H = $derived(height ?? (compact ? 64 : 240));
-  const pad = $derived(compact ? { top: 6, right: 6, bottom: 6, left: 6 } : { top: 14, right: 40, bottom: 28, left: 44 });
+  const pad = $derived(
+    compact ? { top: 6, right: 6, bottom: 6, left: 6 } : { top: 14, right: 40, bottom: 28, left: 44 },
+  );
   const innerW = $derived(Math.max(0, width - pad.left - pad.right));
   const innerH = $derived(H - pad.top - pad.bottom);
 
@@ -36,11 +45,29 @@
   const yErr = (n: number) => pad.top + innerH - (n / errMax) * innerH;
 
   const xs = $derived(width ? points.map((_, i) => x(i)) : []);
-  const wpmLine = $derived(width ? monotonePath(xs, points.map((p) => y(p.wpm))) : "");
-  const rawLine = $derived(width ? monotonePath(xs, points.map((p) => y(p.raw))) : "");
-  const wpmArea = $derived(width && points.length > 1 ? areaPath(wpmLine, x(0), x(points.length - 1), pad.top + innerH) : "");
+  const wpmLine = $derived(
+    width
+      ? monotonePath(
+          xs,
+          points.map((p) => y(p.wpm)),
+        )
+      : "",
+  );
+  const rawLine = $derived(
+    width
+      ? monotonePath(
+          xs,
+          points.map((p) => y(p.raw)),
+        )
+      : "",
+  );
+  const wpmArea = $derived(
+    width && points.length > 1 ? areaPath(wpmLine, x(0), x(points.length - 1), pad.top + innerH) : "",
+  );
   const ticks = $derived([0, 1, 2, 3, 4].map((k) => (k * yMax) / 4));
-  const errTicks = $derived(errMax <= 4 ? Array.from({ length: errMax + 1 }, (_, i) => i) : [0, Math.round(errMax / 2), errMax]);
+  const errTicks = $derived(
+    errMax <= 4 ? Array.from({ length: errMax + 1 }, (_, i) => i) : [0, Math.round(errMax / 2), errMax],
+  );
   const xTicks = $derived.by(() => {
     const n = points.length;
     const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(innerW / 40))));
@@ -78,7 +105,9 @@
       aria-valuemin={compact ? undefined : 1}
       aria-valuemax={compact ? undefined : points.length}
       aria-valuenow={compact ? undefined : (hover.index ?? points.length - 1) + 1}
-      aria-valuetext={compact ? undefined : `${(hp ?? points.at(-1)!).wpm} wpm, ${(hp ?? points.at(-1)!).raw} raw, ${(hp ?? points.at(-1)!).err} errors`}
+      aria-valuetext={compact
+        ? undefined
+        : `${(hp ?? points.at(-1)!).wpm} wpm, ${(hp ?? points.at(-1)!).raw} raw, ${(hp ?? points.at(-1)!).err} errors`}
       onpointermove={onmove}
       onpointerleave={() => hover.hide()}
       onkeydown={compact ? undefined : onkey}
@@ -93,7 +122,9 @@
       {#if !compact}
         {#each ticks as t (t)}
           <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/15" stroke-width="1" />
-          <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{t}</text>
+          <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums"
+            >{t}</text
+          >
         {/each}
         {#each errTicks as t (t)}
           <text x={pad.left + innerW + 8} y={yErr(t)} dy="0.32em" class="fill-sub text-[11px] tabular-nums">{t}</text>
@@ -101,35 +132,80 @@
         {#each xTicks as i (i)}
           <text x={x(i)} y={H - 8} text-anchor="middle" class="fill-sub text-[11px] tabular-nums">{i + 1}</text>
         {/each}
-        <text transform="translate(10 {pad.top + innerH / 2}) rotate(-90)" text-anchor="middle" class="fill-sub text-[11px]">words per minute</text>
-        <text transform="translate({width - 6} {pad.top + innerH / 2}) rotate(90)" text-anchor="middle" class="fill-sub text-[11px]">errors</text>
+        <text
+          transform="translate(10 {pad.top + innerH / 2}) rotate(-90)"
+          text-anchor="middle"
+          class="fill-sub text-[11px]">words per minute</text
+        >
+        <text
+          transform="translate({width - 6} {pad.top + innerH / 2}) rotate(90)"
+          text-anchor="middle"
+          class="fill-sub text-[11px]">errors</text
+        >
       {:else}
         <line x1={pad.left} x2={pad.left + innerW} y1={y(0)} y2={y(0)} class="stroke-sub/25" stroke-width="1" />
       {/if}
 
       <path d={wpmArea} fill="url(#{gid})" />
       {#if pb && !compact}
-        <line x1={pad.left} x2={pad.left + innerW} y1={y(pb)} y2={y(pb)} class="stroke-sub" stroke-width="1.5" stroke-dasharray="6 5" />
+        <line
+          x1={pad.left}
+          x2={pad.left + innerW}
+          y1={y(pb)}
+          y2={y(pb)}
+          class="stroke-sub"
+          stroke-width="1.5"
+          stroke-dasharray="6 5"
+        />
         <g transform="translate({pad.left + innerW / 2} {y(pb)})">
           <rect x="-34" y="-10" width="68" height="20" rx="5" class="fill-sub-alt stroke-sub/40" />
-          <text text-anchor="middle" dy="0.35em" class="fill-sub text-[11px] tabular-nums">pb: {Math.round(pb * 100) / 100}</text>
+          <text text-anchor="middle" dy="0.35em" class="fill-sub text-[11px] tabular-nums"
+            >pb: {Math.round(pb * 100) / 100}</text
+          >
         </g>
       {/if}
-      <path d={rawLine} fill="none" class="stroke-sub" stroke-width={compact ? 1.5 : 2} stroke-linejoin="round" stroke-linecap="round" />
-      <path d={wpmLine} fill="none" class="stroke-main" stroke-width={compact ? 1.5 : 2.5} stroke-linejoin="round" stroke-linecap="round" />
+      <path
+        d={rawLine}
+        fill="none"
+        class="stroke-sub"
+        stroke-width={compact ? 1.5 : 2}
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+      <path
+        d={wpmLine}
+        fill="none"
+        class="stroke-main"
+        stroke-width={compact ? 1.5 : 2.5}
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
 
       {#each points as p, i (i)}
         {#if p.err}
           {@const cx = x(i)}
           {@const cy = compact ? pad.top + 3 : yErr(p.err)}
           {@const r = compact ? 2.5 : 3.5}
-          <path d="M{cx - r},{cy - r}L{cx + r},{cy + r}M{cx + r},{cy - r}L{cx - r},{cy + r}" class="stroke-error" stroke-width="2" stroke-linecap="round" />
+          <path
+            d="M{cx - r},{cy - r}L{cx + r},{cy + r}M{cx + r},{cy - r}L{cx - r},{cy + r}"
+            class="stroke-error"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
         {/if}
       {/each}
 
       {#if !compact}
         <g style="opacity: {hover.shown ? 1 : 0}; transition: opacity 0.15s ease-out" class="pointer-events-none">
-          <line x1={hover.x.current} x2={hover.x.current} y1={pad.top} y2={pad.top + innerH} class="stroke-sub/60" stroke-width="1" stroke-dasharray="3 3" />
+          <line
+            x1={hover.x.current}
+            x2={hover.x.current}
+            y1={pad.top}
+            y2={pad.top + innerH}
+            class="stroke-sub/60"
+            stroke-width="1"
+            stroke-dasharray="3 3"
+          />
           <circle cx={hover.x.current} cy={hover.y2.current} r="4" class="fill-sub stroke-sub-alt" stroke-width="2" />
           <circle cx={hover.x.current} cy={hover.y.current} r="5" class="fill-main stroke-sub-alt" stroke-width="2" />
         </g>
@@ -141,14 +217,17 @@
         {#if hp}
           <div class="mb-1 text-sub">second {hover.index! + 1}</div>
           <div class="flex items-center gap-2 whitespace-nowrap text-text">
-            <span class="inline-block h-0.5 w-3 rounded bg-main"></span>wpm <span class="ml-auto pl-3 tabular-nums">{hp.wpm}</span>
+            <span class="inline-block h-0.5 w-3 rounded bg-main"></span>wpm
+            <span class="ml-auto pl-3 tabular-nums">{hp.wpm}</span>
           </div>
           <div class="flex items-center gap-2 whitespace-nowrap text-text">
-            <span class="inline-block h-0.5 w-3 rounded bg-sub"></span>raw <span class="ml-auto pl-3 tabular-nums">{hp.raw}</span>
+            <span class="inline-block h-0.5 w-3 rounded bg-sub"></span>raw
+            <span class="ml-auto pl-3 tabular-nums">{hp.raw}</span>
           </div>
           {#if hp.err}
             <div class="flex items-center gap-2 whitespace-nowrap text-text">
-              <span class="w-3 text-center leading-none text-error">×</span>errors <span class="ml-auto pl-3 tabular-nums">{hp.err}</span>
+              <span class="w-3 text-center leading-none text-error">×</span>errors
+              <span class="ml-auto pl-3 tabular-nums">{hp.err}</span>
             </div>
           {/if}
         {/if}

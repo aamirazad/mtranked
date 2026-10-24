@@ -270,7 +270,8 @@ class Game {
         this.created?.reject(new Error(msg.message));
         this.created = null;
         // a refusal of something sent with a `from` tag is shown next to that control
-        const from = this.sentFrom && at - this.sentFrom.at < 10_000 && msg.code !== "race_failed" ? this.sentFrom.from : null;
+        const from =
+          this.sentFrom && at - this.sentFrom.at < 10_000 && msg.code !== "race_failed" ? this.sentFrom.from : null;
         this.sentFrom = null;
         if (msg.code === "queue_timeout" || msg.code === "ranked_blocked" || msg.code === "suspended") {
           // queue refusals are shown in place by the play page
@@ -336,7 +337,8 @@ class Game {
         }
         this.roomClosed = { code: msg.code, reason: msg.reason, rejoin: !!msg.rejoin };
         // the room page already says why in place
-        if (!msg.code || location.pathname.toUpperCase() !== `/ROOM/${msg.code.toUpperCase()}`) toasts.show(msg.reason, "info", 6000);
+        if (!msg.code || location.pathname.toUpperCase() !== `/ROOM/${msg.code.toUpperCase()}`)
+          toasts.show(msg.reason, "info", 6000);
         break;
       case "race.countdown":
       case "race.resume":
@@ -359,13 +361,19 @@ class Game {
         break;
       case "race.result":
         this.result = msg;
-        this.rematch = msg.rematch ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null } : null;
+        this.rematch = msg.rematch
+          ? { matchId: msg.matchId, expiresAt: msg.rematch.expiresAt, requested: [], closed: null }
+          : null;
         if (msg.mode !== "ghost" && msg.mode !== "private") this.queueMode = null;
         break;
       case "room.invite": {
         const { type: _, ...inv } = msg;
         this.invites = [...this.invites.filter((i) => i.from.id !== inv.from.id), { ...inv, at: Date.now() }];
-        notifier.alert(`${inv.from.name} invited you to race`, "Click to come back and join their room.", "room-invite");
+        notifier.alert(
+          `${inv.from.name} invited you to race`,
+          "Click to come back and join their room.",
+          "room-invite",
+        );
         break;
       }
       case "spectate.started":
@@ -386,7 +394,10 @@ class Game {
         // mid-race or in a ready check: keep it as an invite for later instead of pulling us out
         if (this.match || (this.race && !this.result)) {
           const from = { id: msg.playerId, name: msg.by || "A host" };
-          this.invites = [...this.invites, { code: msg.code, from, roomName: null, players: 0, at: Date.now(), admitted: true }];
+          this.invites = [
+            ...this.invites,
+            { code: msg.code, from, roomName: null, players: 0, at: Date.now(), admitted: true },
+          ];
         } else {
           if (msg.by) toasts.show(`${msg.by} let you in.`, "success", 4000);
           this.admitted = msg.code;
@@ -431,7 +442,10 @@ class Game {
     await this.connect().catch(() => {});
     this.created?.reject(new Error("superseded"));
     const code = new Promise<string>((resolve, reject) => (this.created = { resolve, reject }));
-    this.send({ type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite }, opts.from);
+    this.send(
+      { type: "room.create", settings: opts.settings ?? DEFAULT_ROOM_SETTINGS, invite: opts.invite },
+      opts.from,
+    );
     return code;
   }
   /** Close our room for everyone; we don't need telling it closed. */

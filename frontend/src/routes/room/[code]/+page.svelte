@@ -2,7 +2,25 @@
   import { onDestroy, onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Check, Copy, Crown, DoorClosed, Eye, Lock, LockOpen, LogOut, Paintbrush, Play, Repeat, Send, ShieldMinus, Shuffle, UserMinus, X, Link as LinkIcon } from "@lucide/svelte";
+  import {
+    Check,
+    Copy,
+    Crown,
+    DoorClosed,
+    Eye,
+    Lock,
+    LockOpen,
+    LogOut,
+    Paintbrush,
+    Play,
+    Repeat,
+    Send,
+    ShieldMinus,
+    Shuffle,
+    UserMinus,
+    X,
+    Link as LinkIcon,
+  } from "@lucide/svelte";
   import { OFFENSIVE_NAME_MESSAGE, THEMES, isOffensiveName, themeById } from "@mtr/shared";
   import { LANGUAGES } from "@mtr/engine";
   import { DEFAULT_ROOM_SETTINGS, ROOM_NAME_MAX, type TextSettings } from "@mtr/race-protocol";
@@ -93,7 +111,9 @@
   let seenRequests = new Set<string>();
   $effect(() => {
     const reqs = room?.requests ?? [];
-    for (const r of reqs) if (!seenRequests.has(r.id) && isHost && !inRace) toasts.show(`${r.name} is asking to join the room.`, "info", 5000);
+    for (const r of reqs)
+      if (!seenRequests.has(r.id) && isHost && !inRace)
+        toasts.show(`${r.name} is asking to join the room.`, "info", 5000);
     seenRequests = new Set(reqs.map((r) => r.id));
   });
 
@@ -101,7 +121,9 @@
   let suggestDismissed = $state(false);
   const suggested = $derived(
     room && !suggestDismissed && game.suggest?.code === code
-      ? game.suggest.friends.filter((id) => friends.presenceOf(id).online && !room.players.some((p) => p.id === id) && !room.invited.includes(id))
+      ? game.suggest.friends.filter(
+          (id) => friends.presenceOf(id).online && !room.players.some((p) => p.id === id) && !room.invited.includes(id),
+        )
       : [],
   );
   const suggestedNames = $derived.by(() => {
@@ -133,7 +155,10 @@
   let editingCustom = $state(false);
   function saveCustom() {
     if (!room) return;
-    game.send({ type: "room.settings", settings: { ...room.settings, mode: "custom", custom: customDraft } }, "settings");
+    game.send(
+      { type: "room.settings", settings: { ...room.settings, mode: "custom", custom: customDraft } },
+      "settings",
+    );
     editingCustom = false;
   }
 
@@ -207,7 +232,9 @@
     <div class="text-xl">{closed.reason}</div>
     <div class="mt-6 flex justify-center gap-3">
       {#if closed.rejoin}<button class="btn btn-main" onclick={() => join()}>rejoin</button>{/if}
-      <button class="btn" class:btn-main={!closed.rejoin} onclick={newRoom} disabled={creating}>{creating ? "creating…" : "new room"}</button>
+      <button class="btn" class:btn-main={!closed.rejoin} onclick={newRoom} disabled={creating}
+        >{creating ? "creating…" : "new room"}</button
+      >
       <a class="btn btn-ghost" href="/">home</a>
     </div>
     <Note note={refused("new-room")} class="mt-3 block" />
@@ -235,8 +262,12 @@
       <ResultsPanel result={game.result}>
         {#snippet actions()}
           {#if isHost}
-            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" }, "again")}><Shuffle size={16} /> race again</button>
-            <button class="btn" onclick={() => game.send({ type: "room.start", sameText: true }, "again")}><Repeat size={16} /> same text</button>
+            <button class="btn btn-main" onclick={() => game.send({ type: "room.start" }, "again")}
+              ><Shuffle size={16} /> race again</button
+            >
+            <button class="btn" onclick={() => game.send({ type: "room.start", sameText: true }, "again")}
+              ><Repeat size={16} /> same text</button
+            >
             <Note note={refused("again")} />
           {:else}
             <span class="text-sub">waiting for the host to start the next race…</span>
@@ -249,76 +280,107 @@
 
     <div class="flex flex-wrap items-start justify-between gap-6">
       <div class="flex flex-1 flex-wrap items-start justify-between gap-6">
-      <div>
-        {#if isHost && room.hostSubscriber}
-          <input
-            class="mb-4 w-full max-w-sm border-b-2 border-transparent bg-transparent text-2xl outline-none placeholder:text-sub/60 hover:border-sub-alt focus:border-main"
-            placeholder="name this room"
-            maxlength={ROOM_NAME_MAX}
-            bind:value={nameDraft}
-            onblur={saveName}
-            onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          />
-          <Note note={notes.get("name") ?? refused("name")} class="-mt-3 mb-4 block" />
-        {:else if room.name}
-          <div class="mb-4 text-2xl">{room.name}</div>
-        {/if}
-        <div class="label">room code</div>
-        <button class="group flex items-center gap-3 text-5xl tracking-[0.25em] text-main" onclick={() => copy(code, "code")} title="copy code">
-          {code}
-          {#if notes.get("code")}
-            <span class="flex items-center gap-1 text-sm tracking-normal animate-fade"><Check size={16} /> copied</span>
-          {:else}
-            <Copy size={20} class="text-sub opacity-0 transition-opacity group-hover:opacity-100" />
+        <div>
+          {#if isHost && room.hostSubscriber}
+            <input
+              class="mb-4 w-full max-w-sm border-b-2 border-transparent bg-transparent text-2xl outline-none placeholder:text-sub/60 hover:border-sub-alt focus:border-main"
+              placeholder="name this room"
+              maxlength={ROOM_NAME_MAX}
+              bind:value={nameDraft}
+              onblur={saveName}
+              onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            />
+            <Note note={notes.get("name") ?? refused("name")} class="-mt-3 mb-4 block" />
+          {:else if room.name}
+            <div class="mb-4 text-2xl">{room.name}</div>
           {/if}
-        </button>
-        <button class="mt-2 flex items-center gap-2 text-sm text-sub hover:text-text" onclick={() => copy(link, "link")}>
-          {#if notes.get("link")}<Check size={14} class="text-main" /> <span class="text-main">invite link copied</span>{:else}<LinkIcon size={14} /> copy invite link{/if}
-        </button>
-        {#if isHost && room.hostSubscriber}
-          <label class="mt-2 flex items-center gap-2 text-sm text-sub">
-            <Paintbrush size={14} /> room theme
-            <select
-              class="cursor-pointer bg-transparent outline-none hover:text-text"
-              value={room.theme ?? ""}
-              onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null }, "theme")}
+          <div class="label">room code</div>
+          <button
+            class="group flex items-center gap-3 text-5xl tracking-[0.25em] text-main"
+            onclick={() => copy(code, "code")}
+            title="copy code"
+          >
+            {code}
+            {#if notes.get("code")}
+              <span class="flex items-center gap-1 text-sm tracking-normal animate-fade"
+                ><Check size={16} /> copied</span
+              >
+            {:else}
+              <Copy size={20} class="text-sub opacity-0 transition-opacity group-hover:opacity-100" />
+            {/if}
+          </button>
+          <button
+            class="mt-2 flex items-center gap-2 text-sm text-sub hover:text-text"
+            onclick={() => copy(link, "link")}
+          >
+            {#if notes.get("link")}<Check size={14} class="text-main" />
+              <span class="text-main">invite link copied</span>{:else}<LinkIcon size={14} /> copy invite link{/if}
+          </button>
+          {#if isHost && room.hostSubscriber}
+            <label class="mt-2 flex items-center gap-2 text-sm text-sub">
+              <Paintbrush size={14} /> room theme
+              <select
+                class="cursor-pointer bg-transparent outline-none hover:text-text"
+                value={room.theme ?? ""}
+                onchange={(e) => game.send({ type: "room.theme", theme: e.currentTarget.value || null }, "theme")}
+              >
+                <option value="">none (everyone keeps theirs)</option>
+                {#each THEMES as t (t.id)}<option value={t.id}>{t.name}{t.note ? ` (${t.note})` : ""}</option>{/each}
+              </select>
+            </label>
+            <Note note={refused("theme")} class="mt-1 block" />
+          {:else if room.theme}
+            <div class="mt-2 flex items-center gap-2 text-sm text-sub">
+              <Paintbrush size={14} /> room theme · {themeById(room.theme)?.name ?? room.theme}
+              {#if !prefs.roomThemes}<span class="text-xs">(off in your settings)</span>{/if}
+            </div>
+          {/if}
+        </div>
+        {#if suggested.length}
+          <div class="w-72 rounded-xl border-2 border-main/40 bg-sub-alt p-4 text-sm animate-rise">
+            <div class="flex items-start justify-between gap-2">
+              <div class="text-base">
+                <span class="text-main">{suggestedNames}</span>
+                {suggested.length === 1 ? "is" : "are"} online right now
+              </div>
+              <button
+                class="shrink-0 text-sub hover:text-text"
+                aria-label="dismiss"
+                onclick={() => (suggestDismissed = true)}><X size={16} /></button
+              >
+            </div>
+            <div class="mt-1 text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room?</div>
+            <button class="btn btn-main mt-3 w-full justify-center" onclick={() => invite(suggested)}
+              ><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button
             >
-              <option value="">none (everyone keeps theirs)</option>
-              {#each THEMES as t (t.id)}<option value={t.id}>{t.name}{t.note ? ` (${t.note})` : ""}</option>{/each}
-            </select>
-          </label>
-          <Note note={refused("theme")} class="mt-1 block" />
-        {:else if room.theme}
-          <div class="mt-2 flex items-center gap-2 text-sm text-sub">
-            <Paintbrush size={14} /> room theme · {themeById(room.theme)?.name ?? room.theme}
-            {#if !prefs.roomThemes}<span class="text-xs">(off in your settings)</span>{/if}
+            <Note note={refused("invite")} class="mt-2 block" />
           </div>
         {/if}
-      </div>
-      {#if suggested.length}
-        <div class="w-72 rounded-xl border-2 border-main/40 bg-sub-alt p-4 text-sm animate-rise">
-          <div class="flex items-start justify-between gap-2">
-            <div class="text-base"><span class="text-main">{suggestedNames}</span> {suggested.length === 1 ? "is" : "are"} online right now</div>
-            <button class="shrink-0 text-sub hover:text-text" aria-label="dismiss" onclick={() => (suggestDismissed = true)}><X size={16} /></button>
-          </div>
-          <div class="mt-1 text-sub">invite {suggested.length === 1 ? "them" : "everyone"} to this room?</div>
-          <button class="btn btn-main mt-3 w-full justify-center" onclick={() => invite(suggested)}><Send size={16} /> {suggested.length === 1 ? "invite" : `invite all ${suggested.length}`}</button>
-          <Note note={refused("invite")} class="mt-2 block" />
-        </div>
-      {/if}
       </div>
       <div class="flex flex-col items-end gap-2">
         <div class="flex items-center gap-2">
           {#if isHost}
-            <button class="btn" onclick={() => game.send({ type: "room.lock", locked: !room.locked }, "controls")} title={room.locked ? "unlock room" : "lock room"}>
+            <button
+              class="btn"
+              onclick={() => game.send({ type: "room.lock", locked: !room.locked }, "controls")}
+              title={room.locked ? "unlock room" : "lock room"}
+            >
               {#if room.locked}<Lock size={16} /> locked{:else}<LockOpen size={16} /> open{/if}
             </button>
             <button class="btn" onclick={closeRoom} title="close room">
               <DoorClosed size={16} /> close room
             </button>
-            <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" }, "controls")}><Play size={16} /> start race</button>
+            <button class="btn btn-main px-8" onclick={() => game.send({ type: "room.start" }, "controls")}
+              ><Play size={16} /> start race</button
+            >
           {/if}
-          <button class="btn btn-ghost" onclick={() => { leave(); goto("/"); }}><LogOut size={16} /> leave</button>
+          <button
+            class="btn btn-ghost"
+            onclick={() => {
+              leave();
+              goto("/");
+            }}><LogOut size={16} /> leave</button
+          >
         </div>
         <Note note={refused("controls")} />
       </div>
@@ -326,94 +388,130 @@
 
     <div class="mt-10 grid items-start gap-6 md:grid-cols-[1fr_1.2fr]">
       <div class="space-y-6">
-      {#if isHost && room.requests.length}
-        <div class="card border-2 border-main/40 animate-rise">
-          <div class="label mb-3">asking to join</div>
-          <ul class="space-y-1">
-            {#each room.requests as r (r.id)}
-              <li class="flex items-center gap-2 rounded-md px-2 py-1.5">
-                <span class="truncate">{r.name}</span>
-                <span class="text-xs text-sub">lv {r.level}</span>
-                <span class="ml-auto flex gap-2">
-                  <button class="btn btn-main py-1 text-sm" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: true }, "requests")}><Check size={14} /> let in</button>
-                  <button class="btn btn-ghost py-1 text-sm" aria-label="decline" onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: false }, "requests")}><X size={14} /></button>
-                </span>
-              </li>
-            {/each}
-          </ul>
-          <Note note={refused("requests")} class="mt-2 block" />
-        </div>
-      {/if}
-      <div class="card">
-        <div class="mb-3 flex items-center justify-between">
-          <span class="label">players {room.players.length}/{room.cap}</span>
-          <span class="label">wins</span>
-        </div>
-        <ul class="space-y-1">
-          {#each board as { p, wins } (p.id)}
-            <li class="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
-              {#if room.hosts.includes(p.id)}<Crown size={14} class="text-main" aria-label="host" />{:else}<span class="w-3.5"></span>{/if}
-              <span class:text-main={p.id === meId}>{p.name}</span>
-              {#if p.guest}<span class="text-xs text-sub">guest</span>{:else}<span class="text-xs text-sub">lv {p.level}</span>{/if}
-              {#if isHost && (p.id !== meId || room.hosts.length > 1)}
-                <span class="ml-auto hidden gap-1 group-hover:flex">
-                  {#if !room.hosts.includes(p.id)}
-                    <button class="text-sub hover:text-main" title="make host" onclick={() => game.send({ type: "room.promote", playerId: p.id }, "players")}><Crown size={14} /></button>
-                  {:else if room.hosts.length > 1}
+        {#if isHost && room.requests.length}
+          <div class="card border-2 border-main/40 animate-rise">
+            <div class="label mb-3">asking to join</div>
+            <ul class="space-y-1">
+              {#each room.requests as r (r.id)}
+                <li class="flex items-center gap-2 rounded-md px-2 py-1.5">
+                  <span class="truncate">{r.name}</span>
+                  <span class="text-xs text-sub">lv {r.level}</span>
+                  <span class="ml-auto flex gap-2">
                     <button
-                      class="text-sub hover:text-error"
-                      title={p.id === meId ? "step down as host" : "remove host"}
-                      onclick={() => game.send({ type: "room.demote", playerId: p.id }, "players")}><ShieldMinus size={14} /></button
+                      class="btn btn-main py-1 text-sm"
+                      onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: true }, "requests")}
+                      ><Check size={14} /> let in</button
                     >
-                  {/if}
-                  {#if p.id !== meId}
-                    <button class="text-sub hover:text-error" title="kick" onclick={() => game.send({ type: "room.kick", playerId: p.id }, "players")}><UserMinus size={14} /></button>
-                  {/if}
-                </span>
-              {/if}
-              <span class="ml-auto text-main tabular-nums group-hover:ml-2">{wins}</span>
-            </li>
-          {/each}
-        </ul>
-        <Note note={refused("players")} class="mt-2 block" />
-        {#if room.spectators.length}
-          <div class="mt-4 flex items-start gap-2 text-xs text-sub" title="watching, not playing">
-            <Eye size={14} class="shrink-0" />
-            <span>{room.spectators.map((x) => x.name).join(", ")}</span>
+                    <button
+                      class="btn btn-ghost py-1 text-sm"
+                      aria-label="decline"
+                      onclick={() => game.send({ type: "room.answer", playerId: r.id, accept: false }, "requests")}
+                      ><X size={14} /></button
+                    >
+                  </span>
+                </li>
+              {/each}
+            </ul>
+            <Note note={refused("requests")} class="mt-2 block" />
           </div>
         {/if}
-        {#if room.races}<div class="mt-4 text-xs text-sub">{room.races} race{room.races === 1 ? "" : "s"} played</div>{/if}
-        {#if !room.hostSubscriber && room.players.length >= room.cap}
-          <div class="mt-4 text-xs text-sub">room is full.{#if session.supporterSales} supporter hosts get rooms of up to 16.{/if}</div>
-        {/if}
-      </div>
-
-      {#if invitable.length}
         <div class="card">
           <div class="mb-3 flex items-center justify-between">
-            <span class="label">friends online</span>
-            {#if invitable.some((f) => !room.invited.includes(f.id))}
-              <button class="text-xs text-sub hover:text-main" onclick={() => invite(invitable.filter((f) => !room.invited.includes(f.id)).map((f) => f.id))}>invite all</button>
-            {/if}
+            <span class="label">players {room.players.length}/{room.cap}</span>
+            <span class="label">wins</span>
           </div>
           <ul class="space-y-1">
-            {#each invitable as f (f.id)}
-              <li class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
-                <div class="min-w-0">
-                  <div class="truncate">{f.name}</div>
-                  <div class="truncate text-xs text-sub">{describeActivity(f.presence)}</div>
-                </div>
-                {#if room.invited.includes(f.id)}
-                  <span class="ml-auto text-xs text-sub">invited</span>
-                {:else}
-                  <button class="ml-auto flex items-center gap-1 text-sm text-sub hover:text-main" onclick={() => invite([f.id])}><Send size={14} /> invite</button>
+            {#each board as { p, wins } (p.id)}
+              <li class="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
+                {#if room.hosts.includes(p.id)}<Crown size={14} class="text-main" aria-label="host" />{:else}<span
+                    class="w-3.5"
+                  ></span>{/if}
+                <span class:text-main={p.id === meId}>{p.name}</span>
+                {#if p.guest}<span class="text-xs text-sub">guest</span>{:else}<span class="text-xs text-sub"
+                    >lv {p.level}</span
+                  >{/if}
+                {#if isHost && (p.id !== meId || room.hosts.length > 1)}
+                  <span class="ml-auto hidden gap-1 group-hover:flex">
+                    {#if !room.hosts.includes(p.id)}
+                      <button
+                        class="text-sub hover:text-main"
+                        title="make host"
+                        onclick={() => game.send({ type: "room.promote", playerId: p.id }, "players")}
+                        ><Crown size={14} /></button
+                      >
+                    {:else if room.hosts.length > 1}
+                      <button
+                        class="text-sub hover:text-error"
+                        title={p.id === meId ? "step down as host" : "remove host"}
+                        onclick={() => game.send({ type: "room.demote", playerId: p.id }, "players")}
+                        ><ShieldMinus size={14} /></button
+                      >
+                    {/if}
+                    {#if p.id !== meId}
+                      <button
+                        class="text-sub hover:text-error"
+                        title="kick"
+                        onclick={() => game.send({ type: "room.kick", playerId: p.id }, "players")}
+                        ><UserMinus size={14} /></button
+                      >
+                    {/if}
+                  </span>
                 {/if}
+                <span class="ml-auto text-main tabular-nums group-hover:ml-2">{wins}</span>
               </li>
             {/each}
           </ul>
-          <Note note={refused("invite")} class="mt-2 block" />
+          <Note note={refused("players")} class="mt-2 block" />
+          {#if room.spectators.length}
+            <div class="mt-4 flex items-start gap-2 text-xs text-sub" title="watching, not playing">
+              <Eye size={14} class="shrink-0" />
+              <span>{room.spectators.map((x) => x.name).join(", ")}</span>
+            </div>
+          {/if}
+          {#if room.races}<div class="mt-4 text-xs text-sub">
+              {room.races} race{room.races === 1 ? "" : "s"} played
+            </div>{/if}
+          {#if !room.hostSubscriber && room.players.length >= room.cap}
+            <div class="mt-4 text-xs text-sub">
+              room is full.{#if session.supporterSales}
+                supporter hosts get rooms of up to 16.{/if}
+            </div>
+          {/if}
         </div>
-      {/if}
+
+        {#if invitable.length}
+          <div class="card">
+            <div class="mb-3 flex items-center justify-between">
+              <span class="label">friends online</span>
+              {#if invitable.some((f) => !room.invited.includes(f.id))}
+                <button
+                  class="text-xs text-sub hover:text-main"
+                  onclick={() => invite(invitable.filter((f) => !room.invited.includes(f.id)).map((f) => f.id))}
+                  >invite all</button
+                >
+              {/if}
+            </div>
+            <ul class="space-y-1">
+              {#each invitable as f (f.id)}
+                <li class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg/40">
+                  <div class="min-w-0">
+                    <div class="truncate">{f.name}</div>
+                    <div class="truncate text-xs text-sub">{describeActivity(f.presence)}</div>
+                  </div>
+                  {#if room.invited.includes(f.id)}
+                    <span class="ml-auto text-xs text-sub">invited</span>
+                  {:else}
+                    <button
+                      class="ml-auto flex items-center gap-1 text-sm text-sub hover:text-main"
+                      onclick={() => invite([f.id])}><Send size={14} /> invite</button
+                    >
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+            <Note note={refused("invite")} class="mt-2 block" />
+          </div>
+        {/if}
       </div>
 
       <div class="card">
@@ -424,39 +522,82 @@
               <button
                 class="toggle"
                 class:on={editingCustom ? m === "custom" : room.settings.mode === m}
-                onclick={() => (m === "custom" ? ((customDraft = room.settings.custom ?? ""), (editingCustom = true)) : ((editingCustom = false), update("mode", m)))}
-                >{m}</button
+                onclick={() =>
+                  m === "custom"
+                    ? ((customDraft = room.settings.custom ?? ""), (editingCustom = true))
+                    : ((editingCustom = false), update("mode", m))}>{m}</button
               >
             {/each}
           </div>
           {#if editingCustom || (room.settings.mode === "custom" && isHost)}
-            <textarea class="input h-28 resize-none" maxlength="5000" placeholder="paste your text" bind:value={customDraft}></textarea>
+            <textarea
+              class="input h-28 resize-none"
+              maxlength="5000"
+              placeholder="paste your text"
+              bind:value={customDraft}></textarea>
             <button class="btn" onclick={saveCustom} disabled={!customDraft.trim()}>use this text</button>
           {:else if room.settings.mode === "words"}
             <div class="flex flex-wrap gap-1">
-              {#each [10, 25, 50, 100] as w (w)}<button class="toggle" class:on={room.settings.words === w} onclick={() => update("words", w)}>{w}</button>{/each}
+              {#each [10, 25, 50, 100] as w (w)}<button
+                  class="toggle"
+                  class:on={room.settings.words === w}
+                  onclick={() => update("words", w)}>{w}</button
+                >{/each}
             </div>
           {:else if room.settings.mode === "time"}
             <div class="flex flex-wrap gap-1">
-              {#each [15, 30, 60, 120] as t (t)}<button class="toggle" class:on={room.settings.time === t} onclick={() => update("time", t)}>{t}s</button>{/each}
+              {#each [15, 30, 60, 120] as t (t)}<button
+                  class="toggle"
+                  class:on={room.settings.time === t}
+                  onclick={() => update("time", t)}>{t}s</button
+                >{/each}
             </div>
           {:else if room.settings.mode === "quote"}
             <div class="flex flex-wrap gap-1">
-              {#each ["short", "medium", "long"] as const as q (q)}<button class="toggle" class:on={room.settings.quoteLength === q} onclick={() => update("quoteLength", q)}>{q}</button>{/each}
+              {#each ["short", "medium", "long"] as const as q (q)}<button
+                  class="toggle"
+                  class:on={room.settings.quoteLength === q}
+                  onclick={() => update("quoteLength", q)}>{q}</button
+                >{/each}
             </div>
           {/if}
           {#if room.settings.mode === "words" || room.settings.mode === "time"}
             <div class="flex flex-wrap items-center gap-1">
-              <button class="toggle" class:on={room.settings.punctuation} onclick={() => update("punctuation", !room.settings.punctuation)}>@ punctuation</button>
-              <button class="toggle" class:on={room.settings.numbers} onclick={() => update("numbers", !room.settings.numbers)}># numbers</button>
-              <select class="ml-2 cursor-pointer bg-transparent text-sub outline-none hover:text-text" value={room.settings.language} onchange={(e) => update("language", e.currentTarget.value as TextSettings["language"])}>
+              <button
+                class="toggle"
+                class:on={room.settings.punctuation}
+                onclick={() => update("punctuation", !room.settings.punctuation)}>@ punctuation</button
+              >
+              <button
+                class="toggle"
+                class:on={room.settings.numbers}
+                onclick={() => update("numbers", !room.settings.numbers)}># numbers</button
+              >
+              <select
+                class="ml-2 cursor-pointer bg-transparent text-sub outline-none hover:text-text"
+                value={room.settings.language}
+                onchange={(e) => update("language", e.currentTarget.value as TextSettings["language"])}
+              >
                 {#each LANGUAGES as l (l)}<option value={l}>{l.replace("_", " ")}</option>{/each}
               </select>
             </div>
           {/if}
         </fieldset>
-        <div class="mt-3"><RulesPicker rules={room.settings.rules} onchange={(r) => update("rules", r)} disabled={!isHost} note="applies to everyone in this room" /></div>
-        <div class="mt-3 text-sm"><FunboxPicker value={room.settings.funbox} readonly={!isHost} onchange={(v) => update("funbox", v.length ? v : undefined)} /></div>
+        <div class="mt-3">
+          <RulesPicker
+            rules={room.settings.rules}
+            onchange={(r) => update("rules", r)}
+            disabled={!isHost}
+            note="applies to everyone in this room"
+          />
+        </div>
+        <div class="mt-3 text-sm">
+          <FunboxPicker
+            value={room.settings.funbox}
+            readonly={!isHost}
+            onchange={(v) => update("funbox", v.length ? v : undefined)}
+          />
+        </div>
         <Note note={refused("settings")} class="mt-3 block" />
         {#if !isHost}<div class="mt-4 text-xs text-sub">the hosts pick the text</div>{/if}
       </div>

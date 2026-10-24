@@ -12,17 +12,39 @@ export function celebrate(kind: string) {
       const end = Date.now() + 1200;
       const iv = setInterval(() => {
         if (Date.now() > end) return clearInterval(iv);
-        void confetti({ particleCount: 40, startVelocity: 30, spread: 360, ticks: 60, origin: { x: Math.random(), y: Math.random() * 0.4 + 0.1 }, colors });
+        void confetti({
+          particleCount: 40,
+          startVelocity: 30,
+          spread: 360,
+          ticks: 60,
+          origin: { x: Math.random(), y: Math.random() * 0.4 + 0.1 },
+          colors,
+        });
       }, 220);
       return;
     }
     case "stars":
-      void confetti({ particleCount: 60, spread: 100, startVelocity: 35, shapes: ["star"], colors: ["#e2b714", "#fff3b0"], origin: { y: 0.6 } });
+      void confetti({
+        particleCount: 60,
+        spread: 100,
+        startVelocity: 35,
+        shapes: ["star"],
+        colors: ["#e2b714", "#fff3b0"],
+        origin: { y: 0.6 },
+      });
       return;
     case "gold": {
       const end = Date.now() + 1500;
       const frame = () => {
-        void confetti({ particleCount: 4, angle: 270, spread: 120, startVelocity: 10, gravity: 0.7, origin: { x: Math.random(), y: -0.05 }, colors: ["#e2b714", "#f5d76e", "#b8901a"] });
+        void confetti({
+          particleCount: 4,
+          angle: 270,
+          spread: 120,
+          startVelocity: 10,
+          gravity: 0.7,
+          origin: { x: Math.random(), y: -0.05 },
+          colors: ["#e2b714", "#f5d76e", "#b8901a"],
+        });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();

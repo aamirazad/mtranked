@@ -50,6 +50,11 @@ export function resetEmail(to: string, token: string) {
     to,
     "Reset your MT Ranked password",
     `Reset your password (valid for 30 minutes): ${link}`,
-    wrap("Reset your password", "This link is valid for 30 minutes and can be used once.", link, "Choose a new password"),
+    wrap(
+      "Reset your password",
+      "This link is valid for 30 minutes and can be used once.",
+      link,
+      "Choose a new password",
+    ),
   );
 }

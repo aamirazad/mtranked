@@ -58,19 +58,30 @@
             {:else}
               <div class="text-sm text-sub">level {p.level}</div>
             {/if}
-            <div class="rounded-full bg-black/30 px-2.5 py-0.5 text-xs {match.ready.includes(p.id) ? 'text-win' : 'text-sub'}">{match.ready.includes(p.id) ? "ready" : "waiting"}</div>
+            <div
+              class="rounded-full bg-black/30 px-2.5 py-0.5 text-xs {match.ready.includes(p.id)
+                ? 'text-win'
+                : 'text-sub'}"
+            >
+              {match.ready.includes(p.id) ? "ready" : "waiting"}
+            </div>
           </div>
         {/if}
       {/each}
     </div>
     <div class="mt-8 h-1 overflow-hidden rounded bg-bg">
-      <div class="h-full bg-main transition-[width] duration-100 ease-linear" style="width: {(left / total) * 100}%"></div>
+      <div
+        class="h-full bg-main transition-[width] duration-100 ease-linear"
+        style="width: {(left / total) * 100}%"
+      ></div>
     </div>
     <div class="mt-6 flex items-center justify-center gap-3">
       {#if imReady}
         <div class="text-sub">waiting for {opp?.name ?? "opponent"}…</div>
       {:else}
-        <button class="btn btn-main px-10 py-3 text-lg" onclick={ready}>ready <kbd class="bg-bg/30 text-bg">enter</kbd></button>
+        <button class="btn btn-main px-10 py-3 text-lg" onclick={ready}
+          >ready <kbd class="bg-bg/30 text-bg">enter</kbd></button
+        >
         <button class="btn btn-ghost" onclick={decline}>decline</button>
       {/if}
     </div>

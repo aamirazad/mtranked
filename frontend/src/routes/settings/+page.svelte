@@ -28,7 +28,14 @@
   import { CLICK_SOUNDS, ERROR_SOUNDS, VOLUMES, playClick, playError } from "#lib/sound.ts";
   import { LAYOUT_IDS, layoutName } from "#lib/layouts.ts";
 
-  type Sess = { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string };
+  type Sess = {
+    id: string;
+    current: boolean;
+    userAgent: string | null;
+    ip: string | null;
+    createdAt: string;
+    lastSeenAt: string;
+  };
 
   let displayName = $state("");
   let country = $state("");
@@ -49,7 +56,8 @@
     await load();
     // back from checkout: thank them where they clicked
     subscribed = !!page.url.searchParams.get("subscribed");
-    if (subscribed) requestAnimationFrame(() => document.getElementById("supporter")?.scrollIntoView({ block: "center" }));
+    if (subscribed)
+      requestAnimationFrame(() => document.getElementById("supporter")?.scrollIntoView({ block: "center" }));
   });
 
   // hover-intent for theme previews: the first preview waits until the pointer rests on a
@@ -158,7 +166,9 @@
   const cosmeticName = (c: Cosmetic) => (session.supporterSales ? c.name : (c.quietName ?? c.name));
   const equippedId = (type: CosmeticType) => session.me?.equipped[type];
   const shortUa = (ua: string | null) =>
-    !ua ? "unknown device" : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
+    !ua
+      ? "unknown device"
+      : `${/Firefox/.test(ua) ? "Firefox" : /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "Browser"} on ${/Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "unknown"}`;
 
   // ---------------------------------------------------------------- preferences
   // Every typing preference, grouped like monkeytype's settings page. They're
@@ -193,33 +203,210 @@
     },
     { id: "input", label: "input" },
     { id: "sound", label: "sound" },
-    { id: "caret", label: "caret", note: 'caret color and shape are cosmetics you unlock by playing (see <a class="link" href="#cosmetics">cosmetics</a>).' },
+    {
+      id: "caret",
+      label: "caret",
+      note: 'caret color and shape are cosmetics you unlock by playing (see <a class="link" href="#cosmetics">cosmetics</a>).',
+    },
     { id: "appearance", label: "appearance" },
     { id: "live", label: "live stats" },
   ];
 
   const SETTINGS: Setting[] = [
-    { id: "quick-restart", section: "behavior", title: "quick restart", hint: "restart a practice test with a single key.", options: QUICK_RESTARTS, ...pref("quickRestart") },
-    { id: "layout", section: "input", title: "layout emulation", hint: "type as if your keyboard had this layout, whatever your system layout is (e.g. practice dvorak on a qwerty board).", options: LAYOUT_IDS, name: layoutName, kind: "select", tags: "keyboard dvorak colemak workman azerty qwertz", ...pref("layout") },
-    { id: "sound-click", section: "sound", title: "sound on click", hint: "play a sound on every key.", options: Object.keys(CLICK_SOUNDS), name: (v: string) => CLICK_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnClick, set: (v: string) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)) },
-    { id: "sound-error", section: "sound", title: "sound on error", hint: "play a sound when you make a mistake (instead of the click).", options: Object.keys(ERROR_SOUNDS), name: (v: string) => ERROR_SOUNDS[v]!.name, tags: "audio", value: () => prefs.soundOnError, set: (v: string) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)) },
-    { id: "sound-volume", section: "sound", title: "sound volume", hint: "how loud typing sounds are.", options: VOLUMES, name: (v: number) => `${v * 100}%`, tags: "audio", value: () => prefs.soundVolume, set: (v: number) => (prefs.set("soundVolume", v), playClick(prefs.soundOnClick === "off" ? "click" : prefs.soundOnClick, v)) },
-    { id: "smooth-caret", section: "caret", title: "smooth caret", hint: "glide the caret between letters instead of jumping, and how fast.", options: CARET_SPEEDS, ...pref("smoothCaret") },
-    { id: "font-family", section: "appearance", title: "font family", hint: "the font used across the site and for the words you type.", options: [], kind: "fonts", tags: FONTS.map(fontLabel).join(" "), ...pref("fontFamily") },
-    { id: "font-size", section: "appearance", title: "font size", hint: "size of the words you type.", options: FONT_SIZES, name: fontSizeName, ...pref("fontSize") },
-    { id: "tape-mode", section: "appearance", title: "tape mode", hint: "show the words on one scrolling line. letter scrolls every letter, word every word.", options: TAPE_MODES, ...pref("tapeMode") },
-    { id: "show-all-lines", section: "appearance", title: "show all lines", hint: "show the whole text instead of three lines (not in time mode).", options: onOff, name: onOffName, ...pref("showAllLines") },
-    { id: "smooth-line-scroll", section: "appearance", title: "smooth line scroll", hint: "slide to the next line instead of jumping.", options: onOff, name: onOffName, ...pref("smoothLineScroll") },
-    { id: "highlight-mode", section: "appearance", title: "highlight mode", hint: "letter colors each typed letter, word lights up the whole current word, off only shows mistakes.", options: HIGHLIGHT_MODES, ...pref("highlightMode") },
-    { id: "indicate-typos", section: "appearance", title: "indicate typos", hint: "show the letter you actually typed below the word, or in place of the right one.", options: INDICATE_TYPOS, ...pref("indicateTypos") },
-    { id: "blind-mode", section: "appearance", title: "blind mode", hint: "hide mistakes while you type. they still count.", options: onOff, name: onOffName, ...pref("blindMode") },
-    { id: "hide-extra", section: "appearance", title: "hide extra letters", hint: "don't show letters typed past the end of a word.", options: onOff, name: onOffName, ...pref("hideExtraLetters") },
-    { id: "flip-colors", section: "appearance", title: "flip test colors", hint: "untyped words bright, typed words dim.", options: onOff, name: onOffName, ...pref("flipColors") },
-    { id: "colorful-mode", section: "appearance", title: "colorful mode", hint: "typed letters use the theme's main color.", options: onOff, name: onOffName, ...pref("colorfulMode") },
-    { id: "live-progress", section: "live", title: "live progress", hint: "the timer or word count while typing: big, small, a bar, or hidden.", options: PROGRESS_STYLES, tags: "timer", ...pref("liveProgress") },
-    { id: "live-wpm", section: "live", title: "live speed", hint: "your wpm while typing.", options: LIVE_STYLES, tags: "wpm", ...pref("liveWpm") },
-    { id: "live-acc", section: "live", title: "live accuracy", hint: "your accuracy while typing.", options: LIVE_STYLES, ...pref("liveAcc") },
-    { id: "live-burst", section: "live", title: "live burst", hint: "the speed of your last word.", options: LIVE_STYLES, ...pref("liveBurst") },
+    {
+      id: "quick-restart",
+      section: "behavior",
+      title: "quick restart",
+      hint: "restart a practice test with a single key.",
+      options: QUICK_RESTARTS,
+      ...pref("quickRestart"),
+    },
+    {
+      id: "layout",
+      section: "input",
+      title: "layout emulation",
+      hint: "type as if your keyboard had this layout, whatever your system layout is (e.g. practice dvorak on a qwerty board).",
+      options: LAYOUT_IDS,
+      name: layoutName,
+      kind: "select",
+      tags: "keyboard dvorak colemak workman azerty qwertz",
+      ...pref("layout"),
+    },
+    {
+      id: "sound-click",
+      section: "sound",
+      title: "sound on click",
+      hint: "play a sound on every key.",
+      options: Object.keys(CLICK_SOUNDS),
+      name: (v: string) => CLICK_SOUNDS[v]!.name,
+      tags: "audio",
+      value: () => prefs.soundOnClick,
+      set: (v: string) => (prefs.set("soundOnClick", v), playClick(v, prefs.soundVolume)),
+    },
+    {
+      id: "sound-error",
+      section: "sound",
+      title: "sound on error",
+      hint: "play a sound when you make a mistake (instead of the click).",
+      options: Object.keys(ERROR_SOUNDS),
+      name: (v: string) => ERROR_SOUNDS[v]!.name,
+      tags: "audio",
+      value: () => prefs.soundOnError,
+      set: (v: string) => (prefs.set("soundOnError", v), playError(v, prefs.soundVolume)),
+    },
+    {
+      id: "sound-volume",
+      section: "sound",
+      title: "sound volume",
+      hint: "how loud typing sounds are.",
+      options: VOLUMES,
+      name: (v: number) => `${v * 100}%`,
+      tags: "audio",
+      value: () => prefs.soundVolume,
+      set: (v: number) => (
+        prefs.set("soundVolume", v),
+        playClick(prefs.soundOnClick === "off" ? "click" : prefs.soundOnClick, v)
+      ),
+    },
+    {
+      id: "smooth-caret",
+      section: "caret",
+      title: "smooth caret",
+      hint: "glide the caret between letters instead of jumping, and how fast.",
+      options: CARET_SPEEDS,
+      ...pref("smoothCaret"),
+    },
+    {
+      id: "font-family",
+      section: "appearance",
+      title: "font family",
+      hint: "the font used across the site and for the words you type.",
+      options: [],
+      kind: "fonts",
+      tags: FONTS.map(fontLabel).join(" "),
+      ...pref("fontFamily"),
+    },
+    {
+      id: "font-size",
+      section: "appearance",
+      title: "font size",
+      hint: "size of the words you type.",
+      options: FONT_SIZES,
+      name: fontSizeName,
+      ...pref("fontSize"),
+    },
+    {
+      id: "tape-mode",
+      section: "appearance",
+      title: "tape mode",
+      hint: "show the words on one scrolling line. letter scrolls every letter, word every word.",
+      options: TAPE_MODES,
+      ...pref("tapeMode"),
+    },
+    {
+      id: "show-all-lines",
+      section: "appearance",
+      title: "show all lines",
+      hint: "show the whole text instead of three lines (not in time mode).",
+      options: onOff,
+      name: onOffName,
+      ...pref("showAllLines"),
+    },
+    {
+      id: "smooth-line-scroll",
+      section: "appearance",
+      title: "smooth line scroll",
+      hint: "slide to the next line instead of jumping.",
+      options: onOff,
+      name: onOffName,
+      ...pref("smoothLineScroll"),
+    },
+    {
+      id: "highlight-mode",
+      section: "appearance",
+      title: "highlight mode",
+      hint: "letter colors each typed letter, word lights up the whole current word, off only shows mistakes.",
+      options: HIGHLIGHT_MODES,
+      ...pref("highlightMode"),
+    },
+    {
+      id: "indicate-typos",
+      section: "appearance",
+      title: "indicate typos",
+      hint: "show the letter you actually typed below the word, or in place of the right one.",
+      options: INDICATE_TYPOS,
+      ...pref("indicateTypos"),
+    },
+    {
+      id: "blind-mode",
+      section: "appearance",
+      title: "blind mode",
+      hint: "hide mistakes while you type. they still count.",
+      options: onOff,
+      name: onOffName,
+      ...pref("blindMode"),
+    },
+    {
+      id: "hide-extra",
+      section: "appearance",
+      title: "hide extra letters",
+      hint: "don't show letters typed past the end of a word.",
+      options: onOff,
+      name: onOffName,
+      ...pref("hideExtraLetters"),
+    },
+    {
+      id: "flip-colors",
+      section: "appearance",
+      title: "flip test colors",
+      hint: "untyped words bright, typed words dim.",
+      options: onOff,
+      name: onOffName,
+      ...pref("flipColors"),
+    },
+    {
+      id: "colorful-mode",
+      section: "appearance",
+      title: "colorful mode",
+      hint: "typed letters use the theme's main color.",
+      options: onOff,
+      name: onOffName,
+      ...pref("colorfulMode"),
+    },
+    {
+      id: "live-progress",
+      section: "live",
+      title: "live progress",
+      hint: "the timer or word count while typing: big, small, a bar, or hidden.",
+      options: PROGRESS_STYLES,
+      tags: "timer",
+      ...pref("liveProgress"),
+    },
+    {
+      id: "live-wpm",
+      section: "live",
+      title: "live speed",
+      hint: "your wpm while typing.",
+      options: LIVE_STYLES,
+      tags: "wpm",
+      ...pref("liveWpm"),
+    },
+    {
+      id: "live-acc",
+      section: "live",
+      title: "live accuracy",
+      hint: "your accuracy while typing.",
+      options: LIVE_STYLES,
+      ...pref("liveAcc"),
+    },
+    {
+      id: "live-burst",
+      section: "live",
+      title: "live burst",
+      hint: "the speed of your last word.",
+      options: LIVE_STYLES,
+      ...pref("liveBurst"),
+    },
   ];
 
   let query = $state("");
@@ -233,7 +420,14 @@
 
 <svelte:head><title>Settings · MT Ranked</title></svelte:head>
 
-{#snippet choice<T>(label: string, hint: string, options: readonly T[], value: T, set: (v: T) => void, name: (v: T) => string = String)}
+{#snippet choice<T>(
+  label: string,
+  hint: string,
+  options: readonly T[],
+  value: T,
+  set: (v: T) => void,
+  name: (v: T) => string = String,
+)}
   <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
     <div class="max-w-md">
       <div>{label}</div>
@@ -241,7 +435,14 @@
     </div>
     <div class="flex flex-wrap gap-1 rounded-lg bg-sub-alt p-1 text-sm">
       {#each options as o (o)}
-        <button class="rounded-md px-3 py-1 transition-colors" class:bg-main={o === value} class:text-bg={o === value} class:text-sub={o !== value} class:hover:text-text={o !== value} onclick={() => set(o)}>{name(o)}</button>
+        <button
+          class="rounded-md px-3 py-1 transition-colors"
+          class:bg-main={o === value}
+          class:text-bg={o === value}
+          class:text-sub={o !== value}
+          class:hover:text-text={o !== value}
+          onclick={() => set(o)}>{name(o)}</button
+        >
       {/each}
     </div>
   </div>
@@ -281,7 +482,11 @@
         <div>{s.title}</div>
         <div class="text-xs text-sub">{s.hint}</div>
       </div>
-      <select class="input w-auto cursor-pointer text-sm" value={s.value()} onchange={(e) => s.set(e.currentTarget.value)}>
+      <select
+        class="input w-auto cursor-pointer text-sm"
+        value={s.value()}
+        onchange={(e) => s.set(e.currentTarget.value)}
+      >
         {#each s.options as o (o)}<option value={o}>{(s.name ?? String)(o)}</option>{/each}
       </select>
     </div>
@@ -294,8 +499,14 @@
   <div class="sticky top-0 z-10 -mx-2 space-y-3 bg-bg/95 px-2 py-3 backdrop-blur">
     <label class="flex items-center gap-2 rounded-lg bg-sub-alt px-3">
       <Search size={16} class="text-sub" />
-      <input class="w-full bg-transparent py-2 outline-none placeholder:text-sub" placeholder="search settings (e.g. caret, sound, tape)" bind:value={query} />
-      {#if query}<button class="text-sub hover:text-text" onclick={() => (query = "")} aria-label="clear search"><X size={16} /></button>{/if}
+      <input
+        class="w-full bg-transparent py-2 outline-none placeholder:text-sub"
+        placeholder="search settings (e.g. caret, sound, tape)"
+        bind:value={query}
+      />
+      {#if query}<button class="text-sub hover:text-text" onclick={() => (query = "")} aria-label="clear search"
+          ><X size={16} /></button
+        >{/if}
     </label>
     <nav class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
       {#each SECTIONS as sec (sec.id)}
@@ -306,8 +517,9 @@
     </nav>
   </div>
   <p class="-mt-8 text-xs text-sub">
-    {session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere
-    to change these without the mouse. everything here only changes how typing looks and sounds for you, so it works in ranked too.
+    {session.me ? "synced to your account" : "saved on this device (sign in to sync them)"}. press
+    <kbd>{prefs.quickRestart === "esc" ? "ctrl+p" : "esc"}</kbd> anywhere to change these without the mouse. everything here
+    only changes how typing looks and sounds for you, so it works in ranked too.
   </p>
 
   {#each SECTIONS as sec (sec.id)}
@@ -327,25 +539,41 @@
   {#if themeVisible}
     <section id="theme" class="scroll-mt-28">
       <h2 class="label mb-4 text-sm">theme</h2>
-      <div class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" role="presentation" onmouseleave={endPreview}>
+      <div
+        class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4"
+        role="presentation"
+        onmouseleave={endPreview}
+      >
         {#each shownThemes as t (t.id)}
           {@const on = prefs.theme === t.id}
           <button
-            class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm {t.note ? 'col-span-2' : ''}"
+            class="flex items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm {t.note
+              ? 'col-span-2'
+              : ''}"
             style="background: {t.bg}; color: {t.text}; border-color: {on ? t.main : 'transparent'}"
             onmouseenter={() => hoverTheme(t.id)}
             onfocus={() => (prefs.preview = t.id)}
             onblur={endPreview}
             onclick={() => prefs.set("theme", t.id)}
           >
-            <span class="truncate">{t.name}{#if t.note}<span class="opacity-60">&nbsp;· {t.note}</span>{/if}</span>
+            <span class="truncate"
+              >{t.name}{#if t.note}<span class="opacity-60">&nbsp;· {t.note}</span>{/if}</span
+            >
             <span class="flex shrink-0 gap-1">
-              {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"></span>{/each}
+              {#each [t.main, t.sub, t.text] as c, j (j)}<span class="h-2.5 w-2.5 rounded-full" style="background: {c}"
+                ></span>{/each}
             </span>
           </button>
         {/each}
       </div>
-      {@render choice("room themes", `show ${session.supporterSales ? "a supporter host's" : "the host's"} room theme while you're in their room. your own theme comes back when you leave.`, [true, false], prefs.roomThemes, (v) => prefs.set("roomThemes", v), (v) => (v ? "on" : "off"))}
+      {@render choice(
+        "room themes",
+        `show ${session.supporterSales ? "a supporter host's" : "the host's"} room theme while you're in their room. your own theme comes back when you leave.`,
+        [true, false],
+        prefs.roomThemes,
+        (v) => prefs.set("roomThemes", v),
+        (v) => (v ? "on" : "off"),
+      )}
     </section>
   {/if}
 
@@ -353,174 +581,224 @@
     <div class="text-center text-sub">no settings match "{query}"</div>
   {/if}
 
-<div id="account" class="scroll-mt-28 space-y-12" class:hidden={!!query}>
-
-  {#if session.loaded && !session.me}
-    <div class="card flex flex-wrap items-center justify-between gap-4">
-      <div class="text-sm text-sub">sign in to edit your profile, cosmetics and sessions</div>
-      <a class="btn btn-main" href="/login?next=/settings">sign in</a>
-    </div>
-  {/if}
-
-{#if session.me}
-  {@const me = session.me}
-    {#if !me.verified}
-      <div class="card flex flex-wrap items-center justify-between gap-4 border-2 border-main/40">
-        <div>
-          <div>verify your email to unlock ranked</div>
-          <div class="text-sm text-sub">we sent a link to {me.email}</div>
-        </div>
-        <div class="flex items-center gap-3">
-          <Note note={notes.get("verify")} />
-          <button class="btn btn-main" onclick={resend}>resend link</button>
-        </div>
+  <div id="account" class="scroll-mt-28 space-y-12" class:hidden={!!query}>
+    {#if session.loaded && !session.me}
+      <div class="card flex flex-wrap items-center justify-between gap-4">
+        <div class="text-sm text-sub">sign in to edit your profile, cosmetics and sessions</div>
+        <a class="btn btn-main" href="/login?next=/settings">sign in</a>
       </div>
     {/if}
 
-    <section>
-      <h2 class="label mb-4 text-sm">profile</h2>
-      <form class="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onsubmit={saveProfile}>
-        <label class="space-y-1">
-          <span class="label">display name</span>
-          <input class="input" bind:value={displayName} minlength="3" maxlength="20" disabled={!!me.nameChangeAt} />
-          {#if nameError}
-            <span class="block text-xs text-error">{nameError}</span>
-          {:else if me.nameChangeAt}
-            <span class="block text-xs text-error">
-              you can change your name again on {new Date(me.nameChangeAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
-            </span>
-          {:else}
-            <span class="block text-xs text-error">names can only be changed once every 30 days</span>
-          {/if}
-        </label>
-        <label class="space-y-1">
-          <span class="label">country (leaderboard filter)</span>
-          <select class="input" bind:value={country}>
-            <option value="">not set</option>
-            {#each COUNTRIES as c (c.code)}<option value={c.code}>{flag(c.code)} {c.name}</option>{/each}
-          </select>
-        </label>
-        <div class="flex items-center gap-3 self-end">
-          <Note note={notes.get("profile")} />
-          <button class="btn btn-main">save</button>
-        </div>
-      </form>
-    </section>
-
-    {#snippet tile(c: Cosmetic)}
-      {@const open = unlocked.has(c.id)}
-      {@const on = equippedId(c.type) === c.id}
-      {@const perk = session.supporterSales && me.subscriber && c.unlock.type === "subscriber"}
-      <button
-        class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
-        class:supporter-tile={perk}
-        class:border-main={on && !perk}
-        class:border-transparent={!on && !perk}
-        class:opacity-40={!open}
-        disabled={!open}
-        onclick={() => equip(c)}
-        onpointermove={perk ? aim : undefined}
-        onpointerleave={perk ? (e) => e.currentTarget.style.removeProperty("--angle") : undefined}
-        title={open ? cosmeticName(c) : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
-      >
-        <span class="relative block h-8 w-full overflow-hidden rounded" class:banner={c.type === "banner"} style={c.type === "banner" ? `background: ${c.value}` : ""}>
-          {#if c.type === "caret_color"}
-            <Caret x={6} y={0} h={32} color={c.value} shape={equippedId("caret_shape") ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line") : "line"} smooth={false} />
-          {:else if c.type === "caret_shape"}
-            <Caret x={6} y={0} h={32} color={COSMETICS.find((x) => x.id === equippedId("caret_color"))?.value ?? "#e2b714"} shape={c.value} smooth={false} />
-          {:else if c.type === "finish"}
-            <span class="text-lg">{c.value === "none" ? "·" : c.value === "fireworks" ? "✺" : c.value === "stars" ? "★" : c.value === "gold" ? "✦" : "🎉"}</span>
-          {/if}
-        </span>
-        <span class="flex w-full items-center justify-between gap-2">
-          {cosmeticName(c)}
-          {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
-        </span>
-        {#if !open && rule(c)}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
-        {#if perk}<span class="text-[0.65rem] text-main">{me.earlySupporter ? "early supporter perk ♥" : "supporter perk ♥"}</span>{/if}
-      </button>
-    {/snippet}
-
-    <section id="cosmetics" class="scroll-mt-28">
-      <h2 class="label mb-1 text-sm">cosmetics</h2>
-      <p class="mb-5 text-xs text-sub">
-        unlocked by typing. every race earns xp toward your next level, and reaching a tier in ranked unlocks its reward for good.
-        you're level {me.level}.
-      </p>
-      {#each groups as g (g.type)}
-        <div class="mb-6">
-          <div class="mb-2 flex items-baseline gap-3"><span class="label">{g.label}</span><Note note={notes.get(g.type)} /></div>
-          <div class="flex flex-wrap gap-2">
-            {#each COSMETICS.filter((c) => c.type === g.type && (me.subscriber || c.unlock.type !== "subscriber")) as c (c.id)}
-              {@render tile(c)}
-            {/each}
+    {#if session.me}
+      {@const me = session.me}
+      {#if !me.verified}
+        <div class="card flex flex-wrap items-center justify-between gap-4 border-2 border-main/40">
+          <div>
+            <div>verify your email to unlock ranked</div>
+            <div class="text-sm text-sub">we sent a link to {me.email}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <Note note={notes.get("verify")} />
+            <button class="btn btn-main" onclick={resend}>resend link</button>
           </div>
         </div>
-      {/each}
-    </section>
+      {/if}
 
-    {#if session.supporterSales}
-      <section id="supporter" class="scroll-mt-28">
-        <h2 class="label mb-4 text-sm">supporter</h2>
-        <div class="card">
-          {#if subscribed}<div class="mb-4 rounded-lg bg-main px-4 py-2 text-sm text-bg animate-rise" role="status">Thanks for supporting MT Ranked! Perks are active.</div>{/if}
-          {#if me.earlySupporter}
-            <div class="text-main">thank you for being one of our first users ♥</div>
-            <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
-            {@render perks()}
-          {:else if me.subscriber}
-            <div class="text-main">you're a supporter ♥ thank you</div>
-            <div class="mt-1 text-sm text-sub">
-              {billing?.status === "active" && billing.renewsAt ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}` : ""}
+      <section>
+        <h2 class="label mb-4 text-sm">profile</h2>
+        <form class="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onsubmit={saveProfile}>
+          <label class="space-y-1">
+            <span class="label">display name</span>
+            <input class="input" bind:value={displayName} minlength="3" maxlength="20" disabled={!!me.nameChangeAt} />
+            {#if nameError}
+              <span class="block text-xs text-error">{nameError}</span>
+            {:else if me.nameChangeAt}
+              <span class="block text-xs text-error">
+                you can change your name again on {new Date(me.nameChangeAt).toLocaleDateString(undefined, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            {:else}
+              <span class="block text-xs text-error">names can only be changed once every 30 days</span>
+            {/if}
+          </label>
+          <label class="space-y-1">
+            <span class="label">country (leaderboard filter)</span>
+            <select class="input" bind:value={country}>
+              <option value="">not set</option>
+              {#each COUNTRIES as c (c.code)}<option value={c.code}>{flag(c.code)} {c.name}</option>{/each}
+            </select>
+          </label>
+          <div class="flex items-center gap-3 self-end">
+            <Note note={notes.get("profile")} />
+            <button class="btn btn-main">save</button>
+          </div>
+        </form>
+      </section>
+
+      {#snippet tile(c: Cosmetic)}
+        {@const open = unlocked.has(c.id)}
+        {@const on = equippedId(c.type) === c.id}
+        {@const perk = session.supporterSales && me.subscriber && c.unlock.type === "subscriber"}
+        <button
+          class="flex min-w-28 flex-col items-start gap-2 rounded-lg border-2 bg-sub-alt px-3 py-2 text-left text-sm transition-colors"
+          class:supporter-tile={perk}
+          class:border-main={on && !perk}
+          class:border-transparent={!on && !perk}
+          class:opacity-40={!open}
+          disabled={!open}
+          onclick={() => equip(c)}
+          onpointermove={perk ? aim : undefined}
+          onpointerleave={perk ? (e) => e.currentTarget.style.removeProperty("--angle") : undefined}
+          title={open ? cosmeticName(c) : c.unlock.type === "subscriber" ? "supporter perk" : `unlocks at ${rule(c)}`}
+        >
+          <span
+            class="relative block h-8 w-full overflow-hidden rounded"
+            class:banner={c.type === "banner"}
+            style={c.type === "banner" ? `background: ${c.value}` : ""}
+          >
+            {#if c.type === "caret_color"}
+              <Caret
+                x={6}
+                y={0}
+                h={32}
+                color={c.value}
+                shape={equippedId("caret_shape")
+                  ? (COSMETICS.find((x) => x.id === equippedId("caret_shape"))?.value ?? "line")
+                  : "line"}
+                smooth={false}
+              />
+            {:else if c.type === "caret_shape"}
+              <Caret
+                x={6}
+                y={0}
+                h={32}
+                color={COSMETICS.find((x) => x.id === equippedId("caret_color"))?.value ?? "#e2b714"}
+                shape={c.value}
+                smooth={false}
+              />
+            {:else if c.type === "finish"}
+              <span class="text-lg"
+                >{c.value === "none"
+                  ? "·"
+                  : c.value === "fireworks"
+                    ? "✺"
+                    : c.value === "stars"
+                      ? "★"
+                      : c.value === "gold"
+                        ? "✦"
+                        : "🎉"}</span
+              >
+            {/if}
+          </span>
+          <span class="flex w-full items-center justify-between gap-2">
+            {cosmeticName(c)}
+            {#if on}<Check size={14} class="text-main" />{:else if !open}<Lock size={12} />{/if}
+          </span>
+          {#if !open && rule(c)}<span class="text-[0.65rem] text-sub">{rule(c)}</span>{/if}
+          {#if perk}<span class="text-[0.65rem] text-main"
+              >{me.earlySupporter ? "early supporter perk ♥" : "supporter perk ♥"}</span
+            >{/if}
+        </button>
+      {/snippet}
+
+      <section id="cosmetics" class="scroll-mt-28">
+        <h2 class="label mb-1 text-sm">cosmetics</h2>
+        <p class="mb-5 text-xs text-sub">
+          unlocked by typing. every race earns xp toward your next level, and reaching a tier in ranked unlocks its
+          reward for good. you're level {me.level}.
+        </p>
+        {#each groups as g (g.type)}
+          <div class="mb-6">
+            <div class="mb-2 flex items-baseline gap-3">
+              <span class="label">{g.label}</span><Note note={notes.get(g.type)} />
             </div>
-          {:else}
-            <div>support mt ranked</div>
-            {@render perks()}
-          {/if}
-          {#if !me.subscriber}
-            <div class="label mb-2 mt-5">supporter cosmetics</div>
             <div class="flex flex-wrap gap-2">
-              {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
+              {#each COSMETICS.filter((c) => c.type === g.type && (me.subscriber || c.unlock.type !== "subscriber")) as c (c.id)}
                 {@render tile(c)}
               {/each}
             </div>
-          {/if}
-          <div class="mt-5 flex flex-wrap gap-2">
-            {#if me.earlySupporter}
-              {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}>manage subscription</button>{/if}
-            {:else if billing?.enabled}
-              {#if me.subscriber}
-                <button class="btn" onclick={portal}>manage subscription</button>
-              {:else}
-                <button class="btn btn-main" onclick={() => checkout("month")}>monthly</button>
-                <button class="btn" onclick={() => checkout("year")}>yearly (save ~20%)</button>
-              {/if}
-            {:else}
-              <span class="text-sm text-sub">payments aren't configured on this server.</span>
-              {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}>dev: toggle supporter</button>{/if}
-            {/if}
-            <Note note={notes.get("billing")} class="self-center" />
           </div>
-        </div>
+        {/each}
+      </section>
+
+      {#if session.supporterSales}
+        <section id="supporter" class="scroll-mt-28">
+          <h2 class="label mb-4 text-sm">supporter</h2>
+          <div class="card">
+            {#if subscribed}<div class="mb-4 rounded-lg bg-main px-4 py-2 text-sm text-bg animate-rise" role="status">
+                Thanks for supporting MT Ranked! Perks are active.
+              </div>{/if}
+            {#if me.earlySupporter}
+              <div class="text-main">thank you for being one of our first users ♥</div>
+              <div class="mt-1 text-sm text-sub">as an early supporter, these are yours for life:</div>
+              {@render perks()}
+            {:else if me.subscriber}
+              <div class="text-main">you're a supporter ♥ thank you</div>
+              <div class="mt-1 text-sm text-sub">
+                {billing?.status === "active" && billing.renewsAt
+                  ? `renews ${new Date(billing.renewsAt).toLocaleDateString()}`
+                  : ""}
+              </div>
+            {:else}
+              <div>support mt ranked</div>
+              {@render perks()}
+            {/if}
+            {#if !me.subscriber}
+              <div class="label mb-2 mt-5">supporter cosmetics</div>
+              <div class="flex flex-wrap gap-2">
+                {#each COSMETICS.filter((c) => c.unlock.type === "subscriber") as c (c.id)}
+                  {@render tile(c)}
+                {/each}
+              </div>
+            {/if}
+            <div class="mt-5 flex flex-wrap gap-2">
+              {#if me.earlySupporter}
+                {#if billing?.enabled && billing.status === "active"}<button class="btn" onclick={portal}
+                    >manage subscription</button
+                  >{/if}
+              {:else if billing?.enabled}
+                {#if me.subscriber}
+                  <button class="btn" onclick={portal}>manage subscription</button>
+                {:else}
+                  <button class="btn btn-main" onclick={() => checkout("month")}>monthly</button>
+                  <button class="btn" onclick={() => checkout("year")}>yearly (save ~20%)</button>
+                {/if}
+              {:else}
+                <span class="text-sm text-sub">payments aren't configured on this server.</span>
+                {#if import.meta.env.DEV}<button class="btn btn-ghost text-sm" onclick={devToggle}
+                    >dev: toggle supporter</button
+                  >{/if}
+              {/if}
+              <Note note={notes.get("billing")} class="self-center" />
+            </div>
+          </div>
+        </section>
+      {/if}
+
+      <section>
+        <h2 class="label mb-4 text-sm">sessions</h2>
+        <ul class="space-y-2">
+          {#each sessions as s (s.id)}
+            <li class="card flex items-center gap-4 py-3">
+              <Monitor size={18} class="text-sub" />
+              <div class="flex-1 text-sm">
+                <div>
+                  {shortUa(s.userAgent)}
+                  {#if s.current}<span class="text-xs text-main">this device</span>{/if}
+                </div>
+                <div class="text-xs text-sub">{s.ip ?? ""} · last active {new Date(s.lastSeenAt).toLocaleString()}</div>
+              </div>
+              <button class="btn btn-ghost text-sm" onclick={() => revoke(s.id)}
+                >{s.current ? "sign out" : "revoke"}</button
+              >
+            </li>
+          {/each}
+        </ul>
+        <button class="btn mt-6" onclick={logout}><LogOut size={16} /> sign out</button>
       </section>
     {/if}
-
-    <section>
-      <h2 class="label mb-4 text-sm">sessions</h2>
-      <ul class="space-y-2">
-        {#each sessions as s (s.id)}
-          <li class="card flex items-center gap-4 py-3">
-            <Monitor size={18} class="text-sub" />
-            <div class="flex-1 text-sm">
-              <div>{shortUa(s.userAgent)} {#if s.current}<span class="text-xs text-main">this device</span>{/if}</div>
-              <div class="text-xs text-sub">{s.ip ?? ""} · last active {new Date(s.lastSeenAt).toLocaleString()}</div>
-            </div>
-            <button class="btn btn-ghost text-sm" onclick={() => revoke(s.id)}>{s.current ? "sign out" : "revoke"}</button>
-          </li>
-        {/each}
-      </ul>
-      <button class="btn mt-6" onclick={logout}><LogOut size={16} /> sign out</button>
-    </section>
-{/if}
-</div>
+  </div>
 </div>

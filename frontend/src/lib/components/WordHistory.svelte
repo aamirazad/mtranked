@@ -15,7 +15,13 @@
     const q = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]!;
     return [q(0.2), q(0.4), q(0.6), q(0.8)];
   });
-  const HEAT = ["var(--color-error)", "color-mix(in srgb, var(--color-error) 50%, var(--color-text))", "var(--color-text)", "color-mix(in srgb, var(--color-main) 55%, var(--color-text))", "var(--color-main)"];
+  const HEAT = [
+    "var(--color-error)",
+    "color-mix(in srgb, var(--color-error) 50%, var(--color-text))",
+    "var(--color-text)",
+    "color-mix(in srgb, var(--color-main) 55%, var(--color-text))",
+    "var(--color-main)",
+  ];
   const bin = (b: number) => bins.filter((x) => b > x).length;
   const legend = $derived(
     bins.length
@@ -27,11 +33,16 @@
 <div>
   <div class="mb-2 flex flex-wrap items-center gap-3">
     <span class="label text-sm">input history</span>
-    <button class="toggle tip inline-flex" class:on={!heat} aria-label="mistakes" onclick={() => (heat = false)}><AlignLeft size={15} /></button>
-    <button class="toggle tip inline-flex" class:on={heat} aria-label="burst heatmap" onclick={() => (heat = true)}><Gauge size={15} /></button>
+    <button class="toggle tip inline-flex" class:on={!heat} aria-label="mistakes" onclick={() => (heat = false)}
+      ><AlignLeft size={15} /></button
+    >
+    <button class="toggle tip inline-flex" class:on={heat} aria-label="burst heatmap" onclick={() => (heat = true)}
+      ><Gauge size={15} /></button
+    >
     {#if heat && legend.length}
       <span class="flex overflow-hidden rounded text-[11px] text-bg">
-        {#each legend as l, i (i)}<span class="px-1.5 py-0.5 tabular-nums" style="background: {HEAT[i]}">{l}</span>{/each}
+        {#each legend as l, i (i)}<span class="px-1.5 py-0.5 tabular-nums" style="background: {HEAT[i]}">{l}</span
+          >{/each}
       </span>
     {/if}
   </div>
@@ -44,7 +55,9 @@
         aria-label="{w.b} wpm{wrong ? ` · typed “${w.i}”` : ''}"
         style={heat ? `color: ${HEAT[bin(w.b)]}` : ""}
       >
-        {#if heat}{w.w}{:else}{#each [...w.w] as ch, j (j)}<span class={w.i[j] === undefined ? "text-sub" : w.i[j] === ch ? "text-text" : "text-error"}>{ch}</span>{/each}{#if w.i.length > w.w.length}<span class="text-error-extra">{w.i.slice(w.w.length)}</span>{/if}{/if}
+        {#if heat}{w.w}{:else}{#each [...w.w] as ch, j (j)}<span
+              class={w.i[j] === undefined ? "text-sub" : w.i[j] === ch ? "text-text" : "text-error"}>{ch}</span
+            >{/each}{#if w.i.length > w.w.length}<span class="text-error-extra">{w.i.slice(w.w.length)}</span>{/if}{/if}
       </span>
     {/each}
   </div>

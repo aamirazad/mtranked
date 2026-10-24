@@ -75,7 +75,8 @@
     e.currentTarget.value = "";
     if (hours) apply(hours);
   }
-  const bannedFrom = (details: unknown) => ((details as { banned?: { id: string; name: string }[] } | null)?.banned ?? []);
+  const bannedFrom = (details: unknown) =>
+    (details as { banned?: { id: string; name: string }[] } | null)?.banned ?? [];
   async function resolveHeld(id: string, action: "approve" | "void") {
     const r = await api.mod.resolveHeld({ params: { id }, body: { action } });
     if (r.status !== 200) notes.set(`h:${id}`, errorMessage(r), "error");
@@ -96,9 +97,15 @@
   <div class="mx-auto max-w-[1000px] animate-fade">
     <h1 class="font-logo text-4xl">moderation</h1>
     <div class="mt-6 mb-6 flex gap-1">
-      <button class="toggle" class:on={tab === "reports"} onclick={() => (tab = "reports")}>reports ({reports.length})</button>
-      <button class="toggle" class:on={tab === "held"} onclick={() => (tab = "held")}>held results ({held.length})</button>
-      <button class="toggle" class:on={tab === "flags"} onclick={() => (tab = "flags")}>auto flags ({flags.length})</button>
+      <button class="toggle" class:on={tab === "reports"} onclick={() => (tab = "reports")}
+        >reports ({reports.length})</button
+      >
+      <button class="toggle" class:on={tab === "held"} onclick={() => (tab = "held")}
+        >held results ({held.length})</button
+      >
+      <button class="toggle" class:on={tab === "flags"} onclick={() => (tab = "flags")}
+        >auto flags ({flags.length})</button
+      >
       <button class="toggle" class:on={tab === "stats"} onclick={() => (tab = "stats")}>stats</button>
       <button class="toggle" class:on={tab === "users"} onclick={() => (tab = "users")}>users</button>
     </div>
@@ -114,9 +121,17 @@
           </div>
           <a class="btn" href="/replay/{r.matchId}" target="_blank">replay</a>
           <button class="btn" onclick={() => resolve(r.id, "dismiss")}>dismiss</button>
-          <button class="btn" onclick={() => resolve(r.id, "flag")} title="move to the separate queue for flagged players">shadow queue</button>
+          <button
+            class="btn"
+            onclick={() => resolve(r.id, "flag")}
+            title="move to the separate queue for flagged players">shadow queue</button
+          >
           {#if r.reportedId}
-            <select class="btn cursor-pointer" aria-label="time out" onchange={(e) => pickTimeout(e, (h) => resolve(r.id, "timeout", h))}>
+            <select
+              class="btn cursor-pointer"
+              aria-label="time out"
+              onchange={(e) => pickTimeout(e, (h) => resolve(r.id, "timeout", h))}
+            >
               <option value="">timeout…</option>
               {#each TIMEOUTS as t (t.hours)}<option value={t.hours}>{t.label}</option>{/each}
             </select>
@@ -127,11 +142,15 @@
         <div class="text-sub">no open reports.</div>
       {/each}
     {:else if tab === "held"}
-      <p class="mb-4 text-sm text-sub">ranked races above the speed ceiling wait here before their rating changes apply.</p>
+      <p class="mb-4 text-sm text-sub">
+        ranked races above the speed ceiling wait here before their rating changes apply.
+      </p>
       {#each held as m (m.matchId)}
         <div class="card mb-3 flex flex-wrap items-center gap-4">
           <div class="flex-1 text-sm">
-            {#each m.players as p (p.name)}<div>{p.name}: <span class="text-main">{Math.round(p.wpm)} wpm</span> · {Math.round(p.acc)}%</div>{/each}
+            {#each m.players as p (p.name)}<div>
+                {p.name}: <span class="text-main">{Math.round(p.wpm)} wpm</span> · {Math.round(p.acc)}%
+              </div>{/each}
             <Note note={notes.get(`h:${m.matchId}`)} />
           </div>
           <a class="btn" href="/replay/{m.matchId}" target="_blank">replay</a>
@@ -147,7 +166,13 @@
       <ModUsers {notes} timeouts={TIMEOUTS} {ban} {timeout} {unsuspend} />
     {:else}
       <table class="w-full text-left text-sm">
-        <thead class="text-sub"><tr><th class="py-2 font-normal">player</th><th class="font-normal">reason</th><th class="font-normal">details</th><th class="font-normal">when</th><th class="font-normal">status</th><th></th></tr></thead>
+        <thead class="text-sub"
+          ><tr
+            ><th class="py-2 font-normal">player</th><th class="font-normal">reason</th><th class="font-normal"
+              >details</th
+            ><th class="font-normal">when</th><th class="font-normal">status</th><th></th></tr
+          ></thead
+        >
         <tbody>
           {#each flags as f (f.id)}
             <tr class="border-t border-sub-alt">
@@ -156,7 +181,8 @@
               <td class="text-xs text-sub">
                 {#if f.reason === "possible_ban_evader"}
                   signed up from a network used by banned
-                  {#each bannedFrom(f.details) as b, i (b.id)}{i ? ", " : " "}<span class="text-text">{b.name}</span>{/each}
+                  {#each bannedFrom(f.details) as b, i (b.id)}{i ? ", " : " "}<span class="text-text">{b.name}</span
+                    >{/each}
                 {:else}
                   {JSON.stringify(f.details)}
                 {/if}
@@ -164,7 +190,9 @@
               <td class="text-sub">{new Date(f.createdAt).toLocaleDateString()}</td>
               <td class="text-xs">
                 {#if f.bannedAt}<span class="text-error">banned</span>
-                {:else if f.timedOutUntil}<span class="text-main">timed out until {new Date(f.timedOutUntil).toLocaleString()}</span>
+                {:else if f.timedOutUntil}<span class="text-main"
+                    >timed out until {new Date(f.timedOutUntil).toLocaleString()}</span
+                  >
                 {:else}<span class="text-sub">active</span>{/if}
                 <Note note={notes.get(`f:${f.userId}`)} class="block" />
               </td>
@@ -175,7 +203,11 @@
                   <button class="text-sub hover:text-text" onclick={() => unsuspend(f.userId)}>lift</button>
                 {/if}
                 {#if !f.bannedAt}
-                  <select class="cursor-pointer bg-transparent text-sub outline-none hover:text-text" aria-label="time out" onchange={(e) => pickTimeout(e, (h) => timeout(f.userId, h))}>
+                  <select
+                    class="cursor-pointer bg-transparent text-sub outline-none hover:text-text"
+                    aria-label="time out"
+                    onchange={(e) => pickTimeout(e, (h) => timeout(f.userId, h))}
+                  >
                     <option value="">timeout…</option>
                     {#each TIMEOUTS as t (t.hours)}<option value={t.hours}>{t.label}</option>{/each}
                   </select>

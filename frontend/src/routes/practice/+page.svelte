@@ -41,7 +41,15 @@
   let settings = $state<TextSettings>(
     saved
       ? JSON.parse(saved)
-      : { mode: "time", time: 30, words: 25, quoteLength: "short", punctuation: false, numbers: false, language: "english" },
+      : {
+          mode: "time",
+          time: 30,
+          words: 25,
+          quoteLength: "short",
+          punctuation: false,
+          numbers: false,
+          language: "english",
+        },
   );
 
   let ts = $state.raw<TypingState>(createState("loading"));
@@ -134,7 +142,9 @@
 
   async function save(s: TextSettings, sd: string, ks: Keystroke[]) {
     const gen = generation;
-    const r = await api.practice.submit({ body: { settings: { ...s, mode: s.mode as "words" | "time" | "quote" }, seed: sd, keys: ks } }).catch(() => null);
+    const r = await api.practice
+      .submit({ body: { settings: { ...s, mode: s.mode as "words" | "time" | "quote" }, seed: sd, keys: ks } })
+      .catch(() => null);
     if (gen === generation && r?.status === 200) previousBest = r.body.result.previousBest;
   }
 
@@ -148,7 +158,9 @@
   const liveBurst = $derived.by(() => (void version, ts.lastBurst ?? 0));
   const progress = $derived.by(() => {
     void version;
-    return settings.mode === "time" ? Math.min(1, elapsed / (settings.time * 1000)) : Math.min(1, ts.wi / ts.words.length);
+    return settings.mode === "time"
+      ? Math.min(1, elapsed / (settings.time * 1000))
+      : Math.min(1, ts.wi / ts.words.length);
   });
   const counter = $derived.by(() => {
     void version;
@@ -181,7 +193,10 @@
 <svelte:head><title>Practice · MT Ranked</title></svelte:head>
 
 <div class="mx-auto max-w-[1000px]">
-  <div class="mb-3 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity" class:opacity-0={startedAt !== null && !result}>
+  <div
+    class="mb-3 flex flex-wrap items-center justify-center gap-1 rounded-lg bg-sub-alt px-3 py-1.5 text-sm transition-opacity"
+    class:opacity-0={startedAt !== null && !result}
+  >
     {#each ["time", "words", "quote"] as const as m (m)}
       <button class="toggle" class:on={settings.mode === m} onclick={() => set("mode", m)}>{m}</button>
     {/each}
@@ -200,12 +215,21 @@
       {/each}
     {/if}
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
-    <TextOptionsPicker punctuation={settings.punctuation} numbers={settings.numbers} language={settings.language} onchange={set} />
+    <TextOptionsPicker
+      punctuation={settings.punctuation}
+      numbers={settings.numbers}
+      language={settings.language}
+      onchange={set}
+    />
     <span class="mx-2 h-4 w-1 rounded bg-bg"></span>
     <FunboxPicker value={settings.funbox} onchange={(v) => set("funbox", v.length ? v : undefined)} />
   </div>
   <div class="mx-auto mb-8 max-w-2xl text-center transition-opacity" class:opacity-0={startedAt !== null && !result}>
-    <RulesPicker rules={settings.rules} onchange={(r: Rules | undefined) => set("rules", r)} note="your own practice rules. ranked and casual always race without them." />
+    <RulesPicker
+      rules={settings.rules}
+      onchange={(r: Rules | undefined) => set("rules", r)}
+      note="your own practice rules. ranked and casual always race without them."
+    />
   </div>
 
   {#if !result}
@@ -223,7 +247,13 @@
         funbox={settings.funbox}
       />
       <div class="mt-8 flex justify-center">
-        <button class="btn btn-ghost" onclick={restart} disabled={noQuit} title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}><RotateCcw size={18} /></button>
+        <button
+          class="btn btn-ghost"
+          onclick={restart}
+          disabled={noQuit}
+          title={prefs.quickRestart === "off" ? "restart" : `restart (${prefs.quickRestart})`}
+          ><RotateCcw size={18} /></button
+        >
       </div>
     </div>
   {:else}
@@ -248,7 +278,9 @@
       {#if source}<div class="mt-6 text-sm text-sub">— {source}</div>{/if}
       <div class="mt-10 flex items-center gap-4">
         <button class="btn" onclick={restart}><RotateCcw size={16} /> next test</button>
-        {#if prefs.quickRestart !== "off"}<span class="text-sm text-sub"><kbd>{prefs.quickRestart}</kbd> to restart</span>{/if}
+        {#if prefs.quickRestart !== "off"}<span class="text-sm text-sub"
+            ><kbd>{prefs.quickRestart}</kbd> to restart</span
+          >{/if}
         <a href="/" class="ml-auto link text-sm">ready to race someone? →</a>
       </div>
     </div>

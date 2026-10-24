@@ -11,29 +11,121 @@
   font-display: swap;
 }
 /* typing fonts (settings → appearance → font family), from monkeytype */
-@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Fira Code"; src: url("/fonts/FiraCode-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Source Code Pro"; src: url("/fonts/SourceCodePro-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Ubuntu Mono"; src: url("/fonts/UbuntuMono-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Commit Mono"; src: url("/fonts/CommitMono-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Geist Mono"; src: url("/fonts/GeistMono-Medium.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Mononoki"; src: url("/fonts/Mononoki-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Hack"; src: url("/fonts/Hack-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Overpass Mono"; src: url("/fonts/OverpassMono-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Atkinson Hyperlegible"; src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Comfortaa"; src: url("/fonts/Comfortaa-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Montserrat"; src: url("/fonts/Montserrat-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Nunito"; src: url("/fonts/Nunito-Bold.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Lato"; src: url("/fonts/Lato-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Space Grotesk"; src: url("/fonts/SpaceGrotesk-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Titillium Web"; src: url("/fonts/TitilliumWeb-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Ubuntu"; src: url("/fonts/Ubuntu-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Oxygen"; src: url("/fonts/Oxygen-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "OpenDyslexic"; src: url("/fonts/OpenDyslexic-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Coming Soon"; src: url("/fonts/ComingSoon-Regular.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Itim"; src: url("/fonts/Itim-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fira Code";
+  src: url("/fonts/FiraCode-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Code Pro";
+  src: url("/fonts/SourceCodePro-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ubuntu Mono";
+  src: url("/fonts/UbuntuMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inconsolata";
+  src: url("/fonts/Inconsolata-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Commit Mono";
+  src: url("/fonts/CommitMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono-Medium.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mononoki";
+  src: url("/fonts/Mononoki-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hack";
+  src: url("/fonts/Hack-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Overpass Mono";
+  src: url("/fonts/OverpassMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comfortaa";
+  src: url("/fonts/Comfortaa-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/Montserrat-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Bold.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lato";
+  src: url("/fonts/Lato-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/SpaceGrotesk-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Titillium Web";
+  src: url("/fonts/TitilliumWeb-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/fonts/Ubuntu-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Oxygen";
+  src: url("/fonts/Oxygen-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/fonts/OpenDyslexic-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Coming Soon";
+  src: url("/fonts/ComingSoon-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Itim";
+  src: url("/fonts/Itim-Regular.woff2") format("woff2");
+  font-display: swap;
+}
 
 /* mt ranked, the default theme (serika dark, monkeytype's default, is in the theme list) */
 @theme {
@@ -54,31 +146,91 @@
 }
 
 @keyframes pop {
-  from { transform: scale(0.6); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 @keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes rise {
-  from { transform: translateY(8px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* registered as colors so theme changes (hover previews, room themes, the command line)
    fade between themes instead of snapping */
-@property --color-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-main { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-caret { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-sub { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-sub-alt { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-text { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-error { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --color-error-extra { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --tile-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --tile-fg { syntax: "<color>"; inherits: true; initial-value: transparent; }
-@property --edge-hover { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --color-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-main {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-caret {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-sub {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-sub-alt {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-text {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-error {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --color-error-extra {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --tile-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --tile-fg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --edge-hover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
 /* theme look defaults, matching mt ranked (see themeVars in lib/prefs.svelte.ts) */
 :root {
   --tile-bg: var(--color-main);
@@ -87,12 +239,16 @@
   --edge-hover: rgb(248 198 48 / 0.25);
 }
 html {
-  transition-property: --color-bg, --color-main, --color-caret, --color-sub, --color-sub-alt, --color-text, --color-error, --color-error-extra, --tile-bg, --tile-fg, --edge-hover;
+  transition-property:
+    --color-bg, --color-main, --color-caret, --color-sub, --color-sub-alt, --color-text, --color-error,
+    --color-error-extra, --tile-bg, --tile-fg, --edge-hover;
   transition-duration: 0.25s;
   transition-timing-function: ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  html { transition: none; }
+  html {
+    transition: none;
+  }
 }
 
 /* resets live in the base layer so utility classes can override them */
@@ -103,27 +259,55 @@ html {
     font-family: var(--font-mono);
     color-scheme: dark;
   }
-  body { margin: 0; min-height: 100vh; }
-  ::selection { background: var(--color-main); color: var(--color-bg); }
-  a { color: inherit; text-decoration: none; }
-  button { cursor: pointer; }
-  button:disabled { cursor: not-allowed; opacity: 0.5; }
-  option { background: var(--color-sub-alt); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+  ::selection {
+    background: var(--color-main);
+    color: var(--color-bg);
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  option {
+    background: var(--color-sub-alt);
+  }
 }
 
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg bg-sub-alt px-4 py-2 text-text transition-colors duration-100 select-none;
   }
-  .btn:hover:not(:disabled) { @apply bg-text text-bg; }
-  .btn-main { @apply bg-main text-bg; }
-  .btn-main:hover:not(:disabled) { @apply bg-text text-bg; }
-  .btn-ghost { @apply bg-transparent text-sub; }
-  .btn-ghost:hover:not(:disabled) { @apply bg-transparent text-text; }
+  .btn:hover:not(:disabled) {
+    @apply bg-text text-bg;
+  }
+  .btn-main {
+    @apply bg-main text-bg;
+  }
+  .btn-main:hover:not(:disabled) {
+    @apply bg-text text-bg;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-sub;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply bg-transparent text-text;
+  }
   .input {
     @apply w-full rounded-lg border-0 bg-sub-alt px-3 py-2 text-text outline-none placeholder:text-sub focus:ring-2 focus:ring-main/40;
   }
-  .card { @apply rounded-xl bg-sub-alt p-5; }
+  .card {
+    @apply rounded-xl bg-sub-alt p-5;
+  }
   /* a feature icon: a filled rounded tile in themes with a look, a bare main-colored icon otherwise */
   .icon-tile {
     @apply inline-flex shrink-0 items-center justify-center rounded-xl;
@@ -131,20 +315,32 @@ html {
     background: var(--tile-bg);
     color: var(--tile-fg);
   }
-  .label { @apply text-xs tracking-wide text-sub; }
-  .link { @apply text-main hover:text-text transition-colors; }
-  .toggle { @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text; }
-  .toggle.on { @apply text-main; }
+  .label {
+    @apply text-xs tracking-wide text-sub;
+  }
+  .link {
+    @apply text-main hover:text-text transition-colors;
+  }
+  .toggle {
+    @apply rounded-md px-2 py-1 text-sub transition-colors hover:text-text;
+  }
+  .toggle.on {
+    @apply text-main;
+  }
   /* profile banner surface; the gradient itself comes in via inline style.
      a hairline inner edge and shadowed text keep it legible on any banner,
      and muted text is lifted so it doesn't vanish into the color */
   .banner {
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.1);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.08),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
     --tier-unranked: rgb(255 255 255 / 0.8);
   }
   .banner .text-sub,
-  .banner .label { color: rgb(255 255 255 / 0.8); }
+  .banner .label {
+    color: rgb(255 255 255 / 0.8);
+  }
   /* frosted glass plate for text that sits on a banner: a heavy tint plus blur
      leaves only a hint of the gradient underneath, a hairline edge and top highlight sell the glass */
   .banner-panel {
@@ -165,13 +361,14 @@ html {
     background:
       linear-gradient(var(--color-sub-alt), var(--color-sub-alt)) padding-box,
       linear-gradient(
-        var(--angle),
-        color-mix(in srgb, #ea4335 var(--dim), var(--color-sub-alt)),
-        color-mix(in srgb, #fbbc04 var(--dim), var(--color-sub-alt)),
-        color-mix(in srgb, #34a853 var(--dim), var(--color-sub-alt)),
-        color-mix(in srgb, #4285f4 var(--dim), var(--color-sub-alt)),
-        color-mix(in srgb, #f06292 var(--dim), var(--color-sub-alt))
-      ) border-box;
+          var(--angle),
+          color-mix(in srgb, #ea4335 var(--dim), var(--color-sub-alt)),
+          color-mix(in srgb, #fbbc04 var(--dim), var(--color-sub-alt)),
+          color-mix(in srgb, #34a853 var(--dim), var(--color-sub-alt)),
+          color-mix(in srgb, #4285f4 var(--dim), var(--color-sub-alt)),
+          color-mix(in srgb, #f06292 var(--dim), var(--color-sub-alt))
+        )
+        border-box;
   }
 }
 
@@ -186,7 +383,9 @@ html {
    popover never drift apart; data-tip overrides it where the element's
    own text should stay its accessible name */
 @layer components {
-  .tip { position: relative; }
+  .tip {
+    position: relative;
+  }
   .tip::before,
   .tip::after {
     position: absolute;
@@ -195,7 +394,9 @@ html {
     pointer-events: none;
     opacity: 0;
     transform: translate(-50%, -4px);
-    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    transition:
+      opacity 0.12s ease-out,
+      transform 0.12s ease-out;
     transition-delay: 0s;
   }
   /* arrow */
@@ -228,7 +429,9 @@ html {
     transition-delay: 0.15s;
   }
   /* data-tip for elements whose accessible name should stay their text */
-  .tip[data-tip]::after { content: attr(data-tip); }
+  .tip[data-tip]::after {
+    content: attr(data-tip);
+  }
   /* longer labels: wrap inside a fixed-width bubble */
   .tip-wrap::after {
     width: max-content;

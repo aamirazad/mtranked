@@ -51,22 +51,32 @@ const dummyHash = hashPassword("not-a-real-password");
 export const authRouter = s.router(contract.auth, {
   me: async ({ req, res }) => {
     const auth = await getAuth(req, res);
-    if (auth) return { status: 200, body: { user: await buildMe(auth.user), guest: null, supporterSales: env.supporterSales } };
+    if (auth)
+      return { status: 200, body: { user: await buildMe(auth.user), guest: null, supporterSales: env.supporterSales } };
     return { status: 200, body: { user: null, guest: await getGuest(req), supporterSales: env.supporterSales } };
   },
 
   signup: async ({ body, req, res }) => {
     if (!(await rateLimit(`signup:${req.ip}`, 5, 600))) return tooMany;
     if (isOffensiveName(body.displayName)) {
-      return { status: 400, body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } } };
+      return {
+        status: 400,
+        body: { message: OFFENSIVE_NAME_MESSAGE, fields: { displayName: OFFENSIVE_NAME_MESSAGE } },
+      };
     }
     const taken = await sql`select email, display_name from users
       where email = ${body.email} or display_name = ${body.displayName}`;
     if (taken.some((t) => t.email.toLowerCase() === body.email.toLowerCase())) {
-      return { status: 409, body: { message: "An account with this email already exists.", fields: { email: "Already registered" } } };
+      return {
+        status: 409,
+        body: { message: "An account with this email already exists.", fields: { email: "Already registered" } },
+      };
     }
-    if (taken.length) return { status: 409, body: { message: "That name is taken.", fields: { displayName: "Taken" } } };
-    const [u] = await sql<{ id: string }[]>`insert into users (email, password_hash, display_name, signup_ip, early_supporter, is_subscriber)
+    if (taken.length)
+      return { status: 409, body: { message: "That name is taken.", fields: { displayName: "Taken" } } };
+    const [u] = await sql<
+      { id: string }[]
+    >`insert into users (email, password_hash, display_name, signup_ip, early_supporter, is_subscriber)
       values (${body.email}, ${await hashPassword(body.password)}, ${body.displayName}, ${req.ip ?? null},
         ${!env.supporterSales}, ${!env.supporterSales})
       returning id`;
@@ -77,12 +87,19 @@ export const authRouter = s.router(contract.auth, {
   },
 
   login: async ({ body, req, res }) => {
-    if (!(await rateLimit(`login:${req.ip}`, 10, 300)) || !(await rateLimit(`login:${body.email.toLowerCase()}`, 10, 300))) {
+    if (
+      !(await rateLimit(`login:${req.ip}`, 10, 300)) ||
+      !(await rateLimit(`login:${body.email.toLowerCase()}`, 10, 300))
+    ) {
       return tooMany;
     }
-    const [row] = await sql<{ id: string; password_hash: string; banned_at: Date | null; suspension_reason: string | null }[]>`
+    const [row] = await sql<
+      { id: string; password_hash: string; banned_at: Date | null; suspension_reason: string | null }[]
+    >`
       select id, password_hash, banned_at, suspension_reason from users where email = ${body.email} and not is_bot`;
-    const valid = row ? await verifyPassword(row.password_hash, body.password) : (await verifyPassword(await dummyHash, body.password), false);
+    const valid = row
+      ? await verifyPassword(row.password_hash, body.password)
+      : (await verifyPassword(await dummyHash, body.password), false);
     if (!row || !valid) return { status: 401, body: { message: "Wrong email or password." } };
     if (row.banned_at) return { status: 401, body: { message: suspension({ ...row, timed_out_until: null })! } };
     await createSession(req, res, row.id);
@@ -115,7 +132,9 @@ export const authRouter = s.router(contract.auth, {
 
   forgot: async ({ body, req }) => {
     if (!(await rateLimit(`forgot:${req.ip}`, 5, 600))) return tooMany;
-    const [u] = await sql<{ id: string; email: string }[]>`select id, email from users where email = ${body.email} and not is_bot`;
+    const [u] = await sql<
+      { id: string; email: string }[]
+    >`select id, email from users where email = ${body.email} and not is_bot`;
     if (u) {
       const token = newToken();
       await sql`insert into email_tokens (token_hash, user_id, kind, expires_at)

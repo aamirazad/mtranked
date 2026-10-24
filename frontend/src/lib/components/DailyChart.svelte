@@ -23,7 +23,8 @@
   } = $props();
 
   // the days are UTC dates, so format them in UTC or they shift a day west of Greenwich
-  const fmtDate = (day: string) => new Date(day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  const fmtDate = (day: string) =>
+    new Date(day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
   let width = $state(0);
   const hover = new ChartHover();
@@ -44,14 +45,22 @@
   });
   const slot = $derived(n ? innerW / n : 0);
   // bars sit in the middle of their day's slot; a line runs edge to edge
-  const x = (i: number) => (kind === "bars" ? pad.left + slot * (i + 0.5) : pad.left + (n > 1 ? (i / (n - 1)) * innerW : innerW / 2));
+  const x = (i: number) =>
+    kind === "bars" ? pad.left + slot * (i + 0.5) : pad.left + (n > 1 ? (i / (n - 1)) * innerW : innerW / 2);
   const y = (v: number) => pad.top + innerH - ((v - domain.lo) / (domain.hi - domain.lo)) * innerH;
   const ticks = $derived.by(() => {
     const out: number[] = [];
     for (let v = domain.lo; v <= domain.hi + 1e-9; v += domain.step) out.push(Math.round(v));
     return out;
   });
-  const line = $derived(kind === "line" && width ? monotonePath(values.map((_, i) => x(i)), values.map(y)) : "");
+  const line = $derived(
+    kind === "line" && width
+      ? monotonePath(
+          values.map((_, i) => x(i)),
+          values.map(y),
+        )
+      : "",
+  );
   const area = $derived(areaPath(line, x(0), x(n - 1), pad.top + innerH));
   const barW = $derived(Math.max(1, Math.min(18, slot - 2)));
   /** a bar with a rounded top, square at the baseline */
@@ -70,7 +79,11 @@
     if (!n) return;
     const box = (e.currentTarget as SVGElement).getBoundingClientRect();
     const px = e.clientX - box.left;
-    show(kind === "bars" ? Math.max(0, Math.min(n - 1, Math.floor((px - pad.left) / (slot || 1)))) : nearestIndex(px, pad.left, innerW, n));
+    show(
+      kind === "bars"
+        ? Math.max(0, Math.min(n - 1, Math.floor((px - pad.left) / (slot || 1))))
+        : nearestIndex(px, pad.left, innerW, n),
+    );
   }
   function onkey(e: KeyboardEvent) {
     if (!n) return;
@@ -99,13 +112,23 @@
     >
       {#each ticks as t (t)}
         <line x1={pad.left} x2={pad.left + innerW} y1={y(t)} y2={y(t)} class="stroke-sub/15" stroke-width="1" />
-        <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{fmtTick(t)}</text>
+        <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums"
+          >{fmtTick(t)}</text
+        >
       {/each}
       <text x={pad.left} y={H - 6} class="fill-sub text-[11px]">{fmtDate(days[0]!)}</text>
-      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{fmtDate(days.at(-1)!)}</text>
+      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{fmtDate(days.at(-1)!)}</text
+      >
       {#if kind === "line"}
         <path d={area} class="fill-main" fill-opacity="0.12" />
-        <path d={line} fill="none" class="stroke-main" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        <path
+          d={line}
+          fill="none"
+          class="stroke-main"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
       {:else}
         {#each values as v, i (i)}
           {#if v > 0}
@@ -114,7 +137,15 @@
         {/each}
       {/if}
       <g class="pointer-events-none" style="opacity: {hover.shown ? 1 : 0}; transition: opacity 0.15s ease-out">
-        <line x1={hover.x.current} x2={hover.x.current} y1={pad.top} y2={pad.top + innerH} class="stroke-sub/60" stroke-width="1" stroke-dasharray="3 3" />
+        <line
+          x1={hover.x.current}
+          x2={hover.x.current}
+          y1={pad.top}
+          y2={pad.top + innerH}
+          class="stroke-sub/60"
+          stroke-width="1"
+          stroke-dasharray="3 3"
+        />
         {#if kind === "line"}
           <circle cx={hover.x.current} cy={hover.y.current} r="4.5" class="fill-main stroke-sub-alt" stroke-width="2" />
         {/if}

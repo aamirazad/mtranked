@@ -60,7 +60,12 @@ export async function requestRematch(conn: Conn, matchId: string) {
   await redis.del(requestKey(matchId));
   for (const p of offer.players) {
     if (await busy(p.idn.id)) {
-      return deliver(ids, { type: "rematch.status", matchId, requested, closed: `${p.info.name} is no longer available.` });
+      return deliver(ids, {
+        type: "rematch.status",
+        matchId,
+        requested,
+        closed: `${p.info.name} is no longer available.`,
+      });
     }
   }
   const members: Member[] = offer.players.map((p) => ({
@@ -79,5 +84,10 @@ export async function declineRematch(id: string, matchId: string) {
   if (!offer || !me) return;
   await redis.del(offerKey(matchId), requestKey(matchId));
   const others = offer.players.map((p) => p.idn.id).filter((x) => x !== id);
-  deliver(others, { type: "rematch.status", matchId, requested: [], closed: `${me.info.name} left, so no rematch this time.` });
+  deliver(others, {
+    type: "rematch.status",
+    matchId,
+    requested: [],
+    closed: `${me.info.name} left, so no rematch this time.`,
+  });
 }

@@ -28,7 +28,15 @@ export const showBanner = (banner?: string) => (banner && banner !== PLAIN_BANNE
 
 export async function publicInfo(idn: Identity): Promise<PlayerPublic> {
   if (idn.guest) {
-    return { id: idn.id, name: idn.name, guest: true, level: 1, caretColor: "#e2b714", caretShape: "line", subscriber: false };
+    return {
+      id: idn.id,
+      name: idn.name,
+      guest: true,
+      level: 1,
+      caretColor: "#e2b714",
+      caretShape: "line",
+      subscriber: false,
+    };
   }
   const b = await playerBits(idn.id);
   return {
