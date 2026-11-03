@@ -9,17 +9,15 @@
   <section>
     <h1 class="font-logo text-4xl">about</h1>
     <p class="mt-4 text-sub">
-      mt ranked is competitive typing: ranked 1v1s matched by rating, casual quick matches, and private rooms for friends.
-      the server is the referee. it picks the text, receives every keystroke and calculates the result, so results come from
-      what you typed, not from what a browser claims.
+      mt ranked is competitive typing: ranked 1v1s matched by rating, casual quick matches, and private rooms for friends. based on your performance in ranked mode you are given an elo, beat players with higher elo to you, get more elo and climb the leaderboards.
     </p>
   </section>
 
   <section>
     <h2 class="mb-3 text-xl">how ranked works</h2>
     <ul class="list-inside list-disc space-y-1 text-sub">
-      <li>one format: about 50 common english words, no punctuation, so ratings mean one thing.</li>
-      <li>ratings use <span class="text-text">Glicko-2</span>. everyone starts at 1500; new players move fast until the system is confident.</li>
+      <li>all ranked matches are 50 common english words, no punctuation.</li>
+      <li>ratings use <span class="text-text">Glicko-2</span>. everyone starts at 1500; new players move faster while we calibrate for your ability.</li>
       <li>your first {PLACEMENT_RACES} races are placements. your tier appears after that.</li>
       <li>leaving or disconnecting for more than 15 seconds after the countdown counts as a loss.</li>
       <li>seasons last about 3 months. at the end, ratings move partway back to 1500 and you keep a badge for your peak tier.</li>
@@ -38,8 +36,7 @@
   <section>
     <h2 class="mb-3 text-xl">fair play</h2>
     <p class="text-sub">
-      pasted and synthetic input is ignored. every ranked race is stored as a replay. races with unnaturally even key timing are
-      flagged automatically, and races above 250 wpm are held for review before ratings change. reports go to human moderators,
+      pasted and synthetic input is ignored. every ranked race is stored as a replay. watch your oppontents replay if something seems fishy and report it if you suspect nefarious activity. reports go to human moderators,
       and a ban gives back rating to the people who lost to the cheater.
     </p>
   </section>
