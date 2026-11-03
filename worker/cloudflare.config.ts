@@ -32,6 +32,11 @@ export default defineConfig(({ mode }) => {
         APP_URL: bindings.text(dev ? "http://localhost:5173" : "https://mtranked.com"),
         ENVIRONMENT: bindings.text(dev ? "development" : "production"),
         MAIL_FROM: bindings.text("MT Ranked <no-reply@mtranked.com>"),
+        // fallback when Resend hits its sending limit (src/mail.ts); needs the SMTP_PASSWORD secret.
+        // Sent from the Mailgun domain so SPF/DKIM line up with the From address.
+        SMTP_HOST: bindings.text("smtp.mailgun.org"),
+        SMTP_USER: bindings.text("mtranked@mg.aamirazad.com"),
+        SMTP_FROM: bindings.text("MT Ranked <no-reply@mg.aamirazad.com>"),
         // verifying one of these emails makes the account a moderator (comma separated)
         ADMIN_EMAILS: bindings.text("aamirmazad@gmail.com"),
         RANKED_MIN_ACCOUNT_AGE_HOURS: bindings.text(dev ? "0" : "24"),
@@ -41,8 +46,8 @@ export default defineConfig(({ mode }) => {
         STRIPE_PRICE_YEARLY: bindings.text(""),
         STRIPE_AUTOMATIC_TAX: bindings.text("false"),
         // required secrets (Worker secrets in production, .dev.vars locally; RESEND_API_KEY may be
-        // empty in dev). Optional ones (SENTRY_DSN, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) are
-        // typed in src/env.d.ts and only need setting when used.
+        // empty in dev). Optional ones (SENTRY_DSN, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+        // SMTP_PASSWORD) are typed in src/env.d.ts and only need setting when used.
         AUTH_SECRET: bindings.secret(),
         RESEND_API_KEY: bindings.secret(),
       },

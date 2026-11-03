@@ -1,20 +1,54 @@
-// Transactional email through Resend's HTTP API (the domain is verified there). Without
-// RESEND_API_KEY (local dev) the message is logged instead, link included.
+// Transactional email through Resend's HTTP API (the domain is verified there). When Resend
+// refuses with 429 (daily/monthly quota or rate limit) and SMTP_PASSWORD is set, the message
+// goes out through Mailgun's SMTP instead. With neither key (local dev) it's logged instead,
+// link included.
 import { env } from "cloudflare:workers";
+import { connect } from "cloudflare:sockets";
 import { reportError } from "./sentry";
+import { smtpSend, type SmtpMessage } from "./smtp";
+
+const SMTP_TIMEOUT_MS = 15_000;
+
+class ResendLimited extends Error {}
+
+async function sendResend(m: SmtpMessage) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ from: m.from, to: [m.to], subject: m.subject, text: m.text, html: m.html }),
+  });
+  if (res.ok) return;
+  const msg = `resend ${res.status}: ${(await res.text()).slice(0, 300)}`;
+  throw res.status === 429 ? new ResendLimited(msg) : new Error(msg);
+}
+
+async function sendSmtp(m: SmtpMessage) {
+  // port 465 is TLS from the first byte (Workers can't open port 25)
+  const socket = connect({ hostname: env.SMTP_HOST, port: 465 }, { secureTransport: "on", allowHalfOpen: false });
+  const timer = setTimeout(() => socket.close(), SMTP_TIMEOUT_MS);
+  try {
+    await smtpSend(socket, env.SMTP_USER, env.SMTP_PASSWORD!, m);
+  } finally {
+    clearTimeout(timer);
+    await socket.close().catch(() => {});
+  }
+}
 
 export async function sendMail(to: string, subject: string, text: string, html: string) {
-  if (!env.RESEND_API_KEY) {
+  if (!env.RESEND_API_KEY && !env.SMTP_PASSWORD) {
     console.log(`[mail] to=${to} subject=${subject}\n${text}`);
     return;
   }
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, text, html }),
-    });
-    if (!res.ok) throw new Error(`resend ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    if (env.RESEND_API_KEY) {
+      try {
+        return await sendResend({ from: env.MAIL_FROM, to, subject, text, html });
+      } catch (e) {
+        if (!(e instanceof ResendLimited) || !env.SMTP_PASSWORD) throw e;
+        console.warn("[mail] resend limited, falling back to smtp:", e.message);
+      }
+    }
+    await sendSmtp({ from: env.SMTP_FROM, to, subject, text, html });
   } catch (e) {
     reportError("[mail] send failed", e);
   }

@@ -3,3 +3,5 @@
 AUTH_SECRET=dev-only-secret-change-me
 # Empty: verification and reset emails are printed in the dev server output instead of sent.
 RESEND_API_KEY=
+# Mailgun SMTP fallback for when Resend hits its sending limit. Leave empty locally.
+SMTP_PASSWORD=
