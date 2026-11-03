@@ -9,7 +9,7 @@
   <section>
     <h1 class="font-logo text-4xl">about</h1>
     <p class="mt-4 text-sub">
-      mt ranked is competitive typing: ranked 1v1s matched by rating, casual quick matches, and private rooms for friends. based on your performance in ranked mode you are given an elo, beat players with higher elo to you, get more elo and climb the leaderboards.
+      mt ranked is competitive typing: ranked 1v1s matched by rating, casual quick matches, and private rooms for friends. based on your performance in ranked mode you are given an elo, beat players with higher elo than you, get more elo and climb the leaderboards.
     </p>
   </section>
 
@@ -36,7 +36,7 @@
   <section>
     <h2 class="mb-3 text-xl">fair play</h2>
     <p class="text-sub">
-      pasted and synthetic input is ignored. every ranked race is stored as a replay. watch your oppontents replay if something seems fishy and report it if you suspect nefarious activity. reports go to human moderators,
+      pasted and synthetic input is ignored. every ranked race is stored as a replay. watch your opponent's replay if something seems fishy and report it if you suspect nefarious activity. reports go to human moderators,
       and a ban gives back rating to the people who lost to the cheater.
     </p>
   </section>
