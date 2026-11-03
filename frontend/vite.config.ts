@@ -4,8 +4,10 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, loadEnv } from "vite";
 
-const api = `http://localhost:${process.env.API_PORT ?? 4001}`;
-const realtime = `ws://localhost:${process.env.REALTIME_PORT ?? 4002}`;
+// the Worker (api + realtime) in dev: `pnpm dev` runs it on this port (worker/vite.config.ts)
+const worker = `localhost:${process.env.WORKER_PORT ?? 8787}`;
+const api = `http://${worker}`;
+const realtime = `ws://${worker}`;
 
 const rootEnv = loadEnv("", "..", "PUBLIC_");
 
@@ -28,8 +30,8 @@ export default defineConfig({
       compilerOptions: {
         runes: ({ filename }) => (filename.split(/[/\\]/).includes("node_modules") ? undefined : true),
       },
-      // a static SPA: serve build/ from any CDN with 200.html as the fallback
-      adapter: adapter({ fallback: "200.html" }),
+      // a static SPA, served as the Worker's assets with index.html as the fallback
+      adapter: adapter({ fallback: "index.html" }),
       // check _app/version.json for a new deploy every 5 minutes (and whenever the tab
       // regains focus); the layout switches to it on the next navigation
       version: { pollInterval: 5 * 60_000 },

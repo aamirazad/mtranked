@@ -1,10 +1,11 @@
 packages:
   - frontend
-  - api
-  - realtime
+  - worker
   - packages/*
 
 allowBuilds:
   esbuild: true
   "@tailwindcss/oxide": true
-  "@node-rs/argon2": true
+  workerd: true
+  sharp: false
+  '@node-rs/argon2': set this to true or false

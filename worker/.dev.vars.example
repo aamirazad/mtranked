@@ -1,0 +1,5 @@
+# Copy to worker/.dev.vars for `pnpm dev`. Production values are Worker secrets.
+# Signs guest cookies and WebSocket tickets: any long random string.
+AUTH_SECRET=dev-only-secret-change-me
+# Empty: verification and reset emails are printed in the dev server output instead of sent.
+RESEND_API_KEY=

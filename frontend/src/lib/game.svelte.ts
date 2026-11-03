@@ -3,6 +3,8 @@
 import {
   DEFAULT_ROOM_SETTINGS,
   INVITE_MS,
+  KEEPALIVE,
+  KEEPALIVE_MS,
   type TextSettings,
   type ClientMsg,
   type LivePlayer,
@@ -221,16 +223,29 @@ class Game {
     }, delay);
   }
 
+  /** in a queue, ready check, race or room, or watching one: keep the clock and round trip fresh */
+  private get active() {
+    return !!(this.queue || this.match || this.race || this.room || this.watch.target);
+  }
+
   private syncClock() {
     clearInterval(this.pingTimer);
     let burst = 0;
-    const ping = () => this.send({ type: "ping", t: Date.now() });
+    // the round trip goes along so the server can allow for it at the finish line
+    const ping = () => this.send({ type: "ping", t: Date.now(), ...(this.rtt ? { rtt: this.rtt } : {}) });
     ping();
     const fast = setInterval(() => {
       ping();
       if (++burst >= 4) clearInterval(fast);
     }, 150);
-    this.pingTimer = setInterval(ping, 4000);
+    let lastKeepalive = Date.now();
+    this.pingTimer = setInterval(() => {
+      if (this.active) return ping();
+      // idle: a fixed keepalive the server answers without waking up (and without billing a request)
+      if (Date.now() - lastKeepalive < KEEPALIVE_MS) return;
+      lastKeepalive = Date.now();
+      if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(KEEPALIVE);
+    }, 4000);
   }
 
   /** `from` tags where in the page this was sent from; a refusal is then shown there instead of as a toast */

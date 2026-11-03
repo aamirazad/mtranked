@@ -3,10 +3,10 @@ dist
 build
 .svelte-kit
 .turbo
+.cloudflare
+.dev.vars
 .env
 .env.*
 !.env.example
 *.log
 .DS_Store
-!.env.production.example
-/backups
