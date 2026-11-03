@@ -17,7 +17,7 @@
   <section>
     <h2 class="mb-3 text-xl">what we collect</h2>
     <ul class="list-inside list-disc space-y-1 text-sub">
-      <li><span class="text-text">account details:</span> your email, display name and password (stored only as a secure hash).</li>
+      <li><span class="text-text">account details:</span> your email, display name and, if you set one, your password (stored only as a secure hash).</li>
       <li><span class="text-text">races:</span> the text, your keystrokes and their timing, results, ratings and match history. ranked races are stored as replays.</li>
       <li><span class="text-text">sessions:</span> your IP address and browser user agent for each sign-in, so you can review and sign out devices in settings.</li>
       <li><span class="text-text">fair play:</span> IP addresses and keystroke timing are used to detect cheating and alternate accounts. reports you file or receive are kept for moderators.</li>
@@ -46,7 +46,7 @@
     <h2 class="mb-3 text-xl">who we share it with</h2>
     <ul class="list-inside list-disc space-y-1 text-sub">
       {#if session.supporterSales}<li>Stripe, to process supporter payments.</li>{/if}
-      <li>our email provider, to send verification and password reset emails.</li>
+      <li>our email provider, to send sign-in codes, verification and password reset emails.</li>
       <li>our hosting provider, which stores the data on our behalf.</li>
       <li>authorities, if the law requires it.</li>
     </ul>

@@ -18,7 +18,7 @@
     <h2 class="mb-3 text-xl">your account</h2>
     <ul class="list-inside list-disc space-y-1 text-sub">
       <li>you can play as a guest, but ranked needs an account with a verified email.</li>
-      <li>you're responsible for keeping your password safe and for everything done with your account.</li>
+      <li>you're responsible for keeping your password and email account safe and for everything done with your account.</li>
       <li>one ranked account per person. don't share accounts or play ranked on someone else's.</li>
       <li>display names must not impersonate others or be offensive. we may rename accounts that break this rule.</li>
     </ul>

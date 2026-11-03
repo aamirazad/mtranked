@@ -36,6 +36,9 @@
   let sessions = $state<Sess[]>([]);
   let billing = $state<{ enabled: boolean; status: string; renewsAt: string | null; subscriber: boolean } | null>(null);
   let nameError = $state<string | null>(null);
+  let currentPassword = $state("");
+  let newPassword = $state("");
+  let passwordErrors = $state<Record<string, string>>({});
   // feedback shown next to whatever was clicked
   const notes = new Notes();
   /** back from checkout */
@@ -103,6 +106,22 @@
     const r = await api.auth.resendVerification({});
     if (r.status === 200) notes.set("verify", "sent! check your inbox", "success");
     else notes.set("verify", errorMessage(r), "error");
+  }
+
+  async function savePassword(e: SubmitEvent) {
+    e.preventDefault();
+    passwordErrors = {};
+    const had = session.me?.hasPassword;
+    const r = await api.auth.setPassword({ body: { current: had ? currentPassword : undefined, password: newPassword } });
+    if (r.status !== 200) {
+      passwordErrors = fieldErrors(r);
+      if (!Object.keys(passwordErrors).length) notes.set("password", errorMessage(r), "error");
+      return;
+    }
+    session.set(r.body.user);
+    currentPassword = newPassword = "";
+    notes.set("password", had ? "password changed. other devices were signed out" : "password added", "success", 4000);
+    if (had) sessions = sessions.filter((s) => s.current);
   }
 
   async function revoke(id: string) {
@@ -504,6 +523,37 @@
         </div>
       </section>
     {/if}
+
+    <section id="password" class="scroll-mt-28">
+      <h2 class="label mb-1 text-sm">password</h2>
+      <p class="mb-5 text-xs text-sub">
+        {#if me.hasPassword}
+          you sign in with your password, or with a code we email to {me.email}.
+        {:else}
+          you sign in with a code we email to {me.email}. add a password if you'd rather type one; you can still ask for a code.
+        {/if}
+      </p>
+      <form class="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onsubmit={savePassword}>
+        <!-- lets password managers pair the password with the account -->
+        <input class="sr-only" type="email" autocomplete="username" value={me.email} tabindex="-1" aria-hidden="true" readonly />
+        {#if me.hasPassword}
+          <label class="space-y-1">
+            <span class="label">current password</span>
+            <input class="input" type="password" autocomplete="current-password" bind:value={currentPassword} required />
+            {#if passwordErrors.current}<span class="block text-xs text-error">{passwordErrors.current}</span>{/if}
+          </label>
+        {/if}
+        <label class="space-y-1" class:sm:col-span-2={!me.hasPassword}>
+          <span class="label">{me.hasPassword ? "new password" : "password"} (8+ characters)</span>
+          <input class="input" type="password" autocomplete="new-password" bind:value={newPassword} required minlength="8" />
+          {#if passwordErrors.password}<span class="block text-xs text-error">{passwordErrors.password}</span>{/if}
+        </label>
+        <div class="flex items-center gap-3 self-end">
+          <Note note={notes.get("password")} />
+          <button class="btn btn-main">{me.hasPassword ? "change password" : "add password"}</button>
+        </div>
+      </form>
+    </section>
 
     <section>
       <h2 class="label mb-4 text-sm">sessions</h2>

@@ -85,6 +85,7 @@ export async function buildMe(u: UserRow): Promise<Me> {
     email: u.email,
     displayName: u.display_name,
     verified: !!u.email_verified_at,
+    hasPassword: u.has_password,
     createdAt: new Date(u.created_at).toISOString(),
     country: u.country,
     subscriber: u.is_subscriber,
