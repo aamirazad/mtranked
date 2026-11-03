@@ -1,10 +1,19 @@
-# Tests for every pull request. Also called by deploy.yml so main is tested before it ships.
+# Tests for every pull request. Also called by deploy.yml (with `production: true`) so main is
+# tested before it ships; that run also makes the production build deploy.yml uploads.
 name: CI
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
   workflow_call:
+    inputs:
+      production:
+        description: Build with production settings and upload the Worker build for deploy.yml
+        type: boolean
+        default: false
+    secrets:
+      SENTRY_AUTH_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -41,7 +50,27 @@ jobs:
       - name: Type check and unit tests
         run: pnpm turbo run check test
       - name: Build (frontend + Worker)
+        if: ${{ !inputs.production }}
         run: pnpm turbo run build --filter=@mtr/worker
+      - name: Build for production
+        if: ${{ inputs.production }}
+        env:
+          PUBLIC_SOURCE_URL: ${{ vars.PUBLIC_SOURCE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          PUBLIC_CONTACT_EMAIL: ${{ vars.PUBLIC_CONTACT_EMAIL }}
+          PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        # --force: the build tags this commit's Sentry release and uploads its source maps, so a
+        # bundle replayed from the cache (built for an earlier commit) won't do
+        run: pnpm turbo run build --filter=@mtr/worker --force
+      - name: Upload the production build
+        if: ${{ inputs.production }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: worker-build
+          path: worker/.cloudflare/output
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
       - name: Migrations apply to a fresh database
         working-directory: worker
         run: |
