@@ -174,7 +174,7 @@ export function rankedBlock(u: UserRow): string | null {
   if (!u.email_verified_at) return "Verify your email to play ranked.";
   const min = rankedMinAgeHours();
   const ageH = (Date.now() - u.created_at) / 3600_000;
-  if (ageH < min) {
+  if (min > 0 && ageH < min) {
     const left = Math.ceil(min - ageH);
     return `Ranked unlocks when your account is ${min}h old (${left}h to go). Casual is open now!`;
   }
