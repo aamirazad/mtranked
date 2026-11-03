@@ -13,6 +13,7 @@ export const DisplayName = z
   .regex(/^[a-zA-Z0-9_.-]+$/, "Letters, numbers, _ . - only");
 export const Password = z.string().min(8, "At least 8 characters").max(200);
 export const Email = z.string().trim().email().max(200);
+export const EmailCode = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code");
 
 /** One synced preference: its value and when (ms since epoch) it was changed. */
 const pref = <T extends z.ZodTypeAny>(v: T) => z.object({ v, t: z.number().int().nonnegative() });
@@ -54,6 +55,8 @@ export type Me = {
   email: string;
   displayName: string;
   verified: boolean;
+  /** false for accounts that only sign in with emailed codes */
+  hasPassword: boolean;
   createdAt: string;
   country: string | null;
   subscriber: boolean;
@@ -363,6 +366,44 @@ export const contract = c.router(
         path: "/auth/signup",
         body: z.object({ email: Email, password: Password, displayName: DisplayName }),
         responses: { 200: c.type<{ user: Me }>(), 400: err, 409: err, 429: err },
+      },
+      /** first step of sign-in: says what to ask for next, and emails a code to passwordless accounts */
+      start: {
+        method: "POST",
+        path: "/auth/start",
+        body: z.object({ email: Email }),
+        responses: { 200: c.type<{ next: "password" | "code" | "new" }>(), 429: err },
+      },
+      sendCode: {
+        method: "POST",
+        path: "/auth/code",
+        body: z.object({ email: Email }),
+        responses: { 200: ok, 429: err },
+      },
+      /** signs in, or for an email with no account yet, returns a token to finish signing up with */
+      verifyCode: {
+        method: "POST",
+        path: "/auth/code/verify",
+        body: z.object({ email: Email, code: EmailCode }),
+        responses: {
+          200: c.type<{ user: Me; signupToken: null } | { user: null; signupToken: string }>(),
+          400: err,
+          401: err,
+          429: err,
+        },
+      },
+      signupWithCode: {
+        method: "POST",
+        path: "/auth/signup/code",
+        body: z.object({ signupToken: z.string().max(1000), displayName: DisplayName }),
+        responses: { 200: c.type<{ user: Me }>(), 400: err, 409: err, 429: err },
+      },
+      /** add a password to a code-only account, or change it (needs the current one) */
+      setPassword: {
+        method: "POST",
+        path: "/auth/password",
+        body: z.object({ current: z.string().max(200).optional(), password: Password }),
+        responses: { 200: c.type<{ user: Me }>(), 400: err, 401: err, 429: err },
       },
       login: {
         method: "POST",

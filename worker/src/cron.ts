@@ -10,6 +10,7 @@ export async function daily() {
   await batch([
     q("delete from sessions where expires_at < ?", now),
     q("delete from email_tokens where expires_at < ?", now),
+    q("delete from email_codes where expires_at < ?", now),
   ]);
   await rolloverIfEnded(now);
 }

@@ -108,6 +108,7 @@ export type UserRow = {
   email: string;
   display_name: string;
   email_verified_at: number | null;
+  has_password: boolean;
   created_at: number;
   country: string | null;
   is_subscriber: boolean;
@@ -123,7 +124,7 @@ export type UserRow = {
   name_changed_at: number | null;
 };
 
-export const USER_COLUMNS = `id, email, display_name, email_verified_at, created_at, country, is_subscriber, early_supporter,
+export const USER_COLUMNS = `id, email, display_name, email_verified_at, password_hash <> '' as has_password, created_at, country, is_subscriber, early_supporter,
   is_moderator, is_bot, banned_at, timed_out_until, suspension_reason, flagged_at, xp, equipped, name_changed_at`;
 
 export function toUser(r: Row): UserRow {
@@ -132,6 +133,7 @@ export function toUser(r: Row): UserRow {
     email: String(r.email),
     display_name: String(r.display_name),
     email_verified_at: (r.email_verified_at as number | null) ?? null,
+    has_password: bool(r.has_password),
     created_at: Number(r.created_at),
     country: (r.country as string | null) ?? null,
     is_subscriber: bool(r.is_subscriber),

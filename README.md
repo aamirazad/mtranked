@@ -73,7 +73,7 @@ pnpm db:migrate           # local D1: schema, Season 0 and 12 "ghost" bots with 
 pnpm dev                  # Worker :8787, site http://localhost:5173
 ```
 
-- Emails (verification, password reset) are printed in the `pnpm dev` output instead of sent.
+- Emails (sign-in codes, verification, password reset) are printed in the `pnpm dev` output instead of sent.
 - Local secrets live in `worker/.dev.vars` (created from `.dev.vars.example` on the first `pnpm dev`).
 - New accounts can play ranked straight away locally (production waits 24h).
 - With no Stripe keys, the settings page has a **dev: toggle supporter** button so you can try supporter perks.
@@ -135,7 +135,7 @@ To deploy by hand: `pnpm deploy` (uses your `cf auth login`). Apply new migratio
 Plain settings are in `worker/cloudflare.config.ts` (`APP_URL`, `ADMIN_EMAILS`, `RANKED_MIN_ACCOUNT_AGE_HOURS`, `SUPPORTER_SALES`, Stripe prices). Secrets are set with `cf workers secrets update <NAME> --worker mtranked --text ...`:
 
 - `AUTH_SECRET` (required): signs guest cookies and WebSocket tickets. Changing it signs out every guest.
-- `RESEND_API_KEY` (required): verification and password reset emails.
+- `RESEND_API_KEY` (required): sign-in codes, verification and password reset emails.
 - `SMTP_PASSWORD`: Mailgun SMTP password for `mtranked@mg.aamirazad.com`, the fallback when Resend hits its sending limit.
 - `SENTRY_DSN`: backend error reporting (project `mtranked-server`).
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`: supporter subscriptions.
