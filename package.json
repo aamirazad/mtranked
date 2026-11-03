@@ -9,18 +9,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "services:up": "bash scripts/services.sh up",
-    "services:down": "bash scripts/services.sh down",
-    "db:migrate": "pnpm --filter @mtr/db migrate",
-    "db:seed": "pnpm --filter @mtr/db seed",
-    "season:rollover": "pnpm --filter @mtr/db season-rollover",
-    "make-moderator": "pnpm --filter @mtr/db make-moderator",
-    "dev": "node scripts/check-services.mjs && turbo run dev",
+    "dev": "turbo run dev",
+    "db:migrate": "pnpm --filter @mtr/worker db:migrate",
     "build": "turbo run build",
-    "bot": "pnpm --filter @mtr/realtime bot",
+    "deploy": "turbo run build --filter=@mtr/worker && pnpm --filter @mtr/worker exec cf deploy --prebuilt",
+    "bot": "pnpm --filter @mtr/worker bot",
     "check": "turbo run check",
-    "test": "turbo run test",
-    "start": "turbo run start"
+    "test": "turbo run test"
   },
   "devDependencies": {
     "turbo": "2.11.7",

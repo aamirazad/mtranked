@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["./.cloudflare/types/index.d.ts"],
+    "lib": ["ES2024"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "cloudflare.config.ts", "vite.config.ts"]
+}

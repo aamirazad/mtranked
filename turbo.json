@@ -10,7 +10,8 @@
       "outputs": [
         "dist/**",
         "build/**",
-        ".svelte-kit/**"
+        ".svelte-kit/**",
+        ".cloudflare/output/**"
       ],
       "passThroughEnv": [
         "SENTRY_AUTH_TOKEN"
@@ -20,14 +21,21 @@
       "cache": false,
       "persistent": true
     },
-    "start": {
-      "cache": false,
-      "persistent": true,
+    "check": {},
+    "test": {},
+    "@mtr/worker#build": {
       "dependsOn": [
-        "build"
+        "^build",
+        "@mtr/frontend#build"
+      ],
+      "outputs": [
+        ".cloudflare/output/**"
       ]
     },
-    "check": {},
-    "test": {}
+    "@mtr/worker#check": {
+      "outputs": [
+        ".cloudflare/types/**"
+      ]
+    }
   }
 }

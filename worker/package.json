@@ -1,0 +1,36 @@
+{
+  "name": "@mtr/worker",
+  "version": "0.0.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node -e \"require('fs').existsSync('.dev.vars')||require('fs').copyFileSync('.dev.vars.example','.dev.vars')\" && vite dev",
+    "build": "cf build",
+    "deploy": "cf deploy",
+    "check": "cf workers types && tsc -p .",
+    "test": "vitest run",
+    "db:migrate": "cf d1 migrations apply 636fb508-8220-41ec-a6c5-97d10c7c0c9a --local --persist-to .cloudflare/state",
+    "db:migrate:prod": "cf d1 migrations apply 636fb508-8220-41ec-a6c5-97d10c7c0c9a",
+    "bot": "tsx scripts/bot.ts"
+  },
+  "dependencies": {
+    "@mtr/contracts": "workspace:*",
+    "@mtr/engine": "workspace:*",
+    "@mtr/race-protocol": "workspace:*",
+    "@mtr/shared": "workspace:*",
+    "@sentry/cloudflare": "11.10.0",
+    "@ts-rest/core": "3.52.1",
+    "@ts-rest/serverless": "3.52.1",
+    "stripe": "23.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.9",
+    "cf": "1.0.0-beta.26",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vite": "8.3.3",
+    "vitest": "5.0.3"
+  }
+}

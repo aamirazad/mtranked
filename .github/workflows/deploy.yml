@@ -1,0 +1,70 @@
+# Every push to main is tested, then deployed to Cloudflare (mtranked.com): D1 migrations
+# first, then the Worker (site, API and realtime Hub) with `cf deploy`.
+# Runs aren't cancelled when a newer commit lands, since a cancelled run marks its commit as
+# failed. Instead every run finishes, and one whose commit is no longer the head of main by
+# the time it would deploy skips that step and still passes.
+#
+# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, optional variables
+# PUBLIC_CONTACT_EMAIL, PUBLIC_SENTRY_DSN and PUBLIC_SOURCE_URL, and optionally a
+# SENTRY_AUTH_TOKEN secret for frontend source maps (see README "Hosting").
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://mtranked.com
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Still the newest commit on main?
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$head" = "${{ github.sha }}" ]; then echo "latest=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::main has moved on to ${head::7}; its own run deploys it"; fi
+      - uses: pnpm/action-setup@v6
+        if: steps.head.outputs.latest
+      - uses: actions/setup-node@v7
+        if: steps.head.outputs.latest
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.head.outputs.latest
+      - name: Build
+        if: steps.head.outputs.latest
+        env:
+          PUBLIC_SOURCE_URL: ${{ vars.PUBLIC_SOURCE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          PUBLIC_CONTACT_EMAIL: ${{ vars.PUBLIC_CONTACT_EMAIL }}
+          PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm turbo run build --filter=@mtr/worker
+      - name: Apply D1 migrations
+        if: steps.head.outputs.latest
+        working-directory: worker
+        run: pnpm db:migrate:prod
+      - name: Deploy the Worker
+        if: steps.head.outputs.latest
+        working-directory: worker
+        run: pnpm exec cf deploy --prebuilt --tag "sha-${GITHUB_SHA::7}" --message "${{ github.event_name }} ${GITHUB_SHA::7}"

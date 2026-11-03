@@ -75,7 +75,8 @@ export type PlayerPublic = z.infer<typeof PlayerPublic>;
 
 // ---------------------------------------------------------------- client -> server
 export const ClientMsg = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("ping"), t: z.number() }),
+  /** `rtt`: the client's latest measured round trip (ms), used for the finish-time allowance */
+  z.object({ type: z.literal("ping"), t: z.number(), rtt: z.number().min(0).max(5000).optional() }),
   z.object({ type: z.literal("queue.join"), mode: QueueMode }),
   z.object({ type: z.literal("queue.leave") }),
   z.object({ type: z.literal("ghost.accept") }),
@@ -295,6 +296,13 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     return null;
   }
 }
+
+/**
+ * Idle keepalive, sent as this exact text. The Hub answers it with the same text without
+ * waking up (a Durable Object auto-response), so idle tabs cost nothing.
+ */
+export const KEEPALIVE = '{"type":"keepalive"}';
+export const KEEPALIVE_MS = 30_000;
 
 export const INPUT_BATCH_MS = 100;
 export const STATE_TICK_MS = 100;
