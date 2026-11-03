@@ -39,7 +39,8 @@ export default defineConfig(({ mode }) => {
         SMTP_FROM: bindings.text("MT Ranked <no-reply@mg.aamirazad.com>"),
         // verifying one of these emails makes the account a moderator (comma separated)
         ADMIN_EMAILS: bindings.text("aamirmazad@gmail.com"),
-        RANKED_MIN_ACCOUNT_AGE_HOURS: bindings.text(dev ? "0" : "24"),
+        // hours a new account waits before ranked; 0 turns the wait (and its message) off
+        RANKED_MIN_ACCOUNT_AGE_HOURS: bindings.text("0"),
         // "true" sells supporter to new signups (needs the Stripe secrets below)
         SUPPORTER_SALES: bindings.text("false"),
         STRIPE_PRICE_MONTHLY: bindings.text(""),
