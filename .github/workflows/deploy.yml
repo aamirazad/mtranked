@@ -1,6 +1,5 @@
 # Every push to main is tested, then deployed to Cloudflare (mtranked.com): D1 migrations
-# first, then the Worker (site, API and realtime Hub) with `cf deploy`. The test job (ci.yml)
-# also makes the production build, so this job only downloads it and ships it.
+# first, then the Worker (site, API and realtime Hub) with `cf deploy`.
 # Runs aren't cancelled when a newer commit lands, since a cancelled run marks its commit as
 # failed. Instead every run finishes, and one whose commit is no longer the head of main by
 # the time it would deploy skips that step and still passes.
@@ -22,10 +21,6 @@ jobs:
   test:
     name: Test
     uses: ./.github/workflows/ci.yml
-    with:
-      production: true
-    secrets:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
   deploy:
     name: Deploy to Cloudflare
@@ -55,15 +50,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # only the Worker's dependencies: the `cf` CLI is all this job runs
-      - run: pnpm install --frozen-lockfile --filter @mtr/worker
+      - run: pnpm install --frozen-lockfile
         if: steps.head.outputs.latest
-      - name: Download the production build
+      - name: Build
         if: steps.head.outputs.latest
-        uses: actions/download-artifact@v8
-        with:
-          name: worker-build
-          path: worker/.cloudflare/output
+        env:
+          PUBLIC_SOURCE_URL: ${{ vars.PUBLIC_SOURCE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          PUBLIC_CONTACT_EMAIL: ${{ vars.PUBLIC_CONTACT_EMAIL }}
+          PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm turbo run build --filter=@mtr/worker
       - name: Apply D1 migrations
         if: steps.head.outputs.latest
         working-directory: worker
