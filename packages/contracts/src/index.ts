@@ -115,45 +115,25 @@ export type Profile = {
 
 export type RatingPoint = { at: string; rating: number; races: number };
 
-/** How results are grouped on the profile (ghost races count as casual). */
-export const StatKind = z.enum(["ranked", "casual", "private", "practice"]);
-export type StatKind = z.infer<typeof StatKind>;
-
-export type KindStats = {
-  kind: StatKind;
-  /** results counted, finished or not */
-  results: number;
+/** All-time ranked race stats. Casual, private room and practice results aren't counted. */
+export type RaceStats = {
+  /** ranked races, finished or not */
+  races: number;
   completed: number;
-  /** results against at least one other player, and how many of those were won */
-  versus: number;
   wins: number;
   avgWpm: number;
   bestWpm: number;
+  /** the race the best wpm was set in */
+  bestMatchId: string | null;
   avgAcc: number;
   avgConsistency: number | null;
-  /** average wpm of the last 10 finished results */
+  /** average wpm of the last 10 finished races */
   last10Wpm: number | null;
   timeMs: number;
 };
 
-export type PersonalBest = {
-  wpm: number;
-  raw: number;
-  acc: number;
-  consistency: number | null;
-  at: string;
-  kind: StatKind;
-  language: string;
-  punctuation: boolean;
-  numbers: boolean;
-  matchId: string | null;
-};
-
 export type ProfileStats = {
-  totals: { results: number; completed: number; timeMs: number };
-  kinds: KindStats[];
-  /** best result per test length, keyed by seconds / word count */
-  pbs: { time: Record<string, PersonalBest | null>; words: Record<string, PersonalBest | null> };
+  races: RaceStats;
   ranked: {
     /** highest season peak ever */
     allTimePeak: number;
@@ -163,11 +143,11 @@ export type ProfileStats = {
     rank: number | null;
     ladder: number;
   };
-  /** consecutive UTC days with at least one result */
+  /** consecutive UTC days with at least one ranked race */
   streak: { current: number; best: number };
 };
 
-export type WpmPoint = { at: string; wpm: number; raw: number; acc: number; kind: StatKind };
+export type WpmPoint = { at: string; wpm: number; raw: number; acc: number };
 export type ActivityDay = { date: string; count: number };
 
 /** Settings of a practice test (custom text isn't saved). Extra keys are kept for newer generators. */
@@ -519,13 +499,12 @@ export const contract = c.router(
       wpmHistory: {
         method: "GET",
         path: "/users/:name/wpm-history",
-        query: z.object({ kind: StatKind.optional() }),
         responses: { 200: c.type<{ points: WpmPoint[] }>(), 404: err },
       },
       activity: {
         method: "GET",
         path: "/users/:name/activity",
-        /** a calendar year, or the last 12 months when omitted */
+        /** ranked races per day; a calendar year, or the last 12 months when omitted */
         query: z.object({ year: z.coerce.number().int().min(2000).max(3000).optional() }),
         responses: { 200: c.type<{ days: ActivityDay[]; from: string; to: string; years: number[] }>(), 404: err },
       },
