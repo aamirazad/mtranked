@@ -1,8 +1,8 @@
 <script lang="ts">
   import { dimBanner } from "#lib/banner.ts";
   import { page } from "$app/state";
-  import { Check, Flame, Trophy, TrendingDown, TrendingUp, UserPlus } from "@lucide/svelte";
-  import type { PersonalBest, Profile, ProfileStats, StatKind } from "@mtr/contracts";
+  import { Check, Flame, Play, Trophy, TrendingDown, TrendingUp, UserPlus } from "@lucide/svelte";
+  import type { Profile, ProfileStats } from "@mtr/contracts";
   import { tierFor, levelFromXp, PLACEMENT_RACES } from "@mtr/shared";
   import { api } from "#lib/api.ts";
   import { flag } from "#lib/countries.ts";
@@ -24,7 +24,6 @@
     const r = await friends.add(profile!.name);
     addError = r.ok ? null : r.text;
   }
-  let kind = $state<StatKind | null>(null);
 
   $effect(() => {
     const n = name;
@@ -57,43 +56,9 @@
   const k = (n: number) => (n >= 10_000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
 
-  // a kind with nothing in it isn't worth a tab
-  const kinds = $derived((stats?.kinds ?? []).filter((x) => x.results > 0));
-  const sel = $derived.by(() => {
-    if (!stats) return null;
-    if (kind) return stats.kinds.find((x) => x.kind === kind) ?? null;
-    // "all": combine the kinds, weighting averages by completed results
-    const ks = stats.kinds;
-    const done = ks.reduce((a, x) => a + x.completed, 0);
-    const w = (f: (x: (typeof ks)[number]) => number) => (done ? ks.reduce((a, x) => a + f(x) * x.completed, 0) / done : 0);
-    const withCons = ks.filter((x) => x.avgConsistency !== null);
-    const consDone = withCons.reduce((a, x) => a + x.completed, 0);
-    return {
-      kind: null,
-      results: stats.totals.results,
-      completed: done,
-      versus: ks.reduce((a, x) => a + x.versus, 0),
-      wins: ks.reduce((a, x) => a + x.wins, 0),
-      avgWpm: w((x) => x.avgWpm),
-      bestWpm: Math.max(0, ...ks.map((x) => x.bestWpm)),
-      avgAcc: w((x) => x.avgAcc),
-      avgConsistency: consDone ? withCons.reduce((a, x) => a + x.avgConsistency! * x.completed, 0) / consDone : null,
-      last10Wpm: null,
-      timeMs: stats.totals.timeMs,
-    };
-  });
-  const trend = $derived(sel?.last10Wpm != null && sel.avgWpm ? sel.last10Wpm - sel.avgWpm : null);
-
-  const pbGroups = $derived(
-    stats
-      ? [
-          { unit: "seconds", entries: Object.entries(stats.pbs.time) },
-          { unit: "words", entries: Object.entries(stats.pbs.words) },
-        ]
-      : [],
-  );
-  const pbDetail = (p: PersonalBest) =>
-    [p.kind, p.language.replace("_", " "), p.punctuation ? "punctuation" : "", p.numbers ? "numbers" : ""].filter(Boolean).join(" · ");
+  // stats only count ranked races; casual, private rooms and practice live in the match history
+  const rs = $derived(stats?.races ?? null);
+  const trend = $derived(rs?.last10Wpm != null && rs.avgWpm ? rs.last10Wpm - rs.avgWpm : null);
 </script>
 
 <svelte:head><title>{name} · MT Ranked</title></svelte:head>
@@ -163,16 +128,16 @@
         <div class="hidden h-full w-px rounded bg-white/10 md:block"></div>
         <div class="grid grid-cols-3 gap-4">
           <div>
-            <div class="label sm:text-sm">races</div>
-            <div class="text-2xl tabular-nums sm:text-4xl">{stats ? stats.kinds.filter((x) => x.kind !== "practice").reduce((a, x) => a + x.results, 0) : "—"}</div>
+            <div class="label sm:text-sm">ranked races</div>
+            <div class="text-2xl tabular-nums sm:text-4xl">{stats?.races.races ?? "—"}</div>
           </div>
           <div>
-            <div class="label sm:text-sm">tests completed</div>
-            <div class="text-2xl tabular-nums sm:text-4xl">{stats?.totals.completed ?? "—"}</div>
+            <div class="label sm:text-sm">wins</div>
+            <div class="text-2xl tabular-nums sm:text-4xl">{stats?.races.wins ?? "—"}</div>
           </div>
           <div>
-            <div class="label sm:text-sm">time typing</div>
-            <div class="text-2xl tabular-nums sm:text-4xl">{stats ? hms(stats.totals.timeMs) : "—"}</div>
+            <div class="label sm:text-sm">time racing</div>
+            <div class="text-2xl tabular-nums sm:text-4xl">{stats ? hms(stats.races.timeMs) : "—"}</div>
           </div>
         </div>
       </div>
@@ -213,97 +178,54 @@
       </div>
     </section>
 
-    <!-- personal bests -->
-    {#if stats}
-      <section class="grid gap-6 lg:grid-cols-2">
-        {#each pbGroups as g (g.unit)}
-          <div class="card grid grid-cols-4 gap-2 px-3">
-            {#each g.entries as [len, p] (len)}
-              <div class="group relative min-h-28 rounded-lg px-1 py-1 text-center" title={p ? `${len} ${g.unit}: ${Math.round(p.wpm)} wpm, ${Math.round(p.acc)}% accuracy` : undefined}>
-                <div class="text-xs text-sub">{len} {g.unit}</div>
-                <div class="transition-opacity duration-150 group-hover:opacity-0">
-                  <div class="text-4xl leading-tight tabular-nums sm:text-5xl">{p ? Math.round(p.wpm) : "-"}</div>
-                  <div class="text-xl text-sub tabular-nums sm:text-2xl">{p ? `${Math.round(p.acc)}%` : "-"}</div>
-                </div>
-                {#if p}
-                  <div class="absolute inset-x-0 top-5 bottom-0 flex flex-col items-center justify-center gap-0.5 rounded-lg text-xs opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                    <div class="text-sm text-text tabular-nums">{p.wpm} wpm</div>
-                    <div class="text-sub tabular-nums">{p.raw} raw</div>
-                    <div class="text-sub tabular-nums">{p.acc}% acc</div>
-                    {#if p.consistency !== null}<div class="text-sub tabular-nums">{Math.round(p.consistency)}% con</div>{/if}
-                    <div class="text-sub">{fmtDate(p.at)}</div>
-                    <div class="max-w-full truncate text-[10px] text-sub/80" title={pbDetail(p)}>{pbDetail(p)}</div>
-                  </div>
+    <!-- all-time ranked stats -->
+    {#if rs && rs.races > 0}
+      <section class="card">
+        <div class="mb-5 label text-sm">ranked stats</div>
+        <div class="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+          <div>
+            <div class="label">win rate</div>
+            <div class="text-3xl tabular-nums">{pct(rs.wins, rs.races)}</div>
+            <div class="text-xs text-sub">{rs.wins} of {rs.races} races</div>
+          </div>
+          <div>
+            <div class="label">avg wpm</div>
+            <div class="text-3xl text-main tabular-nums">{Math.round(rs.avgWpm)}</div>
+            {#if rs.last10Wpm !== null}
+              <div class="flex items-center gap-1 text-xs text-sub">
+                last 10: <span class="tabular-nums text-text">{Math.round(rs.last10Wpm)}</span>
+                {#if trend !== null && Math.abs(trend) >= 1}
+                  {#if trend > 0}<TrendingUp size={13} class="text-win" />{:else}<TrendingDown size={13} class="text-error" />{/if}
                 {/if}
               </div>
-            {/each}
+            {/if}
           </div>
-        {/each}
-      </section>
-    {/if}
-
-    <!-- per-mode stats -->
-    {#if stats && stats.totals.results > 0}
-      <section class="card">
-        <div class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div class="label text-sm">stats</div>
-          <div class="flex flex-wrap gap-1 text-sm">
-            <button class="toggle" class:on={kind === null} onclick={() => (kind = null)}>all</button>
-            {#each kinds as x (x.kind)}
-              <button class="toggle" class:on={kind === x.kind} onclick={() => (kind = x.kind)}>{x.kind === "private" ? "private rooms" : x.kind}</button>
-            {/each}
+          <div>
+            <div class="label">best wpm</div>
+            <div class="flex items-center gap-2 text-3xl tabular-nums">{Math.round(rs.bestWpm)}<Trophy size={18} class="text-main" /></div>
+            {#if rs.bestMatchId}<a href="/replay/{rs.bestMatchId}" class="inline-flex items-center gap-1 text-xs text-sub hover:text-main"><Play size={11} />replay</a>{/if}
+          </div>
+          <div>
+            <div class="label">avg accuracy</div>
+            <div class="text-3xl tabular-nums">{Math.round(rs.avgAcc * 10) / 10}%</div>
+          </div>
+          <div>
+            <div class="label">avg consistency</div>
+            <div class="text-3xl tabular-nums">{rs.avgConsistency === null ? "—" : `${Math.round(rs.avgConsistency)}%`}</div>
+          </div>
+          <div>
+            <div class="label">completed</div>
+            <div class="text-3xl tabular-nums">{pct(rs.completed, rs.races)}</div>
+            <div class="text-xs text-sub">{rs.races - rs.completed} unfinished</div>
           </div>
         </div>
-        {#if sel}
-          <div class="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-            <div>
-              <div class="label">{sel.kind === "practice" ? "tests" : "results"}</div>
-              <div class="text-3xl tabular-nums">{sel.results}</div>
-              <div class="text-xs text-sub">{hms(sel.timeMs)} typing</div>
-            </div>
-            <div>
-              <div class="label">win rate</div>
-              <div class="text-3xl tabular-nums">{sel.versus ? pct(sel.wins, sel.versus) : "—"}</div>
-              <div class="text-xs text-sub">{sel.versus ? `${sel.wins} of ${sel.versus} races` : "no head-to-head races"}</div>
-            </div>
-            <div>
-              <div class="label">avg wpm</div>
-              <div class="text-3xl text-main tabular-nums">{Math.round(sel.avgWpm)}</div>
-              {#if sel.last10Wpm !== null}
-                <div class="flex items-center gap-1 text-xs text-sub">
-                  last 10: <span class="tabular-nums text-text">{Math.round(sel.last10Wpm)}</span>
-                  {#if trend !== null && Math.abs(trend) >= 1}
-                    {#if trend > 0}<TrendingUp size={13} class="text-win" />{:else}<TrendingDown size={13} class="text-error" />{/if}
-                  {/if}
-                </div>
-              {/if}
-            </div>
-            <div>
-              <div class="label">best wpm</div>
-              <div class="flex items-center gap-2 text-3xl tabular-nums">{Math.round(sel.bestWpm)}<Trophy size={18} class="text-main" /></div>
-            </div>
-            <div>
-              <div class="label">avg accuracy</div>
-              <div class="text-3xl tabular-nums">{Math.round(sel.avgAcc * 10) / 10}%</div>
-            </div>
-            <div>
-              <div class="label">avg consistency</div>
-              <div class="text-3xl tabular-nums">{sel.avgConsistency === null ? "—" : `${Math.round(sel.avgConsistency)}%`}</div>
-            </div>
-            <div>
-              <div class="label">completed</div>
-              <div class="text-3xl tabular-nums">{pct(sel.completed, sel.results)}</div>
-              <div class="text-xs text-sub">{sel.results - sel.completed} unfinished</div>
-            </div>
-          </div>
-        {/if}
         <div class="mt-6">
           <div class="mb-2 flex items-center gap-4 text-xs text-sub">
             <span class="label">wpm history</span>
-            <span class="ml-auto inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full bg-sub"></span>result</span>
-            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-main"></span>10-result average</span>
+            <span class="ml-auto inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full bg-sub"></span>race</span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded bg-main"></span>10-race average</span>
           </div>
-          <WpmHistoryChart {name} {kind} />
+          <WpmHistoryChart {name} />
         </div>
       </section>
     {/if}

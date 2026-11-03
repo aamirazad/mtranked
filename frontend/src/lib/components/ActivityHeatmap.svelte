@@ -2,7 +2,7 @@
   import type { ActivityDay } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
 
-  // GitHub/monkeytype-style calendar of results per UTC day.
+  // GitHub/monkeytype-style calendar of ranked races per UTC day.
   let { name }: { name: string } = $props();
 
   let year = $state<number | null>(null);
@@ -87,7 +87,7 @@
       <option value="">last 12 months</option>
       {#each data?.years ?? [] as y (y)}<option value={y}>{y}</option>{/each}
     </select>
-    <span class="text-sub">{total} {total === 1 ? "result" : "results"}</span>
+    <span class="text-sub">{total} ranked {total === 1 ? "race" : "races"}</span>
     <span class="ml-auto flex items-center gap-1 text-xs text-sub">
       less
       {#each FILL as f, i (i)}<span class="inline-block h-3 w-3 rounded-sm" style="background: {f}"></span>{/each}
@@ -96,7 +96,7 @@
   </div>
   {#if grid}
     <div class="overflow-x-auto" onscroll={hide}>
-      <svg viewBox="0 0 {W} {H}" class="block w-full min-w-[640px]" role="img" aria-label="{total} results in this period" onpointerleave={hide}>
+      <svg viewBox="0 0 {W} {H}" class="block w-full min-w-[640px]" role="img" aria-label="{total} ranked races in this period" onpointerleave={hide}>
         {#each grid.months as m (m.col)}
           <text x={LEFT + m.col * (CELL + GAP)} y="10" class="fill-sub text-[9px]">{m.label}</text>
         {/each}
@@ -125,7 +125,7 @@
         class="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded-lg bg-bg px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg duration-100 ease-out {glide ? 'transition-[opacity,left,top]' : 'transition-opacity'}"
         style="left: {pos.x}px; top: {pos.y - 6}px; opacity: {hovered ? 1 : 0}"
       >
-        {#if hovered}<span class="text-text">{hovered.count} {hovered.count === 1 ? "result" : "results"}</span> <span class="text-sub">· {fmt(hovered.date)}</span>{/if}
+        {#if hovered}<span class="text-text">{hovered.count} {hovered.count === 1 ? "race" : "races"}</span> <span class="text-sub">· {fmt(hovered.date)}</span>{/if}
       </div>
     </div>
     <div class="mt-3 text-center text-[11px] text-sub">all activity uses UTC days</div>

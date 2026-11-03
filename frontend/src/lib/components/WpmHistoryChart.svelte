@@ -1,13 +1,13 @@
 <script lang="ts">
-  import type { StatKind, WpmPoint } from "@mtr/contracts";
+  import type { WpmPoint } from "@mtr/contracts";
   import { api } from "#lib/api.ts";
   import { monotonePath, movingAverage, nearestIndex, niceStep } from "#lib/charts/curve.ts";
   import { ChartHover } from "#lib/charts/hover.svelte.ts";
   import ChartTooltip from "#lib/charts/ChartTooltip.svelte";
   import { fmtDate } from "#lib/format.ts";
 
-  // Every recent result as a dot, with a smoothed 10-result average through them.
-  let { name, kind }: { name: string; kind: StatKind | null } = $props();
+  // Every recent ranked race as a dot, with a smoothed 10-race average through them.
+  let { name }: { name: string } = $props();
 
   let points = $state<WpmPoint[] | null>(null);
   let width = $state(0);
@@ -18,11 +18,10 @@
 
   $effect(() => {
     const n = name;
-    const k = kind;
     points = null;
     hover.hide();
-    void api.users.wpmHistory({ params: { name: n }, query: k ? { kind: k } : {} }).then((r) => {
-      if (n !== name || k !== kind) return;
+    void api.users.wpmHistory({ params: { name: n } }).then((r) => {
+      if (n !== name) return;
       points = r.status === 200 ? r.body.points : [];
     });
   });
@@ -66,7 +65,7 @@
   {#if points === null}
     <div class="flex h-full items-center justify-center text-sm text-sub">loading…</div>
   {:else if points.length < 2}
-    <div class="flex h-full items-center justify-center text-sm text-sub">not enough results yet.</div>
+    <div class="flex h-full items-center justify-center text-sm text-sub">not enough ranked races yet.</div>
   {:else if width}
     <svg
       {width}
@@ -74,7 +73,7 @@
       class="block rounded outline-none focus-visible:ring-2 focus-visible:ring-main/40"
       role="slider"
       tabindex="0"
-      aria-label="wpm over the last {points.length} results, best {best}"
+      aria-label="wpm over the last {points.length} ranked races, best {best}"
       aria-valuemin={1}
       aria-valuemax={points.length}
       aria-valuenow={(hover.index ?? points.length - 1) + 1}
@@ -89,7 +88,7 @@
         <text x={pad.left - 8} y={y(t)} dy="0.32em" text-anchor="end" class="fill-sub text-[11px] tabular-nums">{t}</text>
       {/each}
       <text x={pad.left} y={H - 6} class="fill-sub text-[11px]">{fmtDate(points[0]!.at)}</text>
-      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.length} results</text>
+      <text x={pad.left + innerW} y={H - 6} text-anchor="end" class="fill-sub text-[11px]">{points.length} races</text>
       {#each points as p, i (i)}
         <circle cx={x(i)} cy={y(p.wpm)} r={points.length > 150 ? 2 : 2.75} class="fill-sub" fill-opacity="0.55" />
       {/each}
@@ -102,7 +101,7 @@
     </svg>
     <ChartTooltip {hover} {width} top={pad.top}>
       {#if hp}
-        <div class="mb-1 whitespace-nowrap text-sub">{fmtDate(hp.at)} · {hp.kind}</div>
+        <div class="mb-1 whitespace-nowrap text-sub">{fmtDate(hp.at)}</div>
         <div class="flex gap-3 whitespace-nowrap text-text"><span>wpm</span><span class="ml-auto tabular-nums">{Math.round(hp.wpm)}</span></div>
         <div class="flex gap-3 whitespace-nowrap text-text"><span>acc</span><span class="ml-auto tabular-nums">{Math.round(hp.acc)}%</span></div>
         <div class="flex gap-3 whitespace-nowrap text-main"><span>avg {AVG}</span><span class="ml-auto tabular-nums">{Math.round(avg[hover.index!]!)}</span></div>

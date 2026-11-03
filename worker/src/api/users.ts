@@ -146,7 +146,7 @@ export const usersRouter = s.router(contract.users, {
       one(
         `select coalesce(avg(wpm), 0) avg_wpm, coalesce(max(wpm), 0) best_wpm, coalesce(avg(accuracy), 0) avg_acc, count(*) total
          from (select wpm, accuracy from match_players mp join matches m on m.id = mp.match_id
-               where mp.user_id = ? and mp.finished and m.status <> 'void'
+               where mp.user_id = ? and mp.finished and m.mode = 'ranked' and m.status = 'finished'
                order by m.finished_at desc limit 50) t`,
         u.id,
       ),
@@ -260,10 +260,10 @@ export const usersRouter = s.router(contract.users, {
     return { status: 200, body: { stats: await profileStats(u) } };
   },
 
-  wpmHistory: async ({ params, query }) => {
+  wpmHistory: async ({ params }) => {
     const u = await userByName(params.name);
     if (!u) return noPlayer;
-    return { status: 200, body: { points: await wpmHistory(u, query.kind) } };
+    return { status: 200, body: { points: await wpmHistory(u) } };
   },
 
   activity: async ({ params, query }) => {
