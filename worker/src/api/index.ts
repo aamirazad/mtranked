@@ -1,4 +1,4 @@
-import { fetchRequestHandler, RequestValidationError, TsRestResponse } from "@ts-rest/serverless/fetch";
+import { fetchRequestHandler, RequestValidationError, TsRestHttpError, TsRestResponse } from "@ts-rest/serverless/fetch";
 import { contract } from "@mtr/contracts";
 import { http } from "../http";
 import { reportError } from "../sentry";
@@ -33,6 +33,10 @@ function errorHandler(err: unknown, req: Request) {
     for (const i of err.bodyError?.issues ?? []) fields[String(i.path[0])] = i.message;
     const message = issue ? `${issue.path.join(".") || "input"}: ${issue.message}` : "Invalid request";
     return TsRestResponse.fromJson({ message, fields }, { status: 400 });
+  }
+  // ts-rest's own client errors (e.g. 404 for an unknown route) are expected, not bugs
+  if (err instanceof TsRestHttpError && err.statusCode < 500) {
+    return TsRestResponse.fromJson(err.body, { status: err.statusCode });
   }
   reportError("[api] request failed", err, { route: `${req.method} ${new URL(req.url).pathname}` });
   return TsRestResponse.fromJson({ message: "Something went wrong on our side." }, { status: 500 });
