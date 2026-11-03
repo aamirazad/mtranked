@@ -112,7 +112,7 @@ Production runs entirely on Cloudflare's free plan, as one Worker named `mtranke
 - **Static site**: `frontend/build` is the Worker's static assets. Only `/api/*` and `/ws` invoke the Worker, so page loads cost nothing.
 - **API** (`/api/*`): the Worker, reading and writing the D1 database `mtranked`.
 - **Realtime** (`/ws`): the Hub Durable Object. It uses WebSocket hibernation: idle tabs send a fixed keepalive that Cloudflare answers without waking the Hub, and the Hub only runs its 100 ms timer while a queue, room or rematch offer exists.
-- **Email**: Resend's HTTP API (`RESEND_API_KEY`), from `no-reply@mtranked.com`.
+- **Email**: Resend's HTTP API (`RESEND_API_KEY`), from `no-reply@mtranked.com`. When Resend answers 429 (daily or monthly quota, or rate limit), the email goes through Mailgun's SMTP instead (`smtp.mailgun.org:465` as `mtranked@mg.aamirazad.com`, from `no-reply@mg.aamirazad.com`), if `SMTP_PASSWORD` is set.
 - **Cron**: daily at 04:17 UTC, deletes expired sessions and email tokens and starts the next season once the current one ends (3 months, ratings pulled toward 1500).
 
 ### Deploys
@@ -136,6 +136,7 @@ Plain settings are in `worker/cloudflare.config.ts` (`APP_URL`, `ADMIN_EMAILS`, 
 
 - `AUTH_SECRET` (required): signs guest cookies and WebSocket tickets. Changing it signs out every guest.
 - `RESEND_API_KEY` (required): verification and password reset emails.
+- `SMTP_PASSWORD`: Mailgun SMTP password for `mtranked@mg.aamirazad.com`, the fallback when Resend hits its sending limit.
 - `SENTRY_DSN`: backend error reporting (project `mtranked-server`).
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`: supporter subscriptions.
 

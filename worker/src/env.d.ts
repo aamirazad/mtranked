@@ -6,5 +6,7 @@ declare namespace Cloudflare {
     /** supporter subscriptions; SUPPORTER_SALES must also be "true" */
     STRIPE_SECRET_KEY?: string;
     STRIPE_WEBHOOK_SECRET?: string;
+    /** Mailgun SMTP password for SMTP_USER: the fallback when Resend hits its sending limit */
+    SMTP_PASSWORD?: string;
   }
 }
